@@ -1,8 +1,9 @@
 import logging
 
 from .config import load_yaml_config
+from .core import DocWriter
 from .input import DocumentReaderFactory
-from .text import DocProcessorConfig, TextProcessor
+from .text import TextProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,9 @@ class Pipeline:
 
         doc_processing_config = config['document_process']
         self.doc_processor = TextProcessor(doc_processing_config)
+        self.doc_writer = DocWriter(doc_processing_config['output'])
 
     def run(self):
         for doc in self.doc_reader:
             doc = self.doc_processor.run(doc)
+            self.doc_writer.write(doc)
