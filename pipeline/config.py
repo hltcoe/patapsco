@@ -98,6 +98,7 @@ class ConfigLoader(yaml.FullLoader):
     def __init__(self, stream):
         super().__init__(stream)
         self.errors = []
+        self.interpolator = ConfigInterpolator()
 
     def __call__(self, stream):
         # yaml.load wants a class object to constructor, but we want to maintain errors
@@ -105,24 +106,9 @@ class ConfigLoader(yaml.FullLoader):
 
     def get_single_data(self):
         data = super().get_single_data()
-        return self.interpolate(data, convert_dict(data))
-
-    def interpolate(self, data, mapping):
-        for key, value in data.items():
-            data[key] = self.interpolate_value(value, mapping)
+        data = self.interpolator.interpolate(data, convert_dict(data))
+        self.errors = self.interpolator.errors
         return data
-
-    def interpolate_value(self, value, mapping):
-        if isinstance(value, str) and self.regx.match(value) is not None:
-            try:
-                value = value.format_map(mapping)
-            except AttributeError:
-                self.errors.append(value)
-        elif isinstance(value, list):
-            value = [self.interpolate_value(entry, mapping) for entry in value]
-        elif isinstance(value, dict):
-            value = self.interpolate(value, mapping)
-        return value
 
 
 class ConfigInterpolator:
