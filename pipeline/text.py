@@ -4,10 +4,10 @@ from .error import ConfigError
 
 
 class Tokenizer:
+    """Tokenizer interface"""
     def __init__(self, config):
         self.config = config
 
-    """Tokenizer interface"""
     def tokenize(self, text):
         """Tokenize text
 

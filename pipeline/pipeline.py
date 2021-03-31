@@ -3,6 +3,7 @@ import logging
 from .config import load_yaml_config
 from .core import DocWriter
 from .input import DocumentReaderFactory
+from .index import IndexerFactory
 from .text import TextProcessor
 
 logger = logging.getLogger(__name__)
@@ -61,7 +62,11 @@ class Pipeline:
         self.doc_processor = TextProcessor(doc_processing_config)
         self.doc_writer = DocWriter(doc_processing_config['output'])
 
+        index_config = config['index']
+        self.indexer = IndexerFactory.create(index_config)
+
     def run(self):
         for doc in self.doc_reader:
             doc = self.doc_processor.run(doc)
             self.doc_writer.write(doc)
+            self.indexer.index(doc)
