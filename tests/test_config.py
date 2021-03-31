@@ -127,3 +127,33 @@ def test_load_json_config():
     assert type(conf['score']) is list
     assert conf['document_process']['lowercase'] is True
     assert conf['score'][0] == "map"
+
+
+def test_json_interpolation_simple():
+    document = """
+{
+  "output": "output_{lang}",
+  "lang": "es"
+}
+"""
+    conf = config.load_json_config(io.StringIO(document))
+    assert conf['lang'] == 'es'
+    assert conf['output'] == 'output_es'
+
+
+def test_json_interpolation_with_missing_value():
+    document = """
+{
+  "lang": "ru",
+  "document_process": {
+    "utf8_normalize": true,
+    "lowercase": true,
+    "stem": {
+      "name": "pymorphy2"
+    }
+  },
+  "output": "ru-{document_process.stem.name}-{document_process.stem.param1}"
+}
+"""
+    with pytest.raises(config.ConfigError):
+        config.load_json_config(io.StringIO(document))

@@ -54,7 +54,22 @@ def load_json_config(file):
         dict
     """
     conf = json.load(file)
+    interpolator = ConfigInterpolator()
+    conf = interpolator.interpolate(conf, convert_dict(conf))
+    if interpolator.errors:
+        error_string = ', '.join(interpolator.errors)
+        raise ConfigError(f"Missing interpolations in config: {error_string}")
     return conf
+
+
+def save_json_config(file, data):
+    """Save a configuration to a JSON file
+
+    Args:
+        file (file): file object opened for writing
+        data (dict): data to write as YAML
+    """
+    json.dump(data, file, indent=4, sort_keys=True)
 
 
 class AttrDict(dict):

@@ -1,6 +1,6 @@
 import logging
 
-from .config import load_yaml_config, save_yaml_config
+from .config import load_yaml_config
 from .input import TrecCorpusReader
 from .text import DocProcessorConfig, TextProcessor
 
@@ -79,9 +79,6 @@ class Pipeline:
         doc_processor = TextProcessor(dpc)
 
         corpus = TrecCorpusReader(doc_config['path'], doc_config['lang'], doc_config['encoding'])
-
-        with open('cash.yaml', 'w') as fp:
-            save_yaml_config(fp, doc_processor.config.dict())
 
     def run(self):
         print("running")
