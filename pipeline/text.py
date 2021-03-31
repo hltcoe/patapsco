@@ -1,7 +1,6 @@
-from .config import BaseConfig, Optional
-from .error import *
-
-from typing import Union
+from .config import BaseConfig, Optional, Union
+from .core import Doc
+from .error import ConfigError
 
 
 class Tokenizer:
@@ -102,12 +101,14 @@ class DocProcessorConfig(BaseConfig):
 
 class TextProcessor:
     def __init__(self, config):
+        config = DocProcessorConfig(**config)
         self.config = config
         self.normalizer = Normalizer()
         self.tokenizer = TokenizerFactory.create(config.tokenize)
         self.stemmer = StemmerFactory.create(config.stem)
 
-    def run(self, text):
+    def run(self, doc):
+        text = doc.text
         if self.config.utf8_normalize:
             text = self.normalizer.normalize(text)
         if self.config.lowercase:
@@ -115,4 +116,5 @@ class TextProcessor:
         tokens = self.tokenizer.tokenize(text)
         if self.config.stem:
             tokens = self.stemmer.stem(tokens)
-        return ' '.join(tokens)
+        text = ' '.join(tokens)
+        return Doc(doc.id, doc.lang, text)

@@ -1,4 +1,4 @@
 import collections
 
 
-Doc = collections.namedtuple('Doc', ('docid', 'lang', 'text'))
+Doc = collections.namedtuple('Doc', ('id', 'lang', 'text'))

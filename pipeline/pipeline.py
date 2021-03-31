@@ -1,7 +1,7 @@
 import logging
 
 from .config import load_yaml_config
-from .input import TrecCorpusReader
+from .input import DocumentReaderFactory
 from .text import DocProcessorConfig, TextProcessor
 
 logger = logging.getLogger(__name__)
@@ -47,23 +47,6 @@ class Splitter(Module):
 class Combiner(Module):
     pass
 
-from pydantic import BaseModel
-
-class Foo(BaseModel):
-    count: int
-    size: float = None
-
-
-class Bar(BaseModel):
-    apple = 'x'
-    banana = 'y'
-
-
-class Spam(BaseModel):
-    foo: Foo
-    bars: Bar
-
-import pprint
 
 class Pipeline:
     def __init__(self, config_filename):
@@ -71,14 +54,11 @@ class Pipeline:
             config = load_yaml_config(fp)
 
         doc_config = config['input']['documents']
+        self.doc_reader = DocumentReaderFactory.create(doc_config)
+
         doc_processing_config = config['document_process']
-
-        pprint.pprint(config)
-
-        dpc = DocProcessorConfig(**doc_processing_config)
-        doc_processor = TextProcessor(dpc)
-
-        corpus = TrecCorpusReader(doc_config['path'], doc_config['lang'], doc_config['encoding'])
+        self.doc_processor = TextProcessor(doc_processing_config)
 
     def run(self):
-        print("running")
+        for doc in self.doc_reader:
+            doc = self.doc_processor.run(doc)

@@ -1,11 +1,11 @@
 import json
 import re
-from typing import Optional
+from typing import Optional, Union
 
 import pydantic
 import yaml
 
-from .error import *
+from .error import ConfigError
 
 
 class BaseConfig(pydantic.BaseModel):
