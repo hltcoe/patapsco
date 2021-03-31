@@ -1,5 +1,5 @@
 from .config import BaseConfig, Optional, Union
-from .core import Doc
+from .core import Doc, Topic
 from .error import ConfigError
 
 
@@ -107,8 +107,7 @@ class TextProcessor:
         self.tokenizer = TokenizerFactory.create(config.tokenize)
         self.stemmer = StemmerFactory.create(config.stem)
 
-    def run(self, doc):
-        text = doc.text
+    def run(self, text):
         if self.config.utf8_normalize:
             text = self.normalizer.normalize(text)
         if self.config.lowercase:
@@ -116,5 +115,24 @@ class TextProcessor:
         tokens = self.tokenizer.tokenize(text)
         if self.config.stem:
             tokens = self.stemmer.stem(tokens)
-        text = ' '.join(tokens)
+        return ' '.join(tokens)
+
+
+class DocumentProcessor:
+    def __init__(self, config):
+        self.processor = TextProcessor(config)
+
+    def run(self, doc):
+        text = self.processor.run(doc.text)
         return Doc(doc.id, doc.lang, text)
+
+
+class TopicProcessor:
+    def __init__(self, config):
+        self.processor = TextProcessor(config)
+
+    def run(self, topic):
+        title = self.processor.run(topic.title)
+        desc = self.processor.run(topic.desc)
+        narr = self.processor.run(topic.narr)
+        return Topic(topic.id, topic.lang, title, desc, narr)

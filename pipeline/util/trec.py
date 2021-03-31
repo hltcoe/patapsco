@@ -1,6 +1,6 @@
-# From OpenNIR MIT License
 import gzip
 import re
+import xml.etree.ElementTree as ElementTree
 
 import bs4
 
@@ -8,6 +8,7 @@ DOC_TEXT_TAGS = ["<TEXT>", "<HEADLINE>", "<TITLE>", "<HL>", "<HEAD>", "<TTL>", "
 DOC_TEXT_END_TAGS = ["</TEXT>", "</HEADLINE>", "</TITLE>", "</HL>", "</HEAD>", "</TTL>", "</DD>", "</DATE>", "</LP>", "</LEADPARA>"]
 
 
+# From OpenNIR with a MIT License
 def parse_sgml(path, encoding='utf8'):
     docs = []
     if path.endswith('.gz'):
@@ -50,3 +51,22 @@ def parse_sgml(path, encoding='utf8'):
                         doc_text += line
                         break
     return docs
+
+
+def parse_topics(filename, xml_prefix=None, encoding='utf8'):
+    if xml_prefix is None:
+        xml_prefix = ''
+    TITLE_TAG = xml_prefix + 'title'
+    DESC_TAG = xml_prefix + 'desc'
+    NARR_TAG = xml_prefix + 'narr'
+
+    with open(filename, 'r', encoding=encoding) as fp:
+        text = fp.read()
+    text = "<topics>\n" + text + "\n</topics>"
+    root = ElementTree.fromstring(text)
+    for topic in root:
+        num = topic.find('num').text.strip()
+        title = topic.find(TITLE_TAG).text.strip()
+        desc = topic.find(DESC_TAG).text.strip()
+        narr = topic.find(NARR_TAG).text.strip()
+        yield num, title, desc, narr

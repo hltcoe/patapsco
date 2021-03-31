@@ -29,7 +29,7 @@ class DumbIndexer(Indexer):
         self.file.write(doc.id + "\n")
 
     def close(self):
-        self.close()
+        self.file.close()
 
 
 class IndexerConfig(BaseConfig):
