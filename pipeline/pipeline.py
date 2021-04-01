@@ -8,11 +8,13 @@ from .rerank import RerankFactory
 from .retrieve import RetrieverFactory
 from .text import DocumentProcessor, TopicProcessor
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class Pipeline:
-    def __init__(self, config_filename):
+    def __init__(self, config_filename, verbose=False):
+        self.setup_logging(verbose)
+
         config = load_config(config_filename)
 
         topic_config = config['input']['topics']
@@ -39,13 +41,26 @@ class Pipeline:
         self.reranker = RerankFactory.create(rerank_config)
         self.rerank_writer = ResultsWriter(rerank_config['output'])
 
+    @staticmethod
+    def setup_logging(verbose):
+        log_level = logging.DEBUG if verbose else logging.INFO
+        logger = logging.getLogger('pipeline')
+        logger.setLevel(log_level)
+        console = logging.StreamHandler()
+        console.setLevel(log_level)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        console.setFormatter(formatter)
+        logger.addHandler(console)
+
     def run(self):
+        LOGGER.info("Starting processing of documents")
         for doc in self.doc_reader:
             doc = self.doc_processor.run(doc)
             self.doc_writer.write(doc)
             self.indexer.index(doc)
         self.indexer.close()
 
+        LOGGER.info("Starting processing of topics")
         results = {}
         for topic in self.topic_reader:
             topic = self.topic_processor.run(topic)
@@ -60,3 +75,4 @@ class Pipeline:
         self.topic_writer.close()
         self.retrieve_writer.close()
         self.rerank_writer.close()
+        LOGGER.info("Results available at %s", self.rerank_writer.path)

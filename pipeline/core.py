@@ -37,8 +37,8 @@ class ResultsWriter:
     def __init__(self, path):
         dir = pathlib.Path(path)
         dir.mkdir(parents=True)
-        path = dir / 'results.txt'
-        self.file = open(path, 'w')
+        self.path = dir / 'results.txt'
+        self.file = open(self.path, 'w')
 
     def write(self, results):
         for result in results:

@@ -9,7 +9,7 @@ import yaml
 
 from .error import ConfigError
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class BaseConfig(pydantic.BaseModel):
@@ -38,7 +38,7 @@ def load_config(filename):
     else:
         raise ConfigError(f"Unknown config file extension {ext}")
     with open(filename, 'r') as fp:
-        logger.info("Loading configuration from %s", filename)
+        LOGGER.info("Loading configuration from %s", filename)
         return reader_fn(fp)
 
 

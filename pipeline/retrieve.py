@@ -1,9 +1,12 @@
+import logging
 import pathlib
 import random
 
 from .config import BaseConfig
 from .core import Result
 from .error import ConfigError
+
+LOGGER = logging.getLogger(__name__)
 
 
 class Retriever:
@@ -40,6 +43,7 @@ class MockRetriever(Retriever):
     def _load(self):
         with open(self.path, 'r') as fp:
             self.doc_ids = [line.strip() for line in fp]
+        LOGGER.debug("Loaded index from %s", self.path)
 
 
 class RetrieveConfig(BaseConfig):
