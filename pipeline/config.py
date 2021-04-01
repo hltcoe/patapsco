@@ -80,7 +80,9 @@ def load_json_config(file):
     """
     conf = json.load(file)
     interpolator = ConfigInterpolator()
-    conf = interpolator.interpolate(conf, convert_dict(conf))
+    conf = convert_dict(conf)
+    interpolator.interpolate(conf, conf)
+    conf = unconvert_dict(conf)
     if interpolator.errors:
         error_string = ', '.join(interpolator.errors)
         raise ConfigError(f"Missing interpolations in config: {error_string}")
@@ -126,6 +128,28 @@ def convert_dict(d):
     return d
 
 
+def unconvert_dict(d):
+    """Convert attribute dictionary back to a normal dictionary
+
+    Handles nested dictionaries and lists.
+
+    Args:
+        d (AttrDict)
+
+    Returns:
+        dict
+    """
+    d = dict(d)
+    for key, value in d.items():
+        if isinstance(value, AttrDict):
+            d[key] = unconvert_dict(value)
+        elif isinstance(value, list):
+            for index, entry in enumerate(value):
+                if isinstance(entry, AttrDict):
+                    value[index] = unconvert_dict(entry)
+    return d
+
+
 class ConfigLoader(yaml.FullLoader):
     """YAML loader that handles interpolation
 
@@ -146,7 +170,9 @@ class ConfigLoader(yaml.FullLoader):
 
     def get_single_data(self):
         data = super().get_single_data()
-        data = self.interpolator.interpolate(data, convert_dict(data))
+        data = convert_dict(data)
+        self.interpolator.interpolate(data, data)
+        data = unconvert_dict(data)
         self.errors = self.interpolator.errors
         return data
 
@@ -159,7 +185,6 @@ class ConfigInterpolator:
     def interpolate(self, data, mapping):
         for key, value in data.items():
             data[key] = self.interpolate_value(value, mapping)
-        return data
 
     def interpolate_value(self, value, mapping):
         if isinstance(value, str) and self.regx.match(value) is not None:
@@ -170,5 +195,5 @@ class ConfigInterpolator:
         elif isinstance(value, list):
             value = [self.interpolate_value(entry, mapping) for entry in value]
         elif isinstance(value, dict):
-            value = self.interpolate(value, mapping)
+            self.interpolate(value, mapping)
         return value

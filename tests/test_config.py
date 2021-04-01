@@ -109,6 +109,28 @@ document_process:
         config.load_yaml_config(document)
 
 
+def test_interpolation_cascade():
+    document = """
+a: 1
+b: "{a}1"
+c: "{b}1"
+"""
+    conf = yaml.load(document, Loader=config.ConfigLoader)
+    assert conf['b'] == '11'
+    assert conf['c'] == '111'
+
+
+def test_interpolation_cascade_with_wrong_order():
+    document = """
+a: 1
+c: "{b}1"
+b: "{a}1"
+"""
+    conf = yaml.load(document, Loader=config.ConfigLoader)
+    assert conf['b'] == '11'
+    assert conf['c'] == '{a}11'
+
+
 def test_load_json_config():
     document = """
 {
@@ -157,3 +179,29 @@ def test_json_interpolation_with_missing_value():
 """
     with pytest.raises(config.ConfigError):
         config.load_json_config(io.StringIO(document))
+
+
+def test_json_interpolation_cascade():
+    document = """
+{
+"a": 1,
+"b": "{a}1",
+"c": "{b}1"
+}
+"""
+    conf = yaml.load(document, Loader=config.ConfigLoader)
+    assert conf['b'] == '11'
+    assert conf['c'] == '111'
+
+
+def test_json_interpolation_cascade_with_wrong_order():
+    document = """
+{
+"a": 1,
+"c": "{b}1",
+"b": "{a}1"
+}
+"""
+    conf = yaml.load(document, Loader=config.ConfigLoader)
+    assert conf['b'] == '11'
+    assert conf['c'] == '{a}11'
