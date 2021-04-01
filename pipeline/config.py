@@ -1,4 +1,6 @@
 import json
+import logging
+import pathlib
 import re
 from typing import Optional, Union
 
@@ -6,6 +8,8 @@ import pydantic
 import yaml
 
 from .error import ConfigError
+
+logger = logging.getLogger(__name__)
 
 
 class BaseConfig(pydantic.BaseModel):
@@ -15,6 +19,27 @@ class BaseConfig(pydantic.BaseModel):
     """
     class Config:
         extra = pydantic.Extra.forbid
+
+
+def load_config(filename):
+    """Loads the configuration detecting file type
+
+    Args:
+        filename (str): path to the configuration file
+
+    Returns:
+        dict
+    """
+    ext = pathlib.Path(filename).suffix.lower()
+    if ext in ['.yaml', '.yml']:
+        reader_fn = load_yaml_config
+    elif ext == '.json':
+        reader_fn = load_json_config
+    else:
+        raise ConfigError(f"Unknown config file extension {ext}")
+    with open(filename, 'r') as fp:
+        logger.info("Loading configuration from %s", filename)
+        return reader_fn(fp)
 
 
 def load_yaml_config(stream):

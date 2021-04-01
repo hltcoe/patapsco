@@ -1,6 +1,6 @@
 import logging
 
-from .config import load_yaml_config
+from .config import load_config
 from .core import DocWriter, TopicWriter, ResultsWriter
 from .input import DocumentReaderFactory, TopicReaderFactory
 from .index import IndexerFactory
@@ -13,8 +13,7 @@ logger = logging.getLogger(__name__)
 
 class Pipeline:
     def __init__(self, config_filename):
-        with open(config_filename, 'r') as fp:
-            config = load_yaml_config(fp)
+        config = load_config(config_filename)
 
         topic_config = config['input']['topics']
         self.topic_reader = TopicReaderFactory.create(topic_config)
