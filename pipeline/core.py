@@ -46,3 +46,12 @@ class ResultsWriter:
 
     def close(self):
         self.file.close()
+
+
+class ResultsAccumulator:
+    def __init__(self):
+        self.run = collections.defaultdict(dict)
+
+    def add(self, results):
+        for result in results:
+            self.run[result.topic_id][result.doc_id] = result.score

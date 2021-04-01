@@ -2,11 +2,12 @@ import logging
 import pathlib
 
 from .config import load_config
-from .core import DocWriter, TopicWriter, ResultsWriter
-from .input import DocumentReaderFactory, TopicReaderFactory
+from .core import DocWriter, TopicWriter, ResultsWriter, ResultsAccumulator
+from .input import DocumentReaderFactory, TopicReaderFactory, QrelsReaderFactory
 from .index import IndexerFactory
 from .rerank import RerankFactory
 from .retrieve import RetrieverFactory
+from .score import Scorer
 from .text import DocumentProcessor, TopicProcessor
 
 LOGGER = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class Pipeline:
 
         topic_config = config['input']['topics']
         self.topic_reader = TopicReaderFactory.create(topic_config)
-        topic_process_config = config['topic_process']
+        topic_process_config = config['query_process']
         self.topic_processor = TopicProcessor(topic_process_config)
         self.topic_writer = TopicWriter(topic_process_config['output'])
 
@@ -30,6 +31,13 @@ class Pipeline:
         doc_process_config = config['document_process']
         self.doc_processor = DocumentProcessor(doc_process_config)
         self.doc_writer = DocWriter(doc_process_config['output'])
+
+        qrels_config = config['input']['qrels']
+        self.qrels = QrelsReaderFactory.create(qrels_config).read()
+        self.accumulator = ResultsAccumulator()
+
+        score_config = config['score']
+        self.scorer = Scorer(score_config)
 
         index_config = config['index']
         self.indexer = IndexerFactory.create(index_config)
@@ -81,7 +89,9 @@ class Pipeline:
 
             topic_results = self.reranker.rerank(topic.id, topic.title, topic_results)
             self.rerank_writer.write(topic_results)
+            self.accumulator.add(topic_results)
         self.topic_writer.close()
         self.retrieve_writer.close()
         self.rerank_writer.close()
         LOGGER.info("Results available at %s", self.rerank_writer.path)
+        self.scorer.score(self.qrels, self.accumulator.run)
