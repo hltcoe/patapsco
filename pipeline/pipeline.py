@@ -9,6 +9,7 @@ from .rerank import RerankFactory
 from .retrieve import RetrieverFactory
 from .score import Scorer
 from .text import DocumentProcessor, TopicProcessor
+from .util.file import delete_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +20,10 @@ class Pipeline:
 
         config = load_config(config_filename)
         self.prepare_config(config)
+
+        if config['overwrite']:
+            LOGGER.debug("Deleting %s", config['path'])
+            delete_dir(config['path'])
 
         topic_config = config['input']['topics']
         self.topic_reader = TopicReaderFactory.create(topic_config)
