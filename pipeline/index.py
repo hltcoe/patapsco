@@ -7,7 +7,7 @@ from .error import ConfigError
 class Indexer:
     """Indexer interface"""
     def index(self, doc):
-        """Tokenize text
+        """Add a document to the index
 
         Args:
             doc (Doc)
@@ -19,9 +19,9 @@ class Indexer:
         pass
 
 
-class DumbIndexer(Indexer):
+class MockIndexer(Indexer):
     def __init__(self, config):
-        self.path = pathlib.Path (config.output) / 'index.txt'
+        self.path = pathlib.Path(config.output) / 'index.txt'
         self.path.parent.mkdir(parents=True)
         self.file = open(self.path, 'w')
 
@@ -39,7 +39,7 @@ class IndexerConfig(BaseConfig):
 
 class IndexerFactory:
     classes = {
-        'anserini': DumbIndexer,
+        'anserini': MockIndexer,
     }
 
     @classmethod
