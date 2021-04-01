@@ -3,7 +3,7 @@ import pathlib
 
 from .config import load_config
 from .core import DocWriter, TopicWriter, ResultsWriter, ResultsAccumulator
-from .input import DocumentReaderFactory, TopicReaderFactory, QrelsReaderFactory
+from .input import DocumentReaderFactory, DocumentStore, TopicReaderFactory, QrelsReaderFactory
 from .index import IndexerFactory
 from .rerank import RerankFactory
 from .retrieve import RetrieverFactory
@@ -31,6 +31,7 @@ class Pipeline:
         doc_process_config = config['document_process']
         self.doc_processor = DocumentProcessor(doc_process_config)
         self.doc_writer = DocWriter(doc_process_config['output'])
+        self.doc_store = DocumentStore()
 
         qrels_config = config['input']['qrels']
         self.qrels = QrelsReaderFactory.create(qrels_config).read()
@@ -48,7 +49,7 @@ class Pipeline:
         self.retrieve_writer = ResultsWriter(retrieve_config['output'])
 
         rerank_config = config['rerank']
-        self.reranker = RerankFactory.create(rerank_config)
+        self.reranker = RerankFactory.create(rerank_config, self.doc_store)
         self.rerank_writer = ResultsWriter(rerank_config['output'])
 
     @staticmethod
@@ -87,7 +88,7 @@ class Pipeline:
             self.retrieve_writer.write(topic_results)
             results[topic.id] = topic_results
 
-            topic_results = self.reranker.rerank(topic.id, topic.title, topic_results)
+            topic_results = self.reranker.rerank(topic.title, topic_results)
             self.rerank_writer.write(topic_results)
             self.accumulator.add(topic_results)
         self.topic_writer.close()

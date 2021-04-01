@@ -8,11 +8,19 @@ from .error import ConfigError
 
 class Reranker:
     """Rerank interface"""
-    def rerank(self, topic_id, query, results):
+    def __init__(self, config, store):
+        """
+        Args:
+            config (RerankConfig): Configuration parameters
+            store (DocumentStore): Document store that works like dictionary
+        """
+        self.config = config
+        self.store = store
+
+    def rerank(self, query, results):
         """Rerank a list of query results
 
         Args:
-            topic_id (str)
             query (str)
             results (list)
 
@@ -27,10 +35,7 @@ class Reranker:
 
 
 class MockReranker(Reranker):
-    def __init__(self, config):
-        pass
-
-    def rerank(self, topic_id, query, results):
+    def rerank(self, query, results):
         results = copy.copy(results)
         random.shuffle(results)
         return [Result(v.topic_id, v.doc_id, i, i, v.name) for i, v in enumerate(results)]
@@ -48,8 +53,8 @@ class RerankFactory:
     }
 
     @classmethod
-    def create(cls, config):
+    def create(cls, config, store):
         config = RerankConfig(**config)
         if config.name not in cls.classes:
             raise ConfigError(f"Unknown reranker: {config.name}")
-        return cls.classes[config.name](config)
+        return cls.classes[config.name](config, store)

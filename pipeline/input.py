@@ -37,6 +37,11 @@ class TrecDocumentReader:
         return Doc(doc[0], self.lang, doc[1])
 
 
+class DocumentStore:
+    def __getitem__(self, doc_id):
+        return "Hello, world"
+
+
 class InputTopicsConfig(BaseConfig):
     lang: str
     encoding: str = "utf8"
