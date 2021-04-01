@@ -4,6 +4,7 @@ from .config import load_yaml_config
 from .core import DocWriter, TopicWriter, ResultsWriter
 from .input import DocumentReaderFactory, TopicReaderFactory
 from .index import IndexerFactory
+from .rerank import RerankFactory
 from .retrieve import RetrieverFactory
 from .text import DocumentProcessor, TopicProcessor
 
@@ -35,6 +36,10 @@ class Pipeline:
         self.retriever = RetrieverFactory.create(retrieve_config)
         self.retrieve_writer = ResultsWriter(retrieve_config['output'])
 
+        rerank_config = config['rerank']
+        self.reranker = RerankFactory.create(rerank_config)
+        self.rerank_writer = ResultsWriter(rerank_config['output'])
+
     def run(self):
         for doc in self.doc_reader:
             doc = self.doc_processor.run(doc)
@@ -46,7 +51,13 @@ class Pipeline:
         for topic in self.topic_reader:
             topic = self.topic_processor.run(topic)
             self.topic_writer.write(topic)
+
             topic_results = self.retriever.retrieve(topic.id, topic.title)
             self.retrieve_writer.write(topic_results)
             results[topic.id] = topic_results
+
+            topic_results = self.reranker.rerank(topic.id, topic.title, topic_results)
+            self.rerank_writer.write(topic_results)
         self.topic_writer.close()
+        self.retrieve_writer.close()
+        self.rerank_writer.close()
