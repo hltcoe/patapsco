@@ -165,7 +165,7 @@ class ConfigInterpolator:
         if isinstance(value, str) and self.regx.match(value) is not None:
             try:
                 value = value.format_map(mapping)
-            except AttributeError:
+            except (AttributeError, KeyError):
                 self.errors.append(value)
         elif isinstance(value, list):
             value = [self.interpolate_value(entry, mapping) for entry in value]
