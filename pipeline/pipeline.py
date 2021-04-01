@@ -1,4 +1,5 @@
 import logging
+import pathlib
 
 from .config import load_config
 from .core import DocWriter, TopicWriter, ResultsWriter
@@ -16,6 +17,7 @@ class Pipeline:
         self.setup_logging(verbose)
 
         config = load_config(config_filename)
+        self.prepare_config(config)
 
         topic_config = config['input']['topics']
         self.topic_reader = TopicReaderFactory.create(topic_config)
@@ -51,6 +53,13 @@ class Pipeline:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         console.setFormatter(formatter)
         logger.addHandler(console)
+
+    def prepare_config(self, config):
+        base = pathlib.Path(config['path'])
+        for conf in config.values():
+            if isinstance(conf, dict):
+                if 'output' in conf:
+                    conf['output'] = str(base / conf['output'])
 
     def run(self):
         LOGGER.info("Starting processing of documents")
