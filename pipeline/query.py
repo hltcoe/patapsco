@@ -53,6 +53,7 @@ class QueryWriter:
 
 class QueryProcessorConfig(BaseConfig):
     name: str = "default"
+    query: str = "title"  # field1+field2 where field is title, desc, narr
     utf8_normalize: bool = True
     lowercase: bool = True
     output: str
@@ -76,6 +77,7 @@ class QueryProcessor(TextProcessor):
             config (QueryProcessorConfig)
         """
         super().__init__(config)
+        self.fields = config.query.split('+')
 
     def run(self, topic):
         """
@@ -97,4 +99,4 @@ class QueryProcessor(TextProcessor):
         return Query(topic.id, topic.lang, text)
 
     def _select_text(self, topic):
-        return topic.title
+        return ' '.join([getattr(topic, f).strip() for f in self.fields])
