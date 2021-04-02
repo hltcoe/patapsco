@@ -15,7 +15,7 @@ class Retriever:
         """Retrieve a ranked list of documents
 
         Args:
-            topic_id (str)
+            query_id (str)
             query (str)
 
         Returns:
@@ -34,11 +34,11 @@ class MockRetriever(Retriever):
         self.path = pathlib.Path(config.input) / 'index.txt'
         self.doc_ids = None
 
-    def retrieve(self, topic_id, query):
+    def retrieve(self, query_id, query):
         if not self.doc_ids:
             self._load()
         ids = random.sample(self.doc_ids, self.number)
-        return [Result(topic_id, doc_id, rank, rank, 'MockRetriever') for rank, doc_id in enumerate(ids)]
+        return [Result(query_id, doc_id, rank, rank, 'MockRetriever') for rank, doc_id in enumerate(ids)]
 
     def _load(self):
         with open(self.path, 'r') as fp:

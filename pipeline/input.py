@@ -2,7 +2,8 @@ import collections
 import csv
 
 from .config import BaseConfig, Optional, Union
-from .core import Doc, Topic
+from .doc import Doc
+from .query import Topic
 from .error import ConfigError
 from .util.trec import parse_sgml, parse_topics
 

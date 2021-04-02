@@ -38,7 +38,7 @@ class MockReranker(Reranker):
     def rerank(self, query, results):
         results = copy.copy(results)
         random.shuffle(results)
-        return [Result(v.topic_id, v.doc_id, i, i, v.name) for i, v in enumerate(results)]
+        return [Result(v.query_id, v.doc_id, i, i, v.name) for i, v in enumerate(results)]
 
 
 class RerankConfig(BaseConfig):

@@ -1,11 +1,8 @@
 import collections
-import json
 import pathlib
 
 
-Doc = collections.namedtuple('Doc', ('id', 'lang', 'text'))
-Topic = collections.namedtuple('Topic', ('id', 'lang', 'title', 'desc', 'narr'))
-Result = collections.namedtuple('Result', ('topic_id', 'doc_id', 'rank', 'score', 'name'))
+Result = collections.namedtuple('Result', ('query_id', 'doc_id', 'rank', 'score', 'name'))
 
 
 class DocWriter:
@@ -19,20 +16,6 @@ class DocWriter:
             fp.write(doc.text)
 
 
-class TopicWriter:
-    def __init__(self, path):
-        dir = pathlib.Path(path)
-        dir.mkdir(parents=True)
-        path = dir / 'topics.json'
-        self.file = open(path, 'w')
-
-    def write(self, topic):
-        self.file.write(json.dumps(topic._asdict()) + "\n")
-
-    def close(self):
-        self.file.close()
-
-
 class ResultsWriter:
     def __init__(self, path):
         dir = pathlib.Path(path)
@@ -42,7 +25,7 @@ class ResultsWriter:
 
     def write(self, results):
         for result in results:
-            self.file.write(f"{result.topic_id} Q0 {result.doc_id} {result.rank} {result.score} {result.name}\n")
+            self.file.write(f"{result.query_id} Q0 {result.doc_id} {result.rank} {result.score} {result.name}\n")
 
     def close(self):
         self.file.close()
@@ -54,4 +37,4 @@ class ResultsAccumulator:
 
     def add(self, results):
         for result in results:
-            self.run[result.topic_id][result.doc_id] = result.score
+            self.run[result.query_id][result.doc_id] = result.score

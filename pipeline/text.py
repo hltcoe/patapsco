@@ -1,5 +1,4 @@
-from .config import BaseConfig, Optional, Union
-from .core import Doc, Topic
+from .config import BaseConfig
 from .error import ConfigError
 
 
@@ -90,49 +89,24 @@ class Normalizer:
         return text
 
 
-class DocProcessorConfig(BaseConfig):
-    utf8_normalize: bool = True
-    lowercase: bool = True
-    output: str
-    overwrite: bool = False
-    tokenize: TokenizeConfig
-    stem: Union[StemConfig, TruncStemConfig]
-
-
 class TextProcessor:
     def __init__(self, config):
-        config = DocProcessorConfig(**config)
         self.config = config
         self.normalizer = Normalizer()
         self.tokenizer = TokenizerFactory.create(config.tokenize)
         self.stemmer = StemmerFactory.create(config.stem)
 
-    def run(self, text):
-        if self.config.utf8_normalize:
-            text = self.normalizer.normalize(text)
-        if self.config.lowercase:
-            text = text.lower()
-        tokens = self.tokenizer.tokenize(text)
-        if self.config.stem:
-            tokens = self.stemmer.stem(tokens)
-        return ' '.join(tokens)
+    def normalize(self, text):
+        return self.normalizer.normalize(text)
 
+    def lowercase_text(self, text):
+        return text.lower()
 
-class DocumentProcessor:
-    def __init__(self, config):
-        self.processor = TextProcessor(config)
+    def lowercase_tokens(self, tokens):
+        return [token.lower() for token in tokens]
 
-    def run(self, doc):
-        text = self.processor.run(doc.text)
-        return Doc(doc.id, doc.lang, text)
+    def tokenize(self, text):
+        return self.tokenizer.tokenize(text)
 
-
-class TopicProcessor:
-    def __init__(self, config):
-        self.processor = TextProcessor(config)
-
-    def run(self, topic):
-        title = self.processor.run(topic.title)
-        desc = self.processor.run(topic.desc)
-        narr = self.processor.run(topic.narr)
-        return Topic(topic.id, topic.lang, title, desc, narr)
+    def stem(self, tokens):
+        return self.stemmer.stem(tokens)

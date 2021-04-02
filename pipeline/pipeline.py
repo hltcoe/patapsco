@@ -2,13 +2,14 @@ import logging
 import pathlib
 
 from .config import ConfigInheritance, ConfigOverrides, load_config
-from .core import DocWriter, TopicWriter, ResultsWriter, ResultsAccumulator
+from .core import DocWriter, ResultsWriter, ResultsAccumulator
+from .doc import DocumentProcessorFactory
 from .input import DocumentReaderFactory, DocumentStore, TopicReaderFactory, QrelsReaderFactory
 from .index import IndexerFactory
+from .query import QueryProcessorFactory, QueryWriter
 from .rerank import RerankFactory
 from .retrieve import RetrieverFactory
 from .score import Scorer
-from .text import DocumentProcessor, TopicProcessor
 from .util.file import delete_dir
 
 LOGGER = logging.getLogger(__name__)
@@ -29,14 +30,14 @@ class Pipeline:
 
         topic_config = config['input']['topics']
         self.topic_reader = TopicReaderFactory.create(topic_config)
-        topic_process_config = config['query_process']
-        self.topic_processor = TopicProcessor(topic_process_config)
-        self.topic_writer = TopicWriter(topic_process_config['output'])
+        query_process_config = config['query_process']
+        self.query_processor = QueryProcessorFactory.create(query_process_config)
+        self.query_writer = QueryWriter(query_process_config['output'])
 
         doc_config = config['input']['documents']
         self.doc_reader = DocumentReaderFactory.create(doc_config)
         doc_process_config = config['document_process']
-        self.doc_processor = DocumentProcessor(doc_process_config)
+        self.doc_processor = DocumentProcessorFactory.create(doc_process_config)
         self.doc_writer = DocWriter(doc_process_config['output'])
         self.doc_store = DocumentStore()
 
@@ -88,17 +89,17 @@ class Pipeline:
         LOGGER.info("Starting processing of topics")
         results = {}
         for topic in self.topic_reader:
-            topic = self.topic_processor.run(topic)
-            self.topic_writer.write(topic)
+            query = self.query_processor.run(topic)
+            self.query_writer.write(query)
 
-            topic_results = self.retriever.retrieve(topic.id, topic.title)
-            self.retrieve_writer.write(topic_results)
-            results[topic.id] = topic_results
+            query_results = self.retriever.retrieve(query.id, query.text)
+            self.retrieve_writer.write(query_results)
+            results[topic.id] = query_results
 
-            topic_results = self.reranker.rerank(topic.title, topic_results)
-            self.rerank_writer.write(topic_results)
-            self.accumulator.add(topic_results)
-        self.topic_writer.close()
+            query_results = self.reranker.rerank(topic.title, query_results)
+            self.rerank_writer.write(query_results)
+            self.accumulator.add(query_results)
+        self.query_writer.close()
         self.retrieve_writer.close()
         self.rerank_writer.close()
         LOGGER.info("Results available at %s", self.rerank_writer.path)
