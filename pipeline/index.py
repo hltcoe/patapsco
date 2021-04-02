@@ -4,6 +4,11 @@ from .config import BaseConfig
 from .error import ConfigError
 
 
+class DocumentStore:
+    def __getitem__(self, doc_id):
+        return "Hello, world"
+
+
 class Indexer:
     """Indexer interface"""
     def index(self, doc):

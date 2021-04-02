@@ -3,8 +3,39 @@ import collections
 from .config import BaseConfig, Union
 from .error import ConfigError
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
+from .util import trec
 
 Doc = collections.namedtuple('Doc', ('id', 'lang', 'text'))
+
+
+class InputDocumentsConfig(BaseConfig):
+    lang: str
+    encoding: str = "utf8"
+    format: str
+    path: str
+
+
+class DocumentReaderFactory:
+    @classmethod
+    def create(cls, config):
+        config = InputDocumentsConfig(**config)
+        if config.format == "trec":
+            return TrecDocumentReader(config.path, config.lang, config.encoding)
+        else:
+            raise ConfigError(f"Unknown document format: {config.format}")
+
+
+class TrecDocumentReader:
+    def __init__(self, path, lang, encoding='utf8'):
+        self.lang = lang
+        self.docs = iter(trec.parse_sgml(path, encoding))
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        doc = next(self.docs)
+        return Doc(doc[0], self.lang, doc[1])
 
 
 class DocProcessorConfig(BaseConfig):

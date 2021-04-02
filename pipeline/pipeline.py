@@ -3,13 +3,12 @@ import pathlib
 
 from .config import ConfigInheritance, ConfigOverrides, load_config
 from .core import DocWriter, ResultsWriter, ResultsAccumulator
-from .doc import DocumentProcessorFactory
-from .input import DocumentReaderFactory, DocumentStore, QrelsReaderFactory
-from .index import IndexerFactory
+from .doc import DocumentProcessorFactory, DocumentReaderFactory
+from .index import DocumentStore, IndexerFactory
 from .query import TopicReaderFactory, QueryProcessorFactory, QueryWriter
 from .rerank import RerankFactory
 from .retrieve import RetrieverFactory
-from .score import Scorer
+from .score import QrelsReaderFactory, Scorer
 from .util.file import delete_dir
 
 LOGGER = logging.getLogger(__name__)
