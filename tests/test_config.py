@@ -151,6 +151,22 @@ def test_load_json_config():
     assert conf['score'][0] == "map"
 
 
+def test_load_json_config_booleans():
+    document = """
+{
+  "lowercase": "on",
+  "stem": "off",
+  "scores": [
+    {"value": "yes"}
+  ]
+}
+"""
+    conf = config.load_json_config(io.StringIO(document))
+    assert conf['lowercase'] is True
+    assert conf['stem'] is False
+    assert conf['scores'][0]['value'] is True
+
+
 def test_json_interpolation_simple():
     document = """
 {

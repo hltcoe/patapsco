@@ -86,7 +86,23 @@ def load_json_config(file):
     if interpolator.errors:
         error_string = ', '.join(interpolator.errors)
         raise ConfigError(f"Missing interpolations in config: {error_string}")
+    update_booleans(conf)
     return conf
+
+
+def update_booleans(d):
+    for key, value in d.items():
+        if isinstance(value, dict):
+            update_booleans(value)
+        elif isinstance(value, list):
+            for index, entry in enumerate(value):
+                if isinstance(entry, dict):
+                    update_booleans(entry)
+        elif isinstance(value, str):
+            if value in ['true', 'on', 'yes']:
+                d[key] = True
+            elif value in ['false', 'off', 'no']:
+                d[key] = False
 
 
 def save_json_config(file, data):
