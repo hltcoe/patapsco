@@ -1,7 +1,7 @@
 import logging
 import pathlib
 
-from .config import ConfigOverrides, load_config
+from .config import ConfigInheritance, ConfigOverrides, load_config
 from .core import DocWriter, TopicWriter, ResultsWriter, ResultsAccumulator
 from .input import DocumentReaderFactory, DocumentStore, TopicReaderFactory, QrelsReaderFactory
 from .index import IndexerFactory
@@ -20,9 +20,10 @@ class Pipeline:
 
         config = load_config(config_filename)
         ConfigOverrides.process(config, overrides)
+        ConfigInheritance.process(config, config)
         self.prepare_config(config)
 
-        if config['overwrite']:
+        if config['overwrite'] and pathlib.Path(config['path']).exists():
             LOGGER.debug("Deleting %s", config['path'])
             delete_dir(config['path'])
 
