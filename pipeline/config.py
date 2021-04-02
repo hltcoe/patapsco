@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import pathlib
@@ -122,6 +123,46 @@ class AttrDict(dict):
         self.__dict__ = self
 
 
+class FlatDict:
+    """Nested dictionary wrapper that works with keys of the form x.y.z"""
+    def __init__(self, d, add_keys=False):
+        """
+        Args:
+            d (dict): dictionary to wrap
+            add_keys (bool): whether to create new keys with set
+        """
+        self.d = d
+        self.add_keys = add_keys
+
+    def __getitem__(self, key):
+        if '.' in key:
+            keys = key.split('.')
+            last_key = keys.pop()
+            d = self.d
+            for k in keys:
+                d = d[k]
+            return d[last_key]
+        else:
+            return self.d[key]
+
+    def __setitem__(self, key, value):
+        if '.' in key:
+            keys = key.split('.')
+            last_key = keys.pop()
+            d = self.d
+            for k in keys:
+                if not self.add_keys and k not in d:
+                    raise KeyError(key)
+                d = d[k]
+            if not self.add_keys and last_key not in d:
+                raise KeyError(key)
+            d[last_key] = value
+        else:
+            if not self.add_keys and key not in self.d:
+                raise KeyError(key)
+            self.d[key] = value
+
+
 def convert_dict(d):
     """Convert normal dictionary to an attribute dictionary
 
@@ -234,23 +275,12 @@ class ConfigOverrides:
         if overrides:
             overrides = [override.split('=') for override in overrides]
             cls._update_booleans(overrides)
+            d = FlatDict(config)
             for k, v in overrides:
-                if '.' in k:
-                    keys = k.split('.')
-                    last_key = keys.pop()
-                    d = config
-                    for key in keys:
-                        try:
-                            d = d[key]
-                        except KeyError:
-                            raise ConfigError(f"Unknown override parameter {k}")
-                    if last_key not in d:
-                        raise ConfigError(f"Unknown override parameter {k}")
-                    d[last_key] = v
-                else:
-                    if k not in config:
-                        raise ConfigError(f"Unknown override parameter {k}")
-                    config[k] = v
+                try:
+                    d[k] = v
+                except KeyError:
+                    raise ConfigError(f"Unknown override parameter {k}")
 
     @staticmethod
     def _update_booleans(overrides):
@@ -259,3 +289,50 @@ class ConfigOverrides:
                 override[1] = True
             elif override[1] in ['false', 'off', 'no']:
                 override[1] = False
+
+
+class ConfigInheritance:
+    """Configuration sections can inherit from other sections
+
+    This is enabled using the key 'inherit' with the value as the section inherited from.
+    The keys in the child config will overrides those in the parent.
+    """
+    @classmethod
+    def process(cls, config, top_config):
+        """Process a configuration for inheritance
+
+        Args:
+            config (dict): Configuration dictionary being processed.
+            top_config (dict): Top level config loaded from yaml or json.
+        """
+        for key, value in config.items():
+            if isinstance(value, dict):
+                cls.process(value, top_config)
+                if 'inherit' in value:
+                    try:
+                        parent = cls._get_parent(value['inherit'], top_config)
+                    except KeyError:
+                        raise ConfigError(f"Cannot inherit from {value['inherit']} as it does not exist")
+                    new_conf = copy.deepcopy(parent)
+                    cls._merge(new_conf, config[key])
+                    config[key] = new_conf
+                    del config[key]['inherit']
+            elif isinstance(value, list):
+                for index, entry in enumerate(value):
+                    if isinstance(entry, dict):
+                        cls.process(entry, top_config)
+
+    @staticmethod
+    def _get_parent(parent_key, top_config):
+        d = FlatDict(top_config)
+        return d[parent_key]
+
+    @classmethod
+    def _merge(cls, d1, d2):
+        # if d1[k] is not a dict and d2[k] is, d1[k] is overwritten with d2[k]
+        # if d1[k] is a dict and d2[k] is not, d1[k] is overwritten with d2[k]
+        for k, v in d2.items():
+            if k in d1 and isinstance(d1[k], dict) and isinstance(d2[k], dict):
+                cls._merge(d1[k], d2[k])
+            else:
+                d1[k] = d2[k]

@@ -6,6 +6,40 @@ import yaml
 import pipeline.config as config
 
 
+def test_flat_dict_get():
+    d = {
+        'a': 12,
+        'b': {
+            'c': 42
+        }
+    }
+    fd = config.FlatDict(d)
+    assert fd['a'] == 12
+    assert fd['b.c'] == 42
+    with pytest.raises(KeyError):
+        test = fd['c']
+    with pytest.raises(KeyError):
+        test = fd['b.z']
+
+
+def test_flat_dict_set():
+    d = {
+        'a': 12,
+        'b': {
+            'c': 42
+        }
+    }
+    fd = config.FlatDict(d)
+    fd['a'] = 99
+    fd['b.c'] = 0
+    assert d['a'] == 99
+    assert d['b']['c'] == 0
+    with pytest.raises(KeyError):
+        fd['c'] = 77
+    with pytest.raises(KeyError):
+        fd['b.z'] = 77
+
+
 def test_convert_dict_with_nested_list():
     d = {
         'key1': 64,
@@ -269,3 +303,82 @@ def test_nested_overrides_missing():
 
     with pytest.raises(config.ConfigError):
         config.ConfigOverrides.process(conf, ["c.z=new"])
+
+
+def test_inheritance():
+    conf = {
+        'a': {
+            'p1': 1,
+            'p2': 2,
+        },
+        'b': {
+            'inherit': 'a',
+            'p2': 0,
+            'p3': 3
+        }
+    }
+    config.ConfigInheritance.process(conf, conf)
+    assert conf['b']['p1'] == 1
+    assert conf['b']['p2'] == 0
+    assert conf['b']['p3'] == 3
+    with pytest.raises(KeyError):
+        test = conf['b']['inherit']
+
+
+def test_inheritance_nested():
+    conf = {
+        'a': {
+            'p1': 1,
+            'p2': 2,
+            'subsection': {
+                'param': 'test'
+            }
+        },
+        'b': {
+            'inherit': 'a',
+            'p2': 0,
+            'p3': 3,
+            'subsection': {
+                'output': True
+            }
+        }
+    }
+    config.ConfigInheritance.process(conf, conf)
+    assert conf['b']['subsection']['param'] == 'test'
+    assert conf['b']['subsection']['output'] is True
+
+
+def test_inheritance_missing():
+    conf = {
+        'a': {
+            'p1': 1,
+            'p2': 2,
+        },
+        'b': {
+            'inherit': 'z',
+            'p2': 0,
+            'p3': 3
+        }
+    }
+    with pytest.raises(config.ConfigError):
+        config.ConfigInheritance.process(conf, conf)
+
+
+def test_inheritance_nested_key():
+    conf = {
+        'a': {
+            'b': {
+                'color': 'red'
+            },
+            'p2': 2,
+        },
+        'x': {
+            'y': {
+                'inherit': 'a.b',
+                'size': 'large'
+            }
+        }
+    }
+    config.ConfigInheritance.process(conf, conf)
+    assert conf['x']['y']['color'] == 'red'
+    assert conf['x']['y']['size'] == 'large'
