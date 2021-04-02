@@ -1,34 +1,30 @@
 import collections
 
 from .config import BaseConfig, Union
-from .error import ConfigError
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
-from .util import trec
+from .util import trec, ComponentFactory
 
 Doc = collections.namedtuple('Doc', ('id', 'lang', 'text'))
 
 
 class InputDocumentsConfig(BaseConfig):
+    name: str
     lang: str
     encoding: str = "utf8"
-    format: str
     path: str
 
 
-class DocumentReaderFactory:
-    @classmethod
-    def create(cls, config):
-        config = InputDocumentsConfig(**config)
-        if config.format == "trec":
-            return TrecDocumentReader(config.path, config.lang, config.encoding)
-        else:
-            raise ConfigError(f"Unknown document format: {config.format}")
+class DocumentReaderFactory(ComponentFactory):
+    classes = {
+        'trec': 'TrecDocumentReader'
+    }
+    config_class = InputDocumentsConfig
 
 
 class TrecDocumentReader:
-    def __init__(self, path, lang, encoding='utf8'):
-        self.lang = lang
-        self.docs = iter(trec.parse_sgml(path, encoding))
+    def __init__(self, config):
+        self.lang = config.lang
+        self.docs = iter(trec.parse_sgml(config.path, config.encoding))
 
     def __iter__(self):
         return self
@@ -48,27 +44,11 @@ class DocProcessorConfig(BaseConfig):
     stem: Union[StemConfig, TruncStemConfig]
 
 
-class DocumentProcessorFactory:
+class DocumentProcessorFactory(ComponentFactory):
     classes = {
         'default': 'DocumentProcessor'
     }
-
-    @classmethod
-    def create(cls, config):
-        """
-        Args:
-            config (dict)
-        """
-        config = DocProcessorConfig(**config)
-        try:
-            class_name = cls.classes[config.name]
-        except KeyError:
-            raise ConfigError(f"Unknown document processor: {config.name}")
-        try:
-            class_ = globals()[class_name]
-        except KeyError:
-            raise RuntimeError(f"Cannot find {class_name} in {cls.__name__}")
-        return class_(config)
+    config_class = DocProcessorConfig
 
 
 class DocumentProcessor(TextProcessor):

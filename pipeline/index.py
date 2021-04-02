@@ -1,12 +1,24 @@
 import pathlib
 
 from .config import BaseConfig
-from .error import ConfigError
+from .util import ComponentFactory
 
 
 class DocumentStore:
     def __getitem__(self, doc_id):
         return "Hello, world"
+
+
+class IndexerConfig(BaseConfig):
+    name: str
+    output: str
+
+
+class IndexerFactory(ComponentFactory):
+    classes = {
+        'anserini': 'MockIndexer',
+    }
+    config_class = IndexerConfig
 
 
 class Indexer:
@@ -35,21 +47,3 @@ class MockIndexer(Indexer):
 
     def close(self):
         self.file.close()
-
-
-class IndexerConfig(BaseConfig):
-    name: str
-    output: str
-
-
-class IndexerFactory:
-    classes = {
-        'anserini': MockIndexer,
-    }
-
-    @classmethod
-    def create(cls, config):
-        config = IndexerConfig(**config)
-        if config.name not in cls.classes:
-            raise ConfigError(f"Unknown indexer: {config.name}")
-        return cls.classes[config.name](config)

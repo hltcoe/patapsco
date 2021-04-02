@@ -1,5 +1,16 @@
 from .config import BaseConfig
-from .error import ConfigError
+from .util import ComponentFactory
+
+
+class TokenizeConfig(BaseConfig):
+    name: str
+
+
+class TokenizerFactory(ComponentFactory):
+    classes = {
+        'whitespace': 'WhiteSpaceTokenizer',
+    }
+    config_class = TokenizeConfig
 
 
 class Tokenizer:
@@ -24,20 +35,20 @@ class WhiteSpaceTokenizer(Tokenizer):
         return text.split()
 
 
-class TokenizeConfig(BaseConfig):
+class StemConfig(BaseConfig):
     name: str
 
 
-class TokenizerFactory:
-    classes = {
-        'whitespace': WhiteSpaceTokenizer
-    }
+class TruncStemConfig(BaseConfig):
+    name: str
+    length: int
 
-    @classmethod
-    def create(cls, config):
-        if config.name not in cls.classes:
-            raise ConfigError(f"Unknown tokenizer: {config.name}")
-        return cls.classes[config.name](config)
+
+class StemmerFactory(ComponentFactory):
+    classes = {
+        'trunc': 'TruncatingStemmer',
+    }
+    config_class = TokenizeConfig
 
 
 class Stemmer:
@@ -61,27 +72,6 @@ class TruncatingStemmer(Stemmer):
     def stem(self, tokens):
         length = self.config.length
         return [x[:length] for x in tokens]
-
-
-class StemConfig(BaseConfig):
-    name: str
-
-
-class TruncStemConfig(BaseConfig):
-    name: str
-    length: int
-
-
-class StemmerFactory:
-    classes = {
-        'trunc': TruncatingStemmer
-    }
-
-    @classmethod
-    def create(cls, config):
-        if config.name not in cls.classes:
-            raise ConfigError(f"Unknown stemmer: {config.name}")
-        return cls.classes[config.name](config)
 
 
 class Normalizer:

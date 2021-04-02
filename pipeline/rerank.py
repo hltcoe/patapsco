@@ -3,7 +3,20 @@ import random
 
 from .config import BaseConfig
 from .core import Result
-from .error import ConfigError
+from .util import ComponentFactory
+
+
+class RerankConfig(BaseConfig):
+    name: str
+    embedding: str
+    output: str
+
+
+class RerankFactory(ComponentFactory):
+    classes = {
+        'pacrr': 'MockReranker',
+    }
+    config_class = RerankConfig
 
 
 class Reranker:
@@ -39,22 +52,3 @@ class MockReranker(Reranker):
         results = copy.copy(results)
         random.shuffle(results)
         return [Result(v.query_id, v.doc_id, i, i, v.name) for i, v in enumerate(results)]
-
-
-class RerankConfig(BaseConfig):
-    name: str
-    embedding: str
-    output: str
-
-
-class RerankFactory:
-    classes = {
-        'pacrr': MockReranker,
-    }
-
-    @classmethod
-    def create(cls, config, store):
-        config = RerankConfig(**config)
-        if config.name not in cls.classes:
-            raise ConfigError(f"Unknown reranker: {config.name}")
-        return cls.classes[config.name](config, store)

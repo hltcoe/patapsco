@@ -3,35 +3,31 @@ import json
 import pathlib
 
 from .config import BaseConfig, Union
-from .error import ConfigError
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
-from .util import trec
+from .util import trec, ComponentFactory
 
 Topic = collections.namedtuple('Topic', ('id', 'lang', 'title', 'desc', 'narr'))
 Query = collections.namedtuple('Query', ('id', 'lang', 'text'))
 
 
 class InputTopicsConfig(BaseConfig):
+    name: str
     lang: str
     encoding: str = "utf8"
-    format: str
     path: str
 
 
-class TopicReaderFactory:
-    @classmethod
-    def create(cls, config):
-        config = InputTopicsConfig(**config)
-        if config.format == "trec":
-            return TrecTopicReader(config.path, config.lang, config.encoding)
-        else:
-            raise ConfigError(f"Unknown topic format: {config.format}")
+class TopicReaderFactory(ComponentFactory):
+    classes = {
+        'trec': 'TrecTopicReader'
+    }
+    config_class = InputTopicsConfig
 
 
 class TrecTopicReader:
-    def __init__(self, path, lang, encoding='utf8'):
-        self.lang = lang
-        self.topics = trec.parse_topics(path, 'EN-', encoding)
+    def __init__(self, config):
+        self.lang = config.lang
+        self.topics = trec.parse_topics(config.path, 'EN-', config.encoding)
 
     def __iter__(self):
         return self
@@ -65,27 +61,11 @@ class QueryProcessorConfig(BaseConfig):
     stem: Union[StemConfig, TruncStemConfig]
 
 
-class QueryProcessorFactory:
+class QueryProcessorFactory(ComponentFactory):
     classes = {
         'default': 'QueryProcessor'
     }
-
-    @classmethod
-    def create(cls, config):
-        """
-        Args:
-            config (dict)
-        """
-        config = QueryProcessorConfig(**config)
-        try:
-            class_name = cls.classes[config.name]
-        except KeyError:
-            raise ConfigError(f"Unknown query processor: {config.name}")
-        try:
-            class_ = globals()[class_name]
-        except KeyError:
-            raise RuntimeError(f"Cannot find {class_name} in {cls.__name__}")
-        return class_(config)
+    config_class = QueryProcessorConfig
 
 
 class QueryProcessor(TextProcessor):

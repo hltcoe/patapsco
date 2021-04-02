@@ -4,9 +4,23 @@ import random
 
 from .config import BaseConfig
 from .core import Result
-from .error import ConfigError
+from .util import ComponentFactory
 
 LOGGER = logging.getLogger(__name__)
+
+
+class RetrieveConfig(BaseConfig):
+    name: str
+    number: int = 1000
+    input: str
+    output: str
+
+
+class RetrieverFactory(ComponentFactory):
+    classes = {
+        'bm25': 'MockRetriever',
+    }
+    config_class = RetrieveConfig
 
 
 class Retriever:
@@ -44,23 +58,3 @@ class MockRetriever(Retriever):
         with open(self.path, 'r') as fp:
             self.doc_ids = [line.strip() for line in fp]
         LOGGER.debug("Loaded index from %s", self.path)
-
-
-class RetrieveConfig(BaseConfig):
-    name: str
-    number: int = 1000
-    input: str
-    output: str
-
-
-class RetrieverFactory:
-    classes = {
-        'bm25': MockRetriever,
-    }
-
-    @classmethod
-    def create(cls, config):
-        config = RetrieveConfig(**config)
-        if config.name not in cls.classes:
-            raise ConfigError(f"Unknown retriever: {config.name}")
-        return cls.classes[config.name](config)
