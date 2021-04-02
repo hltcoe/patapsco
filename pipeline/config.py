@@ -197,3 +197,49 @@ class ConfigInterpolator:
         elif isinstance(value, dict):
             self.interpolate(value, mapping)
         return value
+
+
+class ConfigOverrides:
+    """Overrides values in a configuration dictionary
+
+    Nested values are specified with dot delimiters: rerank.embedding.length
+    This does not currently support lists.
+    All values are set as strings except for booleans.
+    The key must already exist in the configuration dictionary.
+    """
+    @classmethod
+    def process(cls, config, overrides):
+        """Process a list of configuration overrides
+
+        Args:
+            config (dict): Configuration dictionary loaded from yaml or json file.
+            overrides (list): List of strings of form: key=value
+        """
+        if overrides:
+            overrides = [override.split('=') for override in overrides]
+            cls._update_booleans(overrides)
+            for k, v in overrides:
+                if '.' in k:
+                    keys = k.split('.')
+                    last_key = keys.pop()
+                    d = config
+                    for key in keys:
+                        try:
+                            d = d[key]
+                        except KeyError:
+                            raise ConfigError(f"Unknown override parameter {k}")
+                    if last_key not in d:
+                        raise ConfigError(f"Unknown override parameter {k}")
+                    d[last_key] = v
+                else:
+                    if k not in config:
+                        raise ConfigError(f"Unknown override parameter {k}")
+                    config[k] = v
+
+    @staticmethod
+    def _update_booleans(overrides):
+        for override in overrides:
+            if override[1] in ['true', 'on', 'yes']:
+                override[1] = True
+            elif override[1] in ['false', 'off', 'no']:
+                override[1] = False

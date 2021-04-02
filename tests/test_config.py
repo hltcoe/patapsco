@@ -205,3 +205,51 @@ def test_json_interpolation_cascade_with_wrong_order():
     conf = yaml.load(document, Loader=config.ConfigLoader)
     assert conf['b'] == '11'
     assert conf['c'] == '{a}11'
+
+
+def test_overrides():
+    conf = {
+        'a': 'one',
+        'b': 'two',
+        'c': 'three'
+    }
+    config.ConfigOverrides.process(conf, ["b=new"])
+    assert conf['a'] == 'one'
+    assert conf['b'] == 'new'
+
+
+def test_override_missing():
+    conf = {
+        'a': 'one',
+        'b': 'two',
+        'c': 'three'
+    }
+    with pytest.raises(config.ConfigError):
+        config.ConfigOverrides.process(conf, ["d=error"])
+
+
+def test_nested_overrides():
+    conf = {
+        'a': 'one',
+        'b': 'two',
+        'c': {
+            'x': 'value'
+        }
+    }
+    config.ConfigOverrides.process(conf, ["c.x=new"])
+    assert conf['c']['x'] == 'new'
+
+
+def test_nested_overrides_missing():
+    conf = {
+        'a': 'one',
+        'b': 'two',
+        'c': {
+            'x': 'value'
+        }
+    }
+    with pytest.raises(config.ConfigError):
+        config.ConfigOverrides.process(conf, ["d.x=new"])
+
+    with pytest.raises(config.ConfigError):
+        config.ConfigOverrides.process(conf, ["c.z=new"])

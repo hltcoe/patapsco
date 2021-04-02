@@ -1,7 +1,7 @@
 import logging
 import pathlib
 
-from .config import load_config
+from .config import ConfigOverrides, load_config
 from .core import DocWriter, TopicWriter, ResultsWriter, ResultsAccumulator
 from .input import DocumentReaderFactory, DocumentStore, TopicReaderFactory, QrelsReaderFactory
 from .index import IndexerFactory
@@ -15,10 +15,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Pipeline:
-    def __init__(self, config_filename, verbose=False):
+    def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
 
         config = load_config(config_filename)
+        ConfigOverrides.process(config, overrides)
         self.prepare_config(config)
 
         if config['overwrite']:
