@@ -1,11 +1,10 @@
 import collections
 import csv
 
-from .config import BaseConfig, Optional, Union
+from .config import BaseConfig
 from .doc import Doc
-from .query import Topic
 from .error import ConfigError
-from .util.trec import parse_sgml, parse_topics
+from .util.trec import parse_sgml
 
 
 class InputDocumentsConfig(BaseConfig):
@@ -41,36 +40,6 @@ class TrecDocumentReader:
 class DocumentStore:
     def __getitem__(self, doc_id):
         return "Hello, world"
-
-
-class InputTopicsConfig(BaseConfig):
-    lang: str
-    encoding: str = "utf8"
-    format: str
-    path: str
-
-
-class TopicReaderFactory:
-    @classmethod
-    def create(cls, config):
-        config = InputTopicsConfig(**config)
-        if config.format == "trec":
-            return TrecTopicReader(config.path, config.lang, config.encoding)
-        else:
-            raise ConfigError(f"Unknown topic format: {config.format}")
-
-
-class TrecTopicReader:
-    def __init__(self, path, lang, encoding='utf8'):
-        self.lang = lang
-        self.topics = parse_topics(path, 'EN-', encoding)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        topic = next(self.topics)
-        return Topic(topic[0], self.lang, topic[1], topic[2], topic[3])
 
 
 class InputQrelsConfig(BaseConfig):

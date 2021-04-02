@@ -4,9 +4,9 @@ import pathlib
 from .config import ConfigInheritance, ConfigOverrides, load_config
 from .core import DocWriter, ResultsWriter, ResultsAccumulator
 from .doc import DocumentProcessorFactory
-from .input import DocumentReaderFactory, DocumentStore, TopicReaderFactory, QrelsReaderFactory
+from .input import DocumentReaderFactory, DocumentStore, QrelsReaderFactory
 from .index import IndexerFactory
-from .query import QueryProcessorFactory, QueryWriter
+from .query import TopicReaderFactory, QueryProcessorFactory, QueryWriter
 from .rerank import RerankFactory
 from .retrieve import RetrieverFactory
 from .score import Scorer
