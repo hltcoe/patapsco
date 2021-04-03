@@ -1,7 +1,7 @@
 import logging
 import pathlib
 
-from .config import ConfigInheritance, ConfigOverrides, load_config
+from .config import ConfigService
 from .core import DocWriter, ResultsWriter, ResultsAccumulator
 from .doc import DocumentProcessorFactory, DocumentReaderFactory
 from .index import DocumentStore, IndexerFactory
@@ -18,46 +18,45 @@ class Pipeline:
     def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
 
-        config = load_config(config_filename)
-        ConfigOverrides.process(config, overrides)
-        ConfigInheritance.process(config, config)
-        self.prepare_config(config)
+        config_service = ConfigService()
+        conf = config_service.read_config(config_filename)
+        self.prepare_config(conf)
 
-        if config['overwrite'] and pathlib.Path(config['path']).exists():
-            LOGGER.debug("Deleting %s", config['path'])
-            delete_dir(config['path'])
+        if conf['overwrite'] and pathlib.Path(conf['path']).exists():
+            LOGGER.debug("Deleting %s", conf['path'])
+            delete_dir(conf['path'])
 
-        topic_config = config['input']['topics']
-        self.topic_reader = TopicReaderFactory.create(topic_config)
-        query_process_config = config['query_process']
-        self.query_processor = QueryProcessorFactory.create(query_process_config)
-        self.query_writer = QueryWriter(query_process_config['output'])
+        topic_conf = conf['input']['topics']
+        self.topic_reader = TopicReaderFactory.create(topic_conf)
+        query_process_conf = conf['query_process']
+        self.query_processor = QueryProcessorFactory.create(query_process_conf)
+        self.query_writer = QueryWriter(query_process_conf['output'])
 
-        doc_config = config['input']['documents']
-        self.doc_reader = DocumentReaderFactory.create(doc_config)
-        doc_process_config = config['document_process']
-        self.doc_processor = DocumentProcessorFactory.create(doc_process_config)
-        self.doc_writer = DocWriter(doc_process_config['output'])
+        doc_conf = conf['input']['documents']
+        self.doc_reader = DocumentReaderFactory.create(doc_conf)
+        doc_process_conf = conf['document_process']
+        self.doc_processor = DocumentProcessorFactory.create(doc_process_conf)
+        self.doc_writer = DocWriter(doc_process_conf['output'])
         self.doc_store = DocumentStore()
 
-        qrels_config = config['input']['qrels']
-        self.qrels = QrelsReaderFactory.create(qrels_config).read()
+        qrels_conf = conf['input']['qrels']
+        self.qrels = QrelsReaderFactory.create(qrels_conf).read()
         self.accumulator = ResultsAccumulator()
 
-        score_config = config['score']
-        self.scorer = Scorer(score_config)
+        score_conf = conf['score']
+        self.scorer = Scorer(score_conf)
 
-        index_config = config['index']
-        self.indexer = IndexerFactory.create(index_config)
+        index_conf = conf['index']
+        self.indexer = IndexerFactory.create(index_conf)
 
-        retrieve_config = config['retrieve']
-        retrieve_config['input'] = index_config['output']
-        self.retriever = RetrieverFactory.create(retrieve_config)
-        self.retrieve_writer = ResultsWriter(retrieve_config['output'])
+        retrieve_conf = conf['retrieve']
+        retrieve_conf['input'] = index_conf['output']
+        self.retriever = RetrieverFactory.create(retrieve_conf)
+        self.retrieve_writer = ResultsWriter(retrieve_conf['output'])
 
-        rerank_config = config['rerank']
-        self.reranker = RerankFactory.create(rerank_config, self.doc_store)
-        self.rerank_writer = ResultsWriter(rerank_config['output'])
+        rerank_conf = conf['rerank']
+        self.reranker = RerankFactory.create(rerank_conf, self.doc_store)
+        self.rerank_writer = ResultsWriter(rerank_conf['output'])
 
     @staticmethod
     def setup_logging(verbose):
@@ -70,12 +69,12 @@ class Pipeline:
         console.setFormatter(formatter)
         logger.addHandler(console)
 
-    def prepare_config(self, config):
-        base = pathlib.Path(config['path'])
-        for conf in config.values():
-            if isinstance(conf, dict):
-                if 'output' in conf:
-                    conf['output'] = str(base / conf['output'])
+    def prepare_config(self, conf):
+        base = pathlib.Path(conf['path'])
+        for c in conf.values():
+            if isinstance(c, dict):
+                if 'output' in c:
+                    c['output'] = str(base / c['output'])
 
     def run(self):
         LOGGER.info("Starting processing of documents")

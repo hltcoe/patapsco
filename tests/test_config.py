@@ -76,7 +76,7 @@ score:
   - p@20
   - ndcg
 """
-    conf = config.load_yaml_config(document)
+    conf = config.ConfigService._read_yaml_config(document)
     assert conf['lang'] == 'es'
     assert type(conf['document_process']) is dict
     assert type(conf['score']) is list
@@ -89,7 +89,7 @@ def test_interpolation_simple():
 output: output_{lang}
 lang: es
 """
-    conf = yaml.load(document, Loader=config.ConfigLoader)
+    conf = config.ConfigService._read_yaml_config(document)
     assert conf['lang'] == 'es'
     assert conf['output'] == 'output_es'
 
@@ -101,7 +101,7 @@ output: {lang}_output
 lang: es
 """
     with pytest.raises(yaml.MarkedYAMLError):
-        config.load_yaml_config(document)
+        config.ConfigService._read_yaml_config(document)
 
 
 def test_interpolation_at_start_with_quote():
@@ -110,7 +110,7 @@ def test_interpolation_at_start_with_quote():
 output: "{lang}_output"
 lang: es
 """
-    conf = config.load_yaml_config(document)
+    conf = config.ConfigService._read_yaml_config(document)
     assert conf['output'] == 'es_output'
 
 
@@ -125,7 +125,7 @@ document_process:
     param1: 0.5
   output: ru-{document_process.stem.name}-{document_process.stem.param1}
 """
-    conf = config.load_yaml_config(document)
+    conf = config.ConfigService._read_yaml_config(document)
     assert conf['document_process']['output'] == "ru-pymorphy2-0.5"
 
 
@@ -140,7 +140,7 @@ document_process:
   output: ru-{document_process.stem.name}-{document_process.stem.param1}
 """
     with pytest.raises(config.ConfigError):
-        config.load_yaml_config(document)
+        config.ConfigService._read_yaml_config(document)
 
 
 def test_interpolation_cascade():
@@ -149,7 +149,7 @@ a: 1
 b: "{a}1"
 c: "{b}1"
 """
-    conf = yaml.load(document, Loader=config.ConfigLoader)
+    conf = config.ConfigService._read_yaml_config(document)
     assert conf['b'] == '11'
     assert conf['c'] == '111'
 
@@ -160,7 +160,7 @@ a: 1
 c: "{b}1"
 b: "{a}1"
 """
-    conf = yaml.load(document, Loader=config.ConfigLoader)
+    conf = config.ConfigService._read_yaml_config(document)
     assert conf['b'] == '11'
     assert conf['c'] == '{a}11'
 
@@ -177,7 +177,7 @@ def test_load_json_config():
   "score": ["map", "p@20", "ndcg"]
 }
 """
-    conf = config.load_json_config(io.StringIO(document))
+    conf = config.ConfigService()._read_json_config(io.StringIO(document))
     assert conf['lang'] == 'es'
     assert type(conf['document_process']) is dict
     assert type(conf['score']) is list
@@ -195,7 +195,7 @@ def test_load_json_config_booleans():
   ]
 }
 """
-    conf = config.load_json_config(io.StringIO(document))
+    conf = config.ConfigService()._read_json_config(io.StringIO(document))
     assert conf['lowercase'] is True
     assert conf['stem'] is False
     assert conf['scores'][0]['value'] is True
@@ -208,7 +208,7 @@ def test_json_interpolation_simple():
   "lang": "es"
 }
 """
-    conf = config.load_json_config(io.StringIO(document))
+    conf = config.ConfigService()._read_json_config(io.StringIO(document))
     assert conf['lang'] == 'es'
     assert conf['output'] == 'output_es'
 
@@ -228,7 +228,7 @@ def test_json_interpolation_with_missing_value():
 }
 """
     with pytest.raises(config.ConfigError):
-        config.load_json_config(io.StringIO(document))
+        config.ConfigService()._read_json_config(io.StringIO(document))
 
 
 def test_json_interpolation_cascade():
@@ -239,7 +239,7 @@ def test_json_interpolation_cascade():
 "c": "{b}1"
 }
 """
-    conf = yaml.load(document, Loader=config.ConfigLoader)
+    conf = config.ConfigService()._read_json_config(io.StringIO(document))
     assert conf['b'] == '11'
     assert conf['c'] == '111'
 
@@ -252,7 +252,7 @@ def test_json_interpolation_cascade_with_wrong_order():
 "b": "{a}1"
 }
 """
-    conf = yaml.load(document, Loader=config.ConfigLoader)
+    conf = config.ConfigService()._read_json_config(io.StringIO(document))
     assert conf['b'] == '11'
     assert conf['c'] == '{a}11'
 
@@ -317,7 +317,7 @@ def test_inheritance():
             'p3': 3
         }
     }
-    config.ConfigInheritance.process(conf, conf)
+    config.ConfigInheritance.process(conf)
     assert conf['b']['p1'] == 1
     assert conf['b']['p2'] == 0
     assert conf['b']['p3'] == 3
@@ -343,7 +343,7 @@ def test_inheritance_nested():
             }
         }
     }
-    config.ConfigInheritance.process(conf, conf)
+    config.ConfigInheritance.process(conf)
     assert conf['b']['subsection']['param'] == 'test'
     assert conf['b']['subsection']['output'] is True
 
@@ -361,7 +361,7 @@ def test_inheritance_missing():
         }
     }
     with pytest.raises(config.ConfigError):
-        config.ConfigInheritance.process(conf, conf)
+        config.ConfigInheritance.process(conf)
 
 
 def test_inheritance_nested_key():
@@ -379,6 +379,6 @@ def test_inheritance_nested_key():
             }
         }
     }
-    config.ConfigInheritance.process(conf, conf)
+    config.ConfigInheritance.process(conf)
     assert conf['x']['y']['color'] == 'red'
     assert conf['x']['y']['size'] == 'large'

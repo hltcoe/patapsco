@@ -22,98 +22,122 @@ class BaseConfig(pydantic.BaseModel):
         extra = pydantic.Extra.forbid
 
 
-def load_config(filename):
-    """Loads the configuration detecting file type
+class ConfigService:
+    """Configuration service
 
-    Args:
-        filename (str): path to the configuration file
-
-    Returns:
-        dict
+    Handles reading and writing configuration files.
+    Supports:
+      * String interpolation in values
+      * Overriding configuration values
+      * Section inheritance
     """
-    ext = pathlib.Path(filename).suffix.lower()
-    if ext in ['.yaml', '.yml']:
-        reader_fn = load_yaml_config
-    elif ext == '.json':
-        reader_fn = load_json_config
-    else:
-        raise ConfigError(f"Unknown config file extension {ext}")
-    with open(filename, 'r') as fp:
-        LOGGER.info("Loading configuration from %s", filename)
-        return reader_fn(fp)
+    def __init__(self, overrides=None, inheritance=True):
+        """
+        Args:
+            overrides (list): A list of strings of the form key=value
+            inheritance (bool): Whether to turn on inheritance support
+        """
+        self.overrides = overrides
+        self.inheritance = inheritance
 
+    def read_config(self, filename):
+        """Loads the configuration detecting file type
 
-def load_yaml_config(stream):
-    """Loads a configuration from a YAML stream
+        Args:
+            filename (str): path to the configuration file
 
-    Args:
-        stream (file, str): File like object or string to parse
+        Returns:
+            dict
+        """
+        ext = pathlib.Path(filename).suffix.lower()
+        if ext in ['.yaml', '.yml']:
+            reader_fn = self._read_yaml_config
+        elif ext == '.json':
+            reader_fn = self._read_json_config
+        else:
+            raise ConfigError(f"Unknown config file extension {ext}")
+        with open(filename, 'r') as fp:
+            LOGGER.info("Loading configuration from %s", filename)
+            conf = reader_fn(fp)
+            if self.overrides:
+                ConfigOverrides.process(conf, self.overrides)
+            if self.inheritance:
+                ConfigInheritance.process(conf)
+            return conf
 
-    Returns:
-        dict
-    """
-    loader = ConfigLoader(stream)
-    conf = yaml.load(stream, Loader=loader)
-    if loader.errors:
-        error_string = ', '.join(loader.errors)
-        raise ConfigError(f"Missing interpolations in config: {error_string}")
-    return conf
+    @staticmethod
+    def _read_yaml_config(fp):
+        """Loads a configuration from a YAML stream
 
+        Args:
+            fp (file): File like object or string to parse
 
-def save_yaml_config(file, data):
-    """Save a configuration to a YAML file
+        Returns:
+            dict
+        """
+        loader = ConfigLoader(fp)
+        conf = yaml.load(fp, Loader=loader)
+        if loader.errors:
+            error_string = ', '.join(loader.errors)
+            raise ConfigError(f"Missing interpolations in config: {error_string}")
+        return conf
 
-    Args:
-        file (file): file object opened for writing
-        data (dict): data to write as YAML
-    """
-    yaml.dump(data, file)
+    @staticmethod
+    def _write_yaml_config(fp, data):
+        """Save a configuration to a YAML file
 
+        Args:
+            fp (file): file object opened for writing
+            data (dict): data to write as YAML
+        """
+        yaml.dump(data, fp)
 
-def load_json_config(file):
-    """Loads a configuration from a JSON file
+    def _read_json_config(self, fp):
+        """Loads a configuration from a JSON file
 
-    Args:
-        file (file): File like object to parse
+        Args:
+            fp (file): File like object to parse
 
-    Returns:
-        dict
-    """
-    conf = json.load(file)
-    interpolator = ConfigInterpolator()
-    conf = convert_dict(conf)
-    interpolator.interpolate(conf, conf)
-    conf = unconvert_dict(conf)
-    if interpolator.errors:
-        error_string = ', '.join(interpolator.errors)
-        raise ConfigError(f"Missing interpolations in config: {error_string}")
-    update_booleans(conf)
-    return conf
+        Returns:
+            dict
+        """
+        conf = json.load(fp)
+        interpolator = ConfigInterpolator()
+        conf = interpolator.interpolate(conf)
+        if interpolator.errors:
+            error_string = ', '.join(interpolator.errors)
+            raise ConfigError(f"Missing interpolations in config: {error_string}")
+        self._convert_boolean_strings(conf)
+        return conf
 
+    @classmethod
+    def _convert_boolean_strings(cls, d):
+        """Converts boolean-like strings to booleans in place.
 
-def update_booleans(d):
-    for key, value in d.items():
-        if isinstance(value, dict):
-            update_booleans(value)
-        elif isinstance(value, list):
-            for index, entry in enumerate(value):
-                if isinstance(entry, dict):
-                    update_booleans(entry)
-        elif isinstance(value, str):
-            if value in ['true', 'on', 'yes']:
-                d[key] = True
-            elif value in ['false', 'off', 'no']:
-                d[key] = False
+        This makes the json reading compatible with the yaml reading.
+        """
+        for key, value in d.items():
+            if isinstance(value, dict):
+                cls._convert_boolean_strings(value)
+            elif isinstance(value, list):
+                for index, entry in enumerate(value):
+                    if isinstance(entry, dict):
+                        cls._convert_boolean_strings(entry)
+            elif isinstance(value, str):
+                if value in ['true', 'on', 'yes']:
+                    d[key] = True
+                elif value in ['false', 'off', 'no']:
+                    d[key] = False
 
+    @staticmethod
+    def _save_json_config(file, data):
+        """Save a configuration to a JSON file
 
-def save_json_config(file, data):
-    """Save a configuration to a JSON file
-
-    Args:
-        file (file): file object opened for writing
-        data (dict): data to write as YAML
-    """
-    json.dump(data, file, indent=4, sort_keys=True)
+        Args:
+            file (file): file object opened for writing
+            data (dict): data to write as YAML
+        """
+        json.dump(data, file, indent=4, sort_keys=True)
 
 
 class AttrDict(dict):
@@ -227,21 +251,39 @@ class ConfigLoader(yaml.FullLoader):
 
     def get_single_data(self):
         data = super().get_single_data()
-        data = convert_dict(data)
-        self.interpolator.interpolate(data, data)
-        data = unconvert_dict(data)
+        data = self.interpolator.interpolate(data)
         self.errors = self.interpolator.errors
         return data
 
 
 class ConfigInterpolator:
+    """Perform string interpolator on a config dictionary
+
+    Values with {key} are updated.
+    Nested keys are delimited with dots: first.second.third.
+    The config dictionary is processed from first key to last, depth first.
+    Values that depend on other interpolated values must be ordered top to bottom.
+    """
     def __init__(self):
         self.regx = re.compile('.*{.*}.*')
         self.errors = []
 
-    def interpolate(self, data, mapping):
-        for key, value in data.items():
-            data[key] = self.interpolate_value(value, mapping)
+    def interpolate(self, conf):
+        """Perform string interpolator on dictionary
+
+        Args:
+            conf (dict): Configuration dictionary
+
+        Returns:
+            dict: Updated configuration dictionary
+        """
+        conf = convert_dict(conf)
+        self._interpolate(conf, conf)
+        return unconvert_dict(conf)
+
+    def _interpolate(self, conf, mapping):
+        for key, value in conf.items():
+            conf[key] = self.interpolate_value(value, mapping)
 
     def interpolate_value(self, value, mapping):
         if isinstance(value, str) and self.regx.match(value) is not None:
@@ -252,7 +294,7 @@ class ConfigInterpolator:
         elif isinstance(value, list):
             value = [self.interpolate_value(entry, mapping) for entry in value]
         elif isinstance(value, dict):
-            self.interpolate(value, mapping)
+            self._interpolate(value, mapping)
         return value
 
 
@@ -265,17 +307,17 @@ class ConfigOverrides:
     The key must already exist in the configuration dictionary.
     """
     @classmethod
-    def process(cls, config, overrides):
+    def process(cls, conf, overrides):
         """Process a list of configuration overrides
 
         Args:
-            config (dict): Configuration dictionary loaded from yaml or json file.
+            conf (dict): Configuration dictionary loaded from yaml or json file.
             overrides (list): List of strings of form: key=value
         """
         if overrides:
             overrides = [override.split('=') for override in overrides]
             cls._update_booleans(overrides)
-            d = FlatDict(config)
+            d = FlatDict(conf)
             for k, v in overrides:
                 try:
                     d[k] = v
@@ -295,19 +337,31 @@ class ConfigInheritance:
     """Configuration sections can inherit from other sections
 
     This is enabled using the key 'inherit' with the value as the section inherited from.
-    The keys in the child config will overrides those in the parent.
+    The keys in the child config will override those in the parent or be combined if dictionaries.
+    Lists will not be combined, but replaced.
+    Multiple inheritance is not supported.
+    If using multiple levels of inheritance (grandparents), the parents must be defined before the children.
     """
     @classmethod
-    def process(cls, config, top_config):
+    def process(cls, conf):
         """Process a configuration for inheritance
 
         Args:
-            config (dict): Configuration dictionary being processed.
-            top_config (dict): Top level config loaded from yaml or json.
+            conf (dict): Configuration dictionary being processed.
+        """
+        return cls._process(conf, conf)
+
+    @classmethod
+    def _process(cls, config, top_config):
+        """Internal process method
+
+        Args:
+            config (dict): Current configuration dictionary being updated.
+            top_config (dict): Top level config dictionary to find parents in.
         """
         for key, value in config.items():
             if isinstance(value, dict):
-                cls.process(value, top_config)
+                cls._process(value, top_config)
                 if 'inherit' in value:
                     try:
                         parent = cls._get_parent(value['inherit'], top_config)
@@ -320,7 +374,7 @@ class ConfigInheritance:
             elif isinstance(value, list):
                 for index, entry in enumerate(value):
                     if isinstance(entry, dict):
-                        cls.process(entry, top_config)
+                        cls._process(entry, top_config)
 
     @staticmethod
     def _get_parent(parent_key, top_config):
