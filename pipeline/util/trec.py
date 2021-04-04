@@ -8,6 +8,21 @@ DOC_TEXT_TAGS = ["<TEXT>", "<HEADLINE>", "<TITLE>", "<HL>", "<HEAD>", "<TTL>", "
 DOC_TEXT_END_TAGS = ["</TEXT>", "</HEADLINE>", "</TITLE>", "</HL>", "</HEAD>", "</TTL>", "</DD>", "</DATE>", "</LP>", "</LEADPARA>"]
 
 
+def parse_documents(path, encoding='utf8'):
+    DOC_TEXT_TAGS = ["headline", "title", "hl", "head", "ttl", "dd", "date", "lp", "leadpara", "text"]
+    open_func = gzip.open if path.endswith('.gz') else open
+    with open_func(path, 'rt', encoding=encoding, errors='replace') as fp:
+        soup = bs4.BeautifulSoup(fp, 'html.parser')
+        for doc in soup.find_all('doc'):
+            doc_id = doc.docno.get_text()
+            text_parts = []
+            for tag in DOC_TEXT_TAGS:
+                obj = doc.find(tag)
+                if obj:
+                    text_parts.append(obj.get_text())
+            yield doc_id, ' '.join(text_parts)
+
+
 # From OpenNIR with a MIT License
 def parse_sgml(path, encoding='utf8'):
     docs = []

@@ -39,7 +39,7 @@ class DocumentProcessorFactory(ComponentFactory):
 class TrecDocumentReader:
     def __init__(self, config):
         self.lang = config.lang
-        self.docs = iter(trec.parse_sgml(config.path, config.encoding))
+        self.docs = trec.parse_documents(config.path, config.encoding)
 
     def __iter__(self):
         return self
