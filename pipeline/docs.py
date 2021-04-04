@@ -7,18 +7,33 @@ from .util import trec, ComponentFactory
 Doc = collections.namedtuple('Doc', ('id', 'lang', 'text'))
 
 
-class InputDocumentsConfig(BaseConfig):
+class InputConfig(BaseConfig):
     name: str
     lang: str
     encoding: str = "utf8"
     path: str
 
 
+class ProcessorConfig(BaseConfig):
+    name: str = "default"
+    utf8_normalize: bool = True
+    lowercase: bool = True
+    tokenize: TokenizeConfig
+    stem: Union[StemConfig, TruncStemConfig]
+
+
 class DocumentReaderFactory(ComponentFactory):
     classes = {
         'trec': 'TrecDocumentReader'
     }
-    config_class = InputDocumentsConfig
+    config_class = InputConfig
+
+
+class DocumentProcessorFactory(ComponentFactory):
+    classes = {
+        'default': 'DocumentProcessor'
+    }
+    config_class = ProcessorConfig
 
 
 class TrecDocumentReader:
@@ -34,29 +49,12 @@ class TrecDocumentReader:
         return Doc(doc[0], self.lang, doc[1])
 
 
-class DocProcessorConfig(BaseConfig):
-    name: str = "default"
-    utf8_normalize: bool = True
-    lowercase: bool = True
-    output: str
-    overwrite: bool = False
-    tokenize: TokenizeConfig
-    stem: Union[StemConfig, TruncStemConfig]
-
-
-class DocumentProcessorFactory(ComponentFactory):
-    classes = {
-        'default': 'DocumentProcessor'
-    }
-    config_class = DocProcessorConfig
-
-
 class DocumentProcessor(TextProcessor):
     """Document Preprocessing"""
     def __init__(self, config):
         """
         Args:
-            config (DocProcessorConfig)
+            config (ProcessorConfig)
         """
         super().__init__(config)
 

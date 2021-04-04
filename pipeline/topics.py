@@ -10,18 +10,34 @@ Topic = collections.namedtuple('Topic', ('id', 'lang', 'title', 'desc', 'narr'))
 Query = collections.namedtuple('Query', ('id', 'lang', 'text'))
 
 
-class InputTopicsConfig(BaseConfig):
+class InputConfig(BaseConfig):
     name: str
     lang: str
     encoding: str = "utf8"
     path: str
 
 
+class ProcessorConfig(BaseConfig):
+    name: str = "default"
+    query: str = "title"  # field1+field2 where field is title, desc, narr
+    utf8_normalize: bool = True
+    lowercase: bool = True
+    tokenize: TokenizeConfig
+    stem: Union[StemConfig, TruncStemConfig]
+
+
 class TopicReaderFactory(ComponentFactory):
     classes = {
         'trec': 'TrecTopicReader'
     }
-    config_class = InputTopicsConfig
+    config_class = InputConfig
+
+
+class TopicProcessorFactory(ComponentFactory):
+    classes = {
+        'default': 'TopicProcessor'
+    }
+    config_class = ProcessorConfig
 
 
 class TrecTopicReader:
@@ -51,30 +67,12 @@ class QueryWriter:
         self.file.close()
 
 
-class QueryProcessorConfig(BaseConfig):
-    name: str = "default"
-    query: str = "title"  # field1+field2 where field is title, desc, narr
-    utf8_normalize: bool = True
-    lowercase: bool = True
-    output: str
-    overwrite: bool = False
-    tokenize: TokenizeConfig
-    stem: Union[StemConfig, TruncStemConfig]
-
-
-class QueryProcessorFactory(ComponentFactory):
-    classes = {
-        'default': 'QueryProcessor'
-    }
-    config_class = QueryProcessorConfig
-
-
-class QueryProcessor(TextProcessor):
-    """Query Preprocessing"""
+class TopicProcessor(TextProcessor):
+    """Topic Preprocessing"""
     def __init__(self, config):
         """
         Args:
-            config (QueryProcessorConfig)
+            config (ProcessorConfig)
         """
         super().__init__(config)
         self.fields = config.query.split('+')

@@ -3,9 +3,9 @@ import pathlib
 
 from .config import ConfigService
 from .core import DocWriter, ResultsWriter, ResultsAccumulator
-from .doc import DocumentProcessorFactory, DocumentReaderFactory
+from .docs import DocumentProcessorFactory, DocumentReaderFactory
 from .index import DocumentStore, IndexerFactory
-from .query import TopicReaderFactory, QueryProcessorFactory, QueryWriter
+from .topics import TopicReaderFactory, TopicProcessorFactory, QueryWriter
 from .rerank import RerankFactory
 from .retrieve import RetrieverFactory
 from .score import QrelsReaderFactory, Scorer
@@ -18,7 +18,7 @@ class Pipeline:
     def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
 
-        config_service = ConfigService()
+        config_service = ConfigService(overrides)
         conf = config_service.read_config(config_filename)
         self.prepare_config(conf)
 
@@ -26,25 +26,23 @@ class Pipeline:
             LOGGER.debug("Deleting %s", conf['path'])
             delete_dir(conf['path'])
 
-        topic_conf = conf['input']['topics']
-        self.topic_reader = TopicReaderFactory.create(topic_conf)
-        query_process_conf = conf['query_process']
-        self.query_processor = QueryProcessorFactory.create(query_process_conf)
-        self.query_writer = QueryWriter(query_process_conf['output'])
+        topics_conf = conf['topics']
+        self.topic_reader = TopicReaderFactory.create(topics_conf['input'])
+        topics_process_conf = topics_conf['process']
+        self.topic_processor = TopicProcessorFactory.create(topics_process_conf)
+        self.query_writer = QueryWriter(topics_conf['output'])
 
-        doc_conf = conf['input']['documents']
-        self.doc_reader = DocumentReaderFactory.create(doc_conf)
-        doc_process_conf = conf['document_process']
-        self.doc_processor = DocumentProcessorFactory.create(doc_process_conf)
-        self.doc_writer = DocWriter(doc_process_conf['output'])
+        docs_conf = conf['documents']
+        self.doc_reader = DocumentReaderFactory.create(docs_conf['input'])
+        docs_process_conf = docs_conf['process']
+        self.doc_processor = DocumentProcessorFactory.create(docs_process_conf)
+        self.doc_writer = DocWriter(docs_conf['output'])
         self.doc_store = DocumentStore()
-
-        qrels_conf = conf['input']['qrels']
-        self.qrels = QrelsReaderFactory.create(qrels_conf).read()
-        self.accumulator = ResultsAccumulator()
 
         score_conf = conf['score']
         self.scorer = Scorer(score_conf)
+        self.qrels = QrelsReaderFactory.create(score_conf['input']).read()
+        self.accumulator = ResultsAccumulator()
 
         index_conf = conf['index']
         self.indexer = IndexerFactory.create(index_conf)
@@ -87,7 +85,7 @@ class Pipeline:
         LOGGER.info("Starting processing of topics")
         results = {}
         for topic in self.topic_reader:
-            query = self.query_processor.run(topic)
+            query = self.topic_processor.run(topic)
             self.query_writer.write(query)
 
             query_results = self.retriever.retrieve(query.id, query.text)

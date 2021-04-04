@@ -4,29 +4,31 @@ import logging
 import random
 
 from .config import BaseConfig
-from .error import ConfigError
+from .util import ComponentFactory
 
 LOGGER = logging.getLogger(__name__)
 
 
-class InputQrelsConfig(BaseConfig):
-    format: str
+class InputConfig(BaseConfig):
+    name: str = "trec"
     path: str
 
 
-class QrelsReaderFactory:
-    @classmethod
-    def create(cls, config):
-        config = InputQrelsConfig(**config)
-        if config.format == "trec":
-            return TrecQrelsReader(config.path)
-        else:
-            raise ConfigError(f"Unknown qrels format: {config.format}")
+class ScorerConfig(BaseConfig):
+    metrics: list = ['map']
+    input: InputConfig
+
+
+class QrelsReaderFactory(ComponentFactory):
+    classes = {
+        'trec': 'TrecQrelsReader'
+    }
+    config_class = InputConfig
 
 
 class TrecQrelsReader:
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, config):
+        self.path = config.path
 
     def read(self):
         with open(self.path, 'r') as fp:
@@ -35,10 +37,6 @@ class TrecQrelsReader:
             for row in reader:
                 qrels[row[0]][row[2]] = int(row[3])
             return qrels
-
-
-class ScorerConfig(BaseConfig):
-    metrics: list = ['map']
 
 
 class Scorer:
