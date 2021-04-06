@@ -1,4 +1,6 @@
 import collections
+import gzip
+import json
 
 from .config import BaseConfig, Union
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
@@ -25,7 +27,8 @@ class ProcessorConfig(BaseConfig):
 
 class DocumentReaderFactory(ComponentFactory):
     classes = {
-        'trec': 'TrecDocumentReader'
+        'trec': 'TrecDocumentReader',
+        'json': 'JsonDocumentReader'
     }
     config_class = InputConfig
 
@@ -41,6 +44,27 @@ class TrecDocumentReader:
     def __init__(self, config):
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, trec.parse_documents, config.encoding)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        doc = next(self.docs)
+        return Doc(doc[0], self.lang, doc[1])
+
+
+def parse_json_documents(path, encoding='utf8'):
+    open_func = gzip.open if path.endswith('.gz') else open
+    with open_func(path, 'r', encoding=encoding) as fp:
+        for line in fp:
+            data = json.loads(line.strip())
+            yield data['id'], ' '.join([data['title'].strip(), data['text'].strip()])
+
+
+class JsonDocumentReader:
+    def __init__(self, config):
+        self.lang = config.lang
+        self.docs = GlobFileGenerator(config.path, parse_json_documents, config.encoding)
 
     def __iter__(self):
         return self
