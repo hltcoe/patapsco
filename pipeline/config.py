@@ -31,6 +31,7 @@ class ConfigService:
       * Overriding configuration values
       * Section inheritance
     """
+
     def __init__(self, overrides=None, inheritance=True):
         """
         Args:
@@ -142,6 +143,7 @@ class ConfigService:
 
 class AttrDict(dict):
     """Dictionary that supports access of values as attributes"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__dict__ = self
@@ -149,6 +151,7 @@ class AttrDict(dict):
 
 class FlatDict:
     """Nested dictionary wrapper that works with keys of the form x.y.z"""
+
     def __init__(self, d, add_keys=False):
         """
         Args:
@@ -240,6 +243,7 @@ class ConfigLoader(yaml.FullLoader):
           output: "output/{lang}.txt"
         Nested values are specified with dot separators: retrieve.component.param
     """
+
     def __init__(self, stream):
         super().__init__(stream)
         self.errors = []
@@ -264,6 +268,7 @@ class ConfigInterpolator:
     The config dictionary is processed from first key to last, depth first.
     Values that depend on other interpolated values must be ordered top to bottom.
     """
+
     def __init__(self):
         self.regx = re.compile('.*{.*}.*')
         self.errors = []

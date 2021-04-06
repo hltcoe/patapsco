@@ -15,6 +15,7 @@ class TokenizerFactory(ComponentFactory):
 
 class Tokenizer:
     """Tokenizer interface"""
+
     def __init__(self, config):
         self.config = config
 
@@ -53,6 +54,7 @@ class StemmerFactory(ComponentFactory):
 
 class Stemmer:
     """Stemmer interface"""
+
     def __init__(self, config):
         self.config = config
 

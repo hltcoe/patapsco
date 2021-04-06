@@ -51,6 +51,7 @@ class TrecDocumentReader:
 
 class DocumentProcessor(TextProcessor):
     """Document Preprocessing"""
+
     def __init__(self, config):
         """
         Args:

@@ -25,6 +25,7 @@ class RetrieverFactory(ComponentFactory):
 
 class Retriever:
     """Retrieval interface"""
+
     def retrieve(self, topic_id, query):
         """Retrieve a ranked list of documents
 

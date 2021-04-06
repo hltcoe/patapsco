@@ -23,6 +23,7 @@ class IndexerFactory(ComponentFactory):
 
 class Indexer:
     """Indexer interface"""
+
     def index(self, doc):
         """Add a document to the index
 

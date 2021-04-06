@@ -21,6 +21,7 @@ class RerankFactory(ComponentFactory):
 
 class Reranker:
     """Rerank interface"""
+
     def __init__(self, config, store):
         """
         Args:

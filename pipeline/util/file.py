@@ -20,6 +20,7 @@ class GlobFileGenerator:
     You want to seamlessly iterator over the function across the files that match.
     Use GlobFileGenerator.
     """
+
     def __init__(self, globs, func, *args, **kwargs):
         """
         Args:

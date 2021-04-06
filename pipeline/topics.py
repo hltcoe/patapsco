@@ -69,6 +69,7 @@ class QueryWriter:
 
 class TopicProcessor(TextProcessor):
     """Topic Preprocessing"""
+
     def __init__(self, config):
         """
         Args:
