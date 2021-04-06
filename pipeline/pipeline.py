@@ -76,14 +76,18 @@ class Pipeline:
 
     def run(self):
         LOGGER.info("Starting processing of documents")
+        doc_count = 0
         for doc in self.doc_reader:
             doc = self.doc_processor.run(doc)
             self.doc_writer.write(doc)
             self.indexer.index(doc)
+            doc_count += 1
         self.indexer.close()
+        LOGGER.info("Ingested %s documents", doc_count)
 
         LOGGER.info("Starting processing of topics")
         results = {}
+        topic_count = 0
         for topic in self.topic_reader:
             query = self.topic_processor.run(topic)
             self.query_writer.write(query)
@@ -95,8 +99,10 @@ class Pipeline:
             query_results = self.reranker.rerank(topic.title, query_results)
             self.rerank_writer.write(query_results)
             self.accumulator.add(query_results)
+            topic_count += 1
         self.query_writer.close()
         self.retrieve_writer.close()
         self.rerank_writer.close()
+        LOGGER.info("Processed %s topics", topic_count)
         LOGGER.info("Results available at %s", self.rerank_writer.path)
         self.scorer.score(self.qrels, self.accumulator.run)

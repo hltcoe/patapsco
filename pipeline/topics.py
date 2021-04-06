@@ -5,6 +5,7 @@ import pathlib
 from .config import BaseConfig, Union
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
+from .util.file import GlobFileGenerator
 
 Topic = collections.namedtuple('Topic', ('id', 'lang', 'title', 'desc', 'narr'))
 Query = collections.namedtuple('Query', ('id', 'lang', 'text'))
@@ -14,7 +15,7 @@ class InputConfig(BaseConfig):
     name: str
     lang: str
     encoding: str = "utf8"
-    path: str
+    path: Union[str, list]
 
 
 class ProcessorConfig(BaseConfig):
@@ -43,7 +44,7 @@ class TopicProcessorFactory(ComponentFactory):
 class TrecTopicReader:
     def __init__(self, config):
         self.lang = config.lang
-        self.topics = trec.parse_topics(config.path, 'EN-', config.encoding)
+        self.topics = GlobFileGenerator(config.path, trec.parse_topics, 'EN-', config.encoding)
 
     def __iter__(self):
         return self

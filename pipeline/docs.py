@@ -3,6 +3,7 @@ import collections
 from .config import BaseConfig, Union
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
+from .util.file import GlobFileGenerator
 
 Doc = collections.namedtuple('Doc', ('id', 'lang', 'text'))
 
@@ -11,7 +12,7 @@ class InputConfig(BaseConfig):
     name: str
     lang: str
     encoding: str = "utf8"
-    path: str
+    path: Union[str, list]
 
 
 class ProcessorConfig(BaseConfig):
@@ -39,7 +40,7 @@ class DocumentProcessorFactory(ComponentFactory):
 class TrecDocumentReader:
     def __init__(self, config):
         self.lang = config.lang
-        self.docs = trec.parse_documents(config.path, config.encoding)
+        self.docs = GlobFileGenerator(config.path, trec.parse_documents, config.encoding)
 
     def __iter__(self):
         return self
