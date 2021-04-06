@@ -1,3 +1,5 @@
+import collections
+import csv
 import gzip
 import xml.etree.ElementTree as ElementTree
 
@@ -15,24 +17,33 @@ def parse_documents(path, encoding='utf8'):
             for tag in DOC_TEXT_TAGS:
                 obj = doc.find(tag)
                 if obj:
-                    text_parts.append(obj.get_text())
+                    text_parts.append(obj.get_text().strip())
             yield doc_id, ' '.join(text_parts)
 
 
-def parse_topics(filename, xml_prefix=None, encoding='utf8'):
+def parse_topics(path, xml_prefix=None, encoding='utf8'):
     if xml_prefix is None:
         xml_prefix = ''
-    TITLE_TAG = xml_prefix + 'title'
-    DESC_TAG = xml_prefix + 'desc'
-    NARR_TAG = xml_prefix + 'narr'
+    title_tag = xml_prefix + 'title'
+    desc_tag= xml_prefix + 'desc'
+    narr_tag = xml_prefix + 'narr'
 
-    with open(filename, 'r', encoding=encoding) as fp:
+    with open(path, 'r', encoding=encoding) as fp:
         text = fp.read()
     text = "<topics>\n" + text + "\n</topics>"
     root = ElementTree.fromstring(text)
     for topic in root:
         num = topic.find('num').text.strip()
-        title = topic.find(TITLE_TAG).text.strip()
-        desc = topic.find(DESC_TAG).text.strip()
-        narr = topic.find(NARR_TAG).text.strip()
+        title = topic.find(title_tag).text.strip()
+        desc = topic.find(desc_tag).text.strip()
+        narr = topic.find(narr_tag).text.strip()
         yield num, title, desc, narr
+
+
+def parse_qrels(path):
+    with open(path, 'r') as fp:
+        reader = csv.reader(fp, delimiter=' ')
+        qrels = collections.defaultdict(dict)
+        for row in reader:
+            qrels[row[0]][row[2]] = int(row[3])
+    yield qrels

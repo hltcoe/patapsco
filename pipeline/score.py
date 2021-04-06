@@ -1,10 +1,9 @@
-import collections
-import csv
 import logging
 import random
 
 from .config import BaseConfig
-from .util import ComponentFactory
+from .util import ComponentFactory, trec
+from .util.file import GlobFileGenerator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,14 +28,13 @@ class QrelsReaderFactory(ComponentFactory):
 class TrecQrelsReader:
     def __init__(self, config):
         self.path = config.path
+        self.qrels_iter = GlobFileGenerator(config.path, trec.parse_qrels)
 
     def read(self):
-        with open(self.path, 'r') as fp:
-            reader = csv.reader(fp, delimiter=' ')
-            qrels = collections.defaultdict(dict)
-            for row in reader:
-                qrels[row[0]][row[2]] = int(row[3])
-            return qrels
+        data = {}
+        for qrels in self.qrels_iter:
+            data = {**data, **qrels}
+        return data
 
 
 class Scorer:
