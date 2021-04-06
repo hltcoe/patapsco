@@ -15,6 +15,7 @@ class InputConfig(BaseConfig):
     name: str
     lang: str
     encoding: str = "utf8"
+    strip_non_digits: bool = False
     path: Union[str, list]
 
 
@@ -44,6 +45,7 @@ class TopicProcessorFactory(ComponentFactory):
 class TrecTopicReader:
     def __init__(self, config):
         self.lang = config.lang
+        self.strip_non_digits = config.strip_non_digits
         self.topics = GlobFileGenerator(config.path, trec.parse_topics, 'EN-', config.encoding)
 
     def __iter__(self):
@@ -51,7 +53,8 @@ class TrecTopicReader:
 
     def __next__(self):
         topic = next(self.topics)
-        return Topic(topic[0], self.lang, topic[1], topic[2], topic[3])
+        identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
+        return Topic(identifier, self.lang, topic[1], topic[2], topic[3])
 
 
 class QueryWriter:
