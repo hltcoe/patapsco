@@ -47,3 +47,16 @@ def test_GlobFileGenerator_with_multiple_patterns():
     assert next(iterator) == '5'
     with pytest.raises(StopIteration):
         next(iterator)
+
+
+def test_GlobFileGenerator_with_bad_input_file():
+    # bad input results in immediate StopIteration
+    def bad_input(path):
+        if False:
+            yield '1', 'text'
+
+    directory = pathlib.Path('.') / 'tests' / 'glob_files'
+    glob = directory / 'file1.txt'
+    iterator = file.GlobFileGenerator(str(glob.absolute()), bad_input)
+    with pytest.raises(ValueError):
+        next(iterator)

@@ -6,3 +6,7 @@ class PipelineError(Exception):
 
 class ConfigError(PipelineError):
     pass
+
+
+class ParseError(PipelineError):
+    pass

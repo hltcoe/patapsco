@@ -37,6 +37,7 @@ class GlobFileGenerator:
         self.kwargs = kwargs
 
         self.pattern = None
+        self.first_use_of_gen = True
         paths = self._next_glob()
         if not paths:
             raise ValueError(f"No files match pattern {self.pattern}")
@@ -48,8 +49,13 @@ class GlobFileGenerator:
 
     def __next__(self):
         try:
-            return next(self.gen)
+            item = next(self.gen)
+            self.first_use_of_gen = False
+            return item
         except StopIteration:
+            if self.first_use_of_gen:
+                # bad file so we throw an exception
+                raise ValueError(f"{self.pattern} did not result in any items")
             try:
                 self.gen = self._next_generator()
             except StopIteration:
@@ -62,4 +68,5 @@ class GlobFileGenerator:
 
     def _next_generator(self):
         path = next(self.paths)
+        self.first_use_of_gen = True
         return self.parsing_func(path, *self.args, **self.kwargs)

@@ -3,6 +3,7 @@ import gzip
 import json
 
 from .config import BaseConfig, Union
+from .error import ParseError
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
 from .util.file import GlobFileGenerator
@@ -55,10 +56,16 @@ class TrecDocumentReader:
 
 def parse_json_documents(path, encoding='utf8'):
     open_func = gzip.open if path.endswith('.gz') else open
-    with open_func(path, 'r', encoding=encoding) as fp:
+    with open_func(path, 'rt', encoding=encoding) as fp:
         for line in fp:
-            data = json.loads(line.strip())
-            yield data['id'], ' '.join([data['title'].strip(), data['text'].strip()])
+            try:
+                data = json.loads(line.strip())
+            except json.decoder.JSONDecodeError as e:
+                raise ParseError(f"Problem parsing json from {path}: {e}")
+            try:
+                yield data['id'], ' '.join([data['title'].strip(), data['text'].strip()])
+            except KeyError as e:
+                raise ParseError(f"Missing field {e} in json docs element: {data}")
 
 
 class JsonDocumentReader:

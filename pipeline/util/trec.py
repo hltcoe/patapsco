@@ -7,14 +7,14 @@ import bs4
 
 
 def parse_documents(path, encoding='utf8'):
-    DOC_TEXT_TAGS = ["headline", "title", "hl", "head", "ttl", "dd", "date", "lp", "leadpara", "text"]
+    doc_text_tags = ["headline", "title", "hl", "head", "ttl", "dd", "date", "lp", "leadpara", "text"]
     open_func = gzip.open if path.endswith('.gz') else open
     with open_func(path, 'rt', encoding=encoding, errors='replace') as fp:
         soup = bs4.BeautifulSoup(fp, 'html.parser')
         for doc in soup.find_all('doc'):
             doc_id = doc.docno.get_text()
             text_parts = []
-            for tag in DOC_TEXT_TAGS:
+            for tag in doc_text_tags:
                 obj = doc.find(tag)
                 if obj:
                     text_parts.append(obj.get_text().strip())
