@@ -25,7 +25,7 @@ def parse_topics(path, xml_prefix=None, encoding='utf8'):
     if xml_prefix is None:
         xml_prefix = ''
     title_tag = xml_prefix + 'title'
-    desc_tag= xml_prefix + 'desc'
+    desc_tag = xml_prefix + 'desc'
     narr_tag = xml_prefix + 'narr'
 
     with open(path, 'r', encoding=encoding) as fp:
