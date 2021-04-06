@@ -1,6 +1,9 @@
 import collections
 import gzip
 import json
+import pathlib
+
+import sqlitedict
 
 from .config import BaseConfig, Union
 from .error import ParseError
@@ -81,15 +84,46 @@ class JsonDocumentReader:
         return Doc(doc[0], self.lang, doc[1])
 
 
+class DocWriter:
+    def __init__(self, path):
+        self.dir = pathlib.Path(path)
+        self.dir.mkdir(parents=True)
+
+    def write(self, doc):
+        path = self.dir / doc.id
+        with open(path, 'w') as fp:
+            fp.write(doc.text)
+
+
+class DocumentStore(sqlitedict.SqliteDict):
+    """Key value store for documents
+
+    Uses a dictionary interface.
+    Example:
+        store = DocumentStore('docs.sqlite')
+        store['doc_77'] = 'some text'
+        print(store['doc_77'])
+    """
+
+    def __init__(self, path, *args, **kwargs):
+        kwargs['autocommit'] = True
+        self.dir = pathlib.Path(path)
+        self.dir.mkdir(parents=True)
+        path = str(pathlib.Path(path) / "docs.db")
+        super().__init__(path, *args, **kwargs)
+
+
 class DocumentProcessor(TextProcessor):
     """Document Preprocessing"""
 
-    def __init__(self, config):
+    def __init__(self, config, store):
         """
         Args:
             config (ProcessorConfig)
+            store (DocumentStore): Document storage for later retrieval
         """
         super().__init__(config)
+        self.store = store
 
     def run(self, doc):
         """
@@ -105,6 +139,7 @@ class DocumentProcessor(TextProcessor):
         if self.config.lowercase:
             text = self.lowercase_text(text)
         tokens = self.tokenize(text)
+        self.store[doc.id] = doc.text
         if self.config.stem:
             tokens = self.stem(tokens)
         text = ' '.join(tokens)

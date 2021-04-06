@@ -2,9 +2,9 @@ import logging
 import pathlib
 
 from .config import ConfigService
-from .core import DocWriter, ResultsWriter, ResultsAccumulator
-from .docs import DocumentProcessorFactory, DocumentReaderFactory
-from .index import DocumentStore, IndexerFactory
+from .core import ResultsWriter, ResultsAccumulator
+from .docs import DocumentProcessorFactory, DocumentReaderFactory, DocumentStore, DocWriter
+from .index import IndexerFactory
 from .topics import TopicReaderFactory, TopicProcessorFactory, QueryWriter
 from .rerank import RerankFactory
 from .retrieve import RetrieverFactory
@@ -32,12 +32,13 @@ class Pipeline:
         self.topic_processor = TopicProcessorFactory.create(topics_process_conf)
         self.query_writer = QueryWriter(topics_conf['output'])
 
+        self.doc_store = DocumentStore(conf['document_store']['path'])
+
         docs_conf = conf['documents']
         self.doc_reader = DocumentReaderFactory.create(docs_conf['input'])
         docs_process_conf = docs_conf['process']
-        self.doc_processor = DocumentProcessorFactory.create(docs_process_conf)
+        self.doc_processor = DocumentProcessorFactory.create(docs_process_conf, self.doc_store)
         self.doc_writer = DocWriter(docs_conf['output'])
-        self.doc_store = DocumentStore()
 
         score_conf = conf['score']
         self.scorer = Scorer(score_conf)
@@ -73,6 +74,7 @@ class Pipeline:
             if isinstance(c, dict):
                 if 'output' in c:
                     c['output'] = str(base / c['output'])
+        conf['document_store']['path'] = str(base / conf['document_store']['path'])
 
     def run(self):
         LOGGER.info("Starting processing of documents")

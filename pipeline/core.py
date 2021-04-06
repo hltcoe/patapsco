@@ -5,17 +5,6 @@ import pathlib
 Result = collections.namedtuple('Result', ('query_id', 'doc_id', 'rank', 'score', 'name'))
 
 
-class DocWriter:
-    def __init__(self, path):
-        self.dir = pathlib.Path(path)
-        self.dir.mkdir(parents=True)
-
-    def write(self, doc):
-        path = self.dir / doc.id
-        with open(path, 'w') as fp:
-            fp.write(doc.text)
-
-
 class ResultsWriter:
     def __init__(self, path):
         dir = pathlib.Path(path)

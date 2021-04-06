@@ -4,11 +4,6 @@ from .config import BaseConfig
 from .util import ComponentFactory
 
 
-class DocumentStore:
-    def __getitem__(self, doc_id):
-        return "Hello, world"
-
-
 class IndexerConfig(BaseConfig):
     name: str
     output: str
