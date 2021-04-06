@@ -19,6 +19,14 @@ def test_parse_documents():
         next(doc_iter)
 
 
+def test_parse_documents_with_bad_encoding():
+    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    path = directory / 'not_utf8.txt'
+    doc_iter = parse_documents(str(path.absolute()), encoding='utf8')
+    with pytest.raises(ParseError):
+        next(doc_iter)
+
+
 def test_parse_topics():
     directory = pathlib.Path('.') / 'tests' / 'trec_files'
     path = directory / 'topics.txt'

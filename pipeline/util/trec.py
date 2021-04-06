@@ -5,12 +5,17 @@ import xml.etree.ElementTree as ElementTree
 
 import bs4
 
+from ..error import ParseError
+
 
 def parse_documents(path, encoding='utf8'):
     doc_text_tags = ["headline", "title", "hl", "head", "ttl", "dd", "date", "lp", "leadpara", "text"]
     open_func = gzip.open if path.endswith('.gz') else open
-    with open_func(path, 'rt', encoding=encoding, errors='replace') as fp:
-        soup = bs4.BeautifulSoup(fp, 'html.parser')
+    with open_func(path, 'rt', encoding=encoding) as fp:
+        try:
+            soup = bs4.BeautifulSoup(fp, 'html.parser')
+        except UnicodeDecodeError as e:
+            raise ParseError(f"Decode error for {path}: {e}")
         for doc in soup.find_all('doc'):
             doc_id = doc.docno.get_text()
             text_parts = []
