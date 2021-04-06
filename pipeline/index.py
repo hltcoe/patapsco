@@ -1,12 +1,14 @@
 import pathlib
 
 from .config import BaseConfig
+from .pipeline import Module
 from .util import ComponentFactory
 
 
 class IndexerConfig(BaseConfig):
+    """Configuration for building an index"""
     name: str
-    output: str
+    save: str
 
 
 class IndexerFactory(ComponentFactory):
@@ -16,30 +18,34 @@ class IndexerFactory(ComponentFactory):
     config_class = IndexerConfig
 
 
-class Indexer:
-    """Indexer interface"""
+class MockIndexer(Module):
+    """Mock index for testing
 
-    def index(self, doc):
-        """Add a document to the index
+    It writes the doc IDs to a file for later use.
+    """
 
-        Args:
-            doc (Doc)
+    def __init__(self, config, input):
         """
-        pass
-
-    def close(self):
-        """Close any files and release any resources"""
-        pass
-
-
-class MockIndexer(Indexer):
-    def __init__(self, config):
-        self.path = pathlib.Path(config.output) / 'index.txt'
+        Args:
+            config (IndexerConfig)
+            input (iterator): Iterator over Document objects
+        """
+        super().__init__(input)
+        self.path = pathlib.Path(config.save) / 'index.txt'
         self.path.parent.mkdir(parents=True)
         self.file = open(self.path, 'w')
 
-    def index(self, doc):
-        self.file.write(doc.id + "\n")
+    def process(self, doc):
+        """
+        Args:
+            doc (Doc)
 
-    def close(self):
+        Returns:
+            Doc
+        """
+        self.file.write(doc.id + "\n")
+        return doc
+
+    def end(self):
+        super().end()
         self.file.close()

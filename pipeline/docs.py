@@ -7,6 +7,7 @@ import sqlitedict
 
 from .config import BaseConfig, Union
 from .error import ParseError
+from .pipeline import InputModule, Module
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
 from .util.file import GlobFileGenerator
@@ -15,6 +16,7 @@ Doc = collections.namedtuple('Doc', ('id', 'lang', 'text'))
 
 
 class InputConfig(BaseConfig):
+    """Configuration for the document corpus"""
     name: str
     lang: str
     encoding: str = "utf8"
@@ -22,6 +24,7 @@ class InputConfig(BaseConfig):
 
 
 class ProcessorConfig(BaseConfig):
+    """Configuration for the document processor"""
     name: str = "default"
     utf8_normalize: bool = True
     lowercase: bool = True
@@ -44,13 +47,13 @@ class DocumentProcessorFactory(ComponentFactory):
     config_class = ProcessorConfig
 
 
-class TrecDocumentReader:
+class TrecDocumentReader(InputModule):
+    """Read TREC sgml documents to start a pipeline"""
+
     def __init__(self, config):
+        super().__init__()
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, trec.parse_documents, config.encoding)
-
-    def __iter__(self):
-        return self
 
     def __next__(self):
         doc = next(self.docs)
@@ -72,6 +75,8 @@ def parse_json_documents(path, encoding='utf8'):
 
 
 class JsonDocumentReader:
+    """Read JSONL documents to start a pipeline"""
+
     def __init__(self, config):
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, parse_json_documents, config.encoding)
@@ -84,15 +89,30 @@ class JsonDocumentReader:
         return Doc(doc[0], self.lang, doc[1])
 
 
-class DocWriter:
-    def __init__(self, path):
+class DocWriter(Module):
+    """Write documents to files
+
+    This is not very efficient and should be rewritten if we want to use in production.
+    This will create one file per document in a single directory.
+    """
+
+    def __init__(self, path, input):
+        super().__init__(input)
         self.dir = pathlib.Path(path)
         self.dir.mkdir(parents=True)
 
-    def write(self, doc):
+    def process(self, doc):
+        """
+        Args:
+            doc (Doc)
+
+        Returns:
+            Doc
+        """
         path = self.dir / doc.id
         with open(path, 'w') as fp:
             fp.write(doc.text)
+        return doc
 
 
 class DocumentStore(sqlitedict.SqliteDict):
@@ -113,19 +133,20 @@ class DocumentStore(sqlitedict.SqliteDict):
         super().__init__(path, *args, **kwargs)
 
 
-class DocumentProcessor(TextProcessor):
+class DocumentProcessor(Module, TextProcessor):
     """Document Preprocessing"""
 
-    def __init__(self, config, store):
+    def __init__(self, config, input, store):
         """
         Args:
             config (ProcessorConfig)
             store (DocumentStore): Document storage for later retrieval
         """
-        super().__init__(config)
+        Module.__init__(self, input)
+        TextProcessor.__init__(self, config)
         self.store = store
 
-    def run(self, doc):
+    def process(self, doc):
         """
         Args:
             doc (Doc)

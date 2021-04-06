@@ -3,6 +3,7 @@ import json
 import pathlib
 
 from .config import BaseConfig, Union
+from .pipeline import InputModule, Module
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
 from .util.file import GlobFileGenerator
@@ -12,6 +13,7 @@ Query = collections.namedtuple('Query', ('id', 'lang', 'text'))
 
 
 class InputConfig(BaseConfig):
+    """Configuration for Topic input"""
     name: str
     lang: str
     encoding: str = "utf8"
@@ -20,6 +22,7 @@ class InputConfig(BaseConfig):
 
 
 class ProcessorConfig(BaseConfig):
+    """Configuration of the topic processor"""
     name: str = "default"
     query: str = "title"  # field1+field2 where field is title, desc, narr
     utf8_normalize: bool = True
@@ -42,14 +45,14 @@ class TopicProcessorFactory(ComponentFactory):
     config_class = ProcessorConfig
 
 
-class TrecTopicReader:
+class TrecTopicReader(InputModule):
+    """Iterator over topics from trec sgml"""
+
     def __init__(self, config):
+        super().__init__()
         self.lang = config.lang
         self.strip_non_digits = config.strip_non_digits
         self.topics = GlobFileGenerator(config.path, trec.parse_topics, 'EN-', config.encoding)
-
-    def __iter__(self):
-        return self
 
     def __next__(self):
         topic = next(self.topics)
@@ -57,32 +60,52 @@ class TrecTopicReader:
         return Topic(identifier, self.lang, topic[1], topic[2], topic[3])
 
 
-class QueryWriter:
-    def __init__(self, path):
+class QueryWriter(Module):
+    """Write queries to a file"""
+
+    def __init__(self, path, input):
+        """
+        Args:
+            path (str): Path of query file to write.
+            input (iterator): Iterator over queries
+        """
+        super().__init__(input)
         dir = pathlib.Path(path)
         dir.mkdir(parents=True)
         path = dir / 'queries.json'
         self.file = open(path, 'w')
 
-    def write(self, query):
-        self.file.write(json.dumps(query._asdict()) + "\n")
+    def process(self, query):
+        """
+        Args:
+            query (Query)
 
-    def close(self):
+        Returns
+            Query
+        """
+
+        self.file.write(json.dumps(query._asdict()) + "\n")
+        return query
+
+    def end(self):
+        super().end()
         self.file.close()
 
 
-class TopicProcessor(TextProcessor):
+class TopicProcessor(Module, TextProcessor):
     """Topic Preprocessing"""
 
-    def __init__(self, config):
+    def __init__(self, config, input):
         """
         Args:
             config (ProcessorConfig)
+            input (iterator): Iterator over topics
         """
-        super().__init__(config)
+        Module.__init__(self, input)
+        TextProcessor.__init__(self, config)
         self.fields = config.query.split('+')
 
-    def run(self, topic):
+    def process(self, topic):
         """
         Args:
             topic (Topic)

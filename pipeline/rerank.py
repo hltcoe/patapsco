@@ -2,14 +2,15 @@ import copy
 import random
 
 from .config import BaseConfig
-from .core import Result
+from .pipeline import Module
+from .retrieve import Results
 from .util import ComponentFactory
 
 
 class RerankConfig(BaseConfig):
     name: str
     embedding: str
-    output: str
+    save: str
 
 
 class RerankFactory(ComponentFactory):
@@ -19,37 +20,36 @@ class RerankFactory(ComponentFactory):
     config_class = RerankConfig
 
 
-class Reranker:
+class Reranker(Module):
     """Rerank interface"""
 
-    def __init__(self, config, store):
+    def __init__(self, config, input, store):
         """
         Args:
             config (RerankConfig): Configuration parameters
+            input (iterator): Iterator over input
             store (DocumentStore): Document store that works like dictionary
         """
+        super().__init__(input)
         self.config = config
         self.store = store
 
-    def rerank(self, query, results):
-        """Rerank a list of query results
+    def process(self, results):
+        """Rerank query results
 
         Args:
-            query (str)
-            results (list)
+            results (Results)
 
         Returns:
-            list of Result
+            Results
         """
-        pass
-
-    def close(self):
-        """Close any files and release any resources"""
         pass
 
 
 class MockReranker(Reranker):
-    def rerank(self, query, results):
-        results = copy.copy(results)
-        random.shuffle(results)
-        return [Result(v.query_id, v.doc_id, i, i, v.name) for i, v in enumerate(results)]
+    """Mock reranker for testing"""
+
+    def process(self, results):
+        new_results = copy.copy(results.results)
+        random.shuffle(new_results)
+        return Results(results.query, 'MockReranker', new_results)
