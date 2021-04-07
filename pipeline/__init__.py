@@ -4,16 +4,17 @@ import pathlib
 from .config import ConfigService
 from .docs import DocumentProcessorFactory, DocumentReaderFactory, DocumentStore, DocWriter
 from .index import IndexerFactory
-from .topics import TopicReaderFactory, TopicProcessorFactory, QueryWriter
+from .pipeline import Pipeline, Task
 from .rerank import RerankFactory
 from .retrieve import ResultsWriter, RetrieverFactory
 from .score import QrelsReaderFactory, Scorer
+from .topics import TopicReaderFactory, TopicProcessorFactory, QueryWriter
 from .util.file import delete_dir
 
 LOGGER = logging.getLogger(__name__)
 
 
-class Pipeline:
+class System:
     def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
 
@@ -30,32 +31,33 @@ class Pipeline:
         docs_conf = conf['documents']
         self.doc_reader = DocumentReaderFactory.create(docs_conf['input'])
         docs_process_conf = docs_conf['process']
-        self.doc_processor = DocumentProcessorFactory.create(docs_process_conf, self.doc_reader, self.doc_store)
-        self.doc_writer = DocWriter(docs_conf['save'], self.doc_processor)
+        self.doc_processor = DocumentProcessorFactory.create(docs_process_conf, self.doc_store)
+        self.doc_writer = DocWriter(docs_conf['save'])
 
         index_conf = conf['index']
-        self.indexer = IndexerFactory.create(index_conf, self.doc_writer)
-        self.stage1 = self.indexer
+        self.indexer = IndexerFactory.create(index_conf)
+        self.stage1 = Pipeline(self.doc_processor | self.doc_writer | self.indexer)
 
         topics_conf = conf['topics']
         self.topic_reader = TopicReaderFactory.create(topics_conf['input'])
         topics_process_conf = topics_conf['process']
-        self.topic_processor = TopicProcessorFactory.create(topics_process_conf, self.topic_reader)
-        self.query_writer = QueryWriter(topics_conf['save'], self.topic_processor)
+        self.topic_processor = TopicProcessorFactory.create(topics_process_conf)
+        self.query_writer = QueryWriter(topics_conf['save'])
 
         retrieve_conf = conf['retrieve']
         retrieve_conf['input'] = index_conf['save']
-        self.retriever = RetrieverFactory.create(retrieve_conf, self.query_writer)
-        self.retrieve_writer = ResultsWriter(retrieve_conf['save'], self.retriever)
+        self.retriever = RetrieverFactory.create(retrieve_conf)
+        self.retrieve_writer = ResultsWriter(retrieve_conf['save'])
 
         rerank_conf = conf['rerank']
-        self.reranker = RerankFactory.create(rerank_conf, self.retrieve_writer, self.doc_store)
-        self.rerank_writer = ResultsWriter(rerank_conf['save'], self.reranker)
+        self.reranker = RerankFactory.create(rerank_conf, self.doc_store)
+        self.rerank_writer = ResultsWriter(rerank_conf['save'])
 
         score_conf = conf['score']
         self.qrels = QrelsReaderFactory.create(score_conf['input']).read()
-        self.scorer = Scorer(score_conf, self.rerank_writer, self.qrels)
-        self.stage2 = self.scorer
+        self.scorer = Scorer(score_conf, self.qrels)
+        self.stage2 = Pipeline(self.topic_processor | self.query_writer | self.retriever |
+                               self.retrieve_writer | self.reranker | self.rerank_writer | self.scorer)
 
     @staticmethod
     def setup_logging(verbose):
@@ -77,17 +79,14 @@ class Pipeline:
         conf['document_store']['path'] = str(base / conf['document_store']['path'])
 
     def run(self):
+        LOGGER.info("Stage 1 pipeline: %s", self.stage1)
+        LOGGER.info("Stage 2 pipeline: %s", self.stage2)
+
         LOGGER.info("Starting processing of documents")
-        doc_count = 0
-        for _ in self.stage1:
-            doc_count += 1
-        self.stage1.end()
-        LOGGER.info("Ingested %s documents", doc_count)
+        self.stage1.run(self.doc_reader)
+        LOGGER.info("Ingested %s documents", self.stage1.count)
 
         LOGGER.info("Starting processing of topics")
-        topic_count = 0
-        for _ in self.stage2:
-            topic_count += 1
-        LOGGER.info("Processed %s topics", topic_count)
+        self.stage2.run(self.topic_reader)
+        LOGGER.info("Processed %s topics", self.stage2.count)
         LOGGER.info("System output available at %s", self.rerank_writer.path)
-        self.stage2.end()

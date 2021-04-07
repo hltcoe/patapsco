@@ -1,7 +1,7 @@
 import pathlib
 
 from .config import BaseConfig
-from .pipeline import Module
+from .pipeline import Task
 from .util import ComponentFactory
 
 
@@ -18,19 +18,18 @@ class IndexerFactory(ComponentFactory):
     config_class = IndexerConfig
 
 
-class MockIndexer(Module):
+class MockIndexer(Task):
     """Mock index for testing
 
     It writes the doc IDs to a file for later use.
     """
 
-    def __init__(self, config, input):
+    def __init__(self, config):
         """
         Args:
             config (IndexerConfig)
-            input (iterator): Iterator over Document objects
         """
-        super().__init__(input)
+        super().__init__()
         self.path = pathlib.Path(config.save) / 'index.txt'
         self.path.parent.mkdir(parents=True)
         self.file = open(self.path, 'w')
@@ -47,5 +46,4 @@ class MockIndexer(Module):
         return doc
 
     def end(self):
-        super().end()
         self.file.close()

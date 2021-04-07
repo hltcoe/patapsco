@@ -2,7 +2,7 @@ import copy
 import random
 
 from .config import BaseConfig
-from .pipeline import Module
+from .pipeline import Task
 from .retrieve import Results
 from .util import ComponentFactory
 
@@ -20,17 +20,16 @@ class RerankFactory(ComponentFactory):
     config_class = RerankConfig
 
 
-class Reranker(Module):
+class Reranker(Task):
     """Rerank interface"""
 
-    def __init__(self, config, input, store):
+    def __init__(self, config, store):
         """
         Args:
             config (RerankConfig): Configuration parameters
-            input (iterator): Iterator over input
             store (DocumentStore): Document store that works like dictionary
         """
-        super().__init__(input)
+        super().__init__()
         self.config = config
         self.store = store
 

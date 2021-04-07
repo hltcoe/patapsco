@@ -1,51 +1,86 @@
+import abc
 import logging
 
 LOGGER = logging.getLogger(__name__)
 
 
-class Module:
-    """Pipeline module
+class Task(abc.ABC):
+    """A task in a pipeline
 
-    A module is an iterator that takes its input from an input iterator.
-    A module should define an initializer and a process method.
-    The process method is passed input from the previous module in the pipeline.
-    The output of the process method is passed to the next module.
-    There are also optional methods begin() and end() that can be defined.
-    """
-
-    def __init__(self, input):
-        self.input = input
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return self.process(next(self.input))
-
-    def begin(self):
-        if self.input:
-            self.input.begin()
-
-    def process(self, data):
-        return data
-
-    def end(self):
-        if self.input:
-            self.input.end()
-
-
-class InputModule(Module):
-    """Input Module
-
-    Just like a module except that it generates its own input.
-    It is the first module in a pipeline.
+    Implementations must define a process() method.
+    Any initialization or cleanup can be done in begin() or end().
+    See Pipeline for how to construct a pipeline of tasks.
     """
 
     def __init__(self):
-        super().__init__(None)
+        self.downstream = None
 
-    def __iter__(self):
+    @abc.abstractmethod
+    def process(self, item):
+        """Process an item
+
+        A task must implement this method.
+        It must return a new item that resulted from processing or the original item.
+        """
+        pass
+
+    def begin(self):
+        """Optional begin method for initialization"""
+        pass
+
+    def end(self):
+        """Optional end method for cleaning up"""
+        pass
+
+    def _process(self, item):
+        """Push the output of process() to the next task"""
+        item = self.process(item)
+        if self.downstream:
+            self.downstream._process(item)
+
+    def _begin(self):
+        self.begin()
+        if self.downstream:
+            self.downstream._begin()
+
+    def _end(self):
+        self.end()
+        if self.downstream:
+            self.downstream._end()
+
+    def __or__(self, other):
+        # a chain of tasks gets handled from left to right.
+        # we traverse rightward until we hit the first task that hasn't been connected.
+        left = self
+        while left.downstream:
+            left = left.downstream
+        left.downstream = other
         return self
 
-    def __next__(self):
-        raise NotImplementedError("Child of InputModule must implement __next__")
+
+class Pipeline:
+    def __init__(self, task):
+        self.task = task
+        self.count = 0
+
+    def run(self, iterable):
+        self.begin()
+        for item in iterable:
+            self.task._process(item)
+            self.count += 1
+        self.end()
+
+    def begin(self):
+        self.count = 0
+        self.task._begin()
+
+    def end(self):
+        self.task._end()
+
+    def __str__(self):
+        task_names = []
+        task = self.task
+        while task:
+            task_names.append(str(task.__class__.__name__))
+            task = task.downstream
+        return ' | '.join(task_names)

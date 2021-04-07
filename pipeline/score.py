@@ -3,7 +3,7 @@ import logging
 import random
 
 from .config import BaseConfig
-from .pipeline import Module
+from .pipeline import Task
 from .util import ComponentFactory, trec
 from .util.file import GlobFileGenerator
 
@@ -11,7 +11,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class InputConfig(BaseConfig):
-    """Qrels input configuration"""
+    """Qrels downstream configuration"""
     name: str = "trec"
     path: str
 
@@ -47,17 +47,16 @@ class TrecQrelsReader:
         return data
 
 
-class Scorer(Module):
+class Scorer(Task):
     """Scorer module"""
 
-    def __init__(self, config, input, qrels):
+    def __init__(self, config, qrels):
         """
         Args:
             config (dict)
-            input (iterator): Iterator over Results for a query
             qrels (dict): qrels dictionary
         """
-        super().__init__(input)
+        super().__init__()
         self.config = ScorerConfig(**config)
         self.qrels = qrels
         self.run = collections.defaultdict(dict)
@@ -76,6 +75,5 @@ class Scorer(Module):
         return results
 
     def end(self):
-        super().end()
         for metric in self.config.metrics:
             LOGGER.info(f"{metric} = {random.random()}")

@@ -7,7 +7,7 @@ import sqlitedict
 
 from .config import BaseConfig, Union
 from .error import ParseError
-from .pipeline import InputModule, Module
+from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
 from .util.file import GlobFileGenerator
@@ -47,39 +47,12 @@ class DocumentProcessorFactory(ComponentFactory):
     config_class = ProcessorConfig
 
 
-class TrecDocumentReader(InputModule):
-    """Read TREC sgml documents to start a pipeline"""
+class TrecDocumentReader:
+    """Iterator that reads TREC sgml documents"""
 
     def __init__(self, config):
-        super().__init__()
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, trec.parse_documents, config.encoding)
-
-    def __next__(self):
-        doc = next(self.docs)
-        return Doc(doc[0], self.lang, doc[1])
-
-
-def parse_json_documents(path, encoding='utf8'):
-    open_func = gzip.open if path.endswith('.gz') else open
-    with open_func(path, 'rt', encoding=encoding) as fp:
-        for line in fp:
-            try:
-                data = json.loads(line.strip())
-            except json.decoder.JSONDecodeError as e:
-                raise ParseError(f"Problem parsing json from {path}: {e}")
-            try:
-                yield data['id'], ' '.join([data['title'].strip(), data['text'].strip()])
-            except KeyError as e:
-                raise ParseError(f"Missing field {e} in json docs element: {data}")
-
-
-class JsonDocumentReader:
-    """Read JSONL documents to start a pipeline"""
-
-    def __init__(self, config):
-        self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, parse_json_documents, config.encoding)
 
     def __iter__(self):
         return self
@@ -89,15 +62,44 @@ class JsonDocumentReader:
         return Doc(doc[0], self.lang, doc[1])
 
 
-class DocWriter(Module):
+class JsonDocumentReader:
+    """Read JSONL documents to start a pipeline"""
+
+    def __init__(self, config):
+        self.lang = config.lang
+        self.docs = GlobFileGenerator(config.path, self.parse, config.encoding)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        doc = next(self.docs)
+        return Doc(doc[0], self.lang, doc[1])
+
+    @staticmethod
+    def parse(path, encoding='utf8'):
+        open_func = gzip.open if path.endswith('.gz') else open
+        with open_func(path, 'rt', encoding=encoding) as fp:
+            for line in fp:
+                try:
+                    data = json.loads(line.strip())
+                except json.decoder.JSONDecodeError as e:
+                    raise ParseError(f"Problem parsing json from {path}: {e}")
+                try:
+                    yield data['id'], ' '.join([data['title'].strip(), data['text'].strip()])
+                except KeyError as e:
+                    raise ParseError(f"Missing field {e} in json docs element: {data}")
+
+
+class DocWriter(Task):
     """Write documents to files
 
     This is not very efficient and should be rewritten if we want to use in production.
     This will create one file per document in a single directory.
     """
 
-    def __init__(self, path, input):
-        super().__init__(input)
+    def __init__(self, path):
+        super().__init__()
         self.dir = pathlib.Path(path)
         self.dir.mkdir(parents=True)
 
@@ -133,16 +135,16 @@ class DocumentStore(sqlitedict.SqliteDict):
         super().__init__(path, *args, **kwargs)
 
 
-class DocumentProcessor(Module, TextProcessor):
+class DocumentProcessor(Task, TextProcessor):
     """Document Preprocessing"""
 
-    def __init__(self, config, input, store):
+    def __init__(self, config, store):
         """
         Args:
             config (ProcessorConfig)
             store (DocumentStore): Document storage for later retrieval
         """
-        Module.__init__(self, input)
+        Task.__init__(self)
         TextProcessor.__init__(self, config)
         self.store = store
 

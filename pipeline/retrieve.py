@@ -6,7 +6,7 @@ import random
 from typing import List
 
 from .config import BaseConfig
-from .pipeline import Module
+from .pipeline import Task
 from .topics import Query
 from .util import ComponentFactory
 
@@ -38,16 +38,15 @@ class RetrieverFactory(ComponentFactory):
     config_class = RetrieveConfig
 
 
-class ResultsWriter(Module):
+class ResultsWriter(Task):
     """Write results to a file"""
 
-    def __init__(self, path, input):
+    def __init__(self, path):
         """
         Args:
             path (str): Path of file to write to.
-            input (iterator): Iterator over Results
         """
-        super().__init__(input)
+        super().__init__()
         directory = pathlib.Path(path)
         directory.mkdir(parents=True)
         self.path = directory / 'results.txt'
@@ -63,15 +62,14 @@ class ResultsWriter(Module):
         return results
 
     def end(self):
-        super().end()
         self.file.close()
 
 
-class MockRetriever(Module):
+class MockRetriever(Task):
     """Mock retriever for testing and development"""
 
-    def __init__(self, config, input):
-        super().__init__(input)
+    def __init__(self, config):
+        super().__init__()
         self.number = config.number
         self.path = pathlib.Path(config.input) / 'index.txt'
         self.doc_ids = None
