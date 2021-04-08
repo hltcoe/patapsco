@@ -1,6 +1,6 @@
 import argparse
 
-from pipeline import Pipeline
+from pipeline import System
 
 
 if __name__ == "__main__":
@@ -10,5 +10,5 @@ if __name__ == "__main__":
     parser.add_argument("--set", metavar="KEY=VALUE", nargs="+", help="Key-value pairs of parameters to override")
     args = parser.parse_args()
 
-    pipeline = Pipeline(args.config, args.verbose, args.set)
-    pipeline.run()
+    system = System(args.config, args.verbose, args.set)
+    system.run()

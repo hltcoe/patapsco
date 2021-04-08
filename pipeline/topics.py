@@ -3,6 +3,7 @@ import json
 import pathlib
 
 from .config import BaseConfig, Union
+from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
 from .util.file import GlobFileGenerator
@@ -12,6 +13,7 @@ Query = collections.namedtuple('Query', ('id', 'lang', 'text'))
 
 
 class InputConfig(BaseConfig):
+    """Configuration for Topic input"""
     name: str
     lang: str
     encoding: str = "utf8"
@@ -20,6 +22,7 @@ class InputConfig(BaseConfig):
 
 
 class ProcessorConfig(BaseConfig):
+    """Configuration of the topic processor"""
     name: str = "default"
     query: str = "title"  # field1+field2 where field is title, desc, narr
     utf8_normalize: bool = True
@@ -43,6 +46,8 @@ class TopicProcessorFactory(ComponentFactory):
 
 
 class TrecTopicReader:
+    """Iterator over topics from trec sgml"""
+
     def __init__(self, config):
         self.lang = config.lang
         self.strip_non_digits = config.strip_non_digits
@@ -57,21 +62,37 @@ class TrecTopicReader:
         return Topic(identifier, self.lang, topic[1], topic[2], topic[3])
 
 
-class QueryWriter:
+class QueryWriter(Task):
+    """Write queries to a file"""
+
     def __init__(self, path):
+        """
+        Args:
+            path (str): Path of query file to write.
+        """
+        super().__init__()
         dir = pathlib.Path(path)
         dir.mkdir(parents=True)
         path = dir / 'queries.json'
         self.file = open(path, 'w')
 
-    def write(self, query):
-        self.file.write(json.dumps(query._asdict()) + "\n")
+    def process(self, query):
+        """
+        Args:
+            query (Query)
 
-    def close(self):
+        Returns
+            Query
+        """
+
+        self.file.write(json.dumps(query._asdict()) + "\n")
+        return query
+
+    def end(self):
         self.file.close()
 
 
-class TopicProcessor(TextProcessor):
+class TopicProcessor(Task, TextProcessor):
     """Topic Preprocessing"""
 
     def __init__(self, config):
@@ -79,10 +100,11 @@ class TopicProcessor(TextProcessor):
         Args:
             config (ProcessorConfig)
         """
-        super().__init__(config)
+        Task.__init__(self)
+        TextProcessor.__init__(self, config)
         self.fields = config.query.split('+')
 
-    def run(self, topic):
+    def process(self, topic):
         """
         Args:
             topic (Topic)

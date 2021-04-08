@@ -7,6 +7,7 @@ import sqlitedict
 
 from .config import BaseConfig, Union
 from .error import ParseError
+from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
 from .util.file import GlobFileGenerator
@@ -15,6 +16,7 @@ Doc = collections.namedtuple('Doc', ('id', 'lang', 'text'))
 
 
 class InputConfig(BaseConfig):
+    """Configuration for the document corpus"""
     name: str
     lang: str
     encoding: str = "utf8"
@@ -22,6 +24,7 @@ class InputConfig(BaseConfig):
 
 
 class ProcessorConfig(BaseConfig):
+    """Configuration for the document processor"""
     name: str = "default"
     utf8_normalize: bool = True
     lowercase: bool = True
@@ -45,6 +48,8 @@ class DocumentProcessorFactory(ComponentFactory):
 
 
 class TrecDocumentReader:
+    """Iterator that reads TREC sgml documents"""
+
     def __init__(self, config):
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, trec.parse_documents, config.encoding)
@@ -57,24 +62,12 @@ class TrecDocumentReader:
         return Doc(doc[0], self.lang, doc[1])
 
 
-def parse_json_documents(path, encoding='utf8'):
-    open_func = gzip.open if path.endswith('.gz') else open
-    with open_func(path, 'rt', encoding=encoding) as fp:
-        for line in fp:
-            try:
-                data = json.loads(line.strip())
-            except json.decoder.JSONDecodeError as e:
-                raise ParseError(f"Problem parsing json from {path}: {e}")
-            try:
-                yield data['id'], ' '.join([data['title'].strip(), data['text'].strip()])
-            except KeyError as e:
-                raise ParseError(f"Missing field {e} in json docs element: {data}")
-
-
 class JsonDocumentReader:
+    """Read JSONL documents to start a pipeline"""
+
     def __init__(self, config):
         self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, parse_json_documents, config.encoding)
+        self.docs = GlobFileGenerator(config.path, self.parse, config.encoding)
 
     def __iter__(self):
         return self
@@ -83,16 +76,45 @@ class JsonDocumentReader:
         doc = next(self.docs)
         return Doc(doc[0], self.lang, doc[1])
 
+    @staticmethod
+    def parse(path, encoding='utf8'):
+        open_func = gzip.open if path.endswith('.gz') else open
+        with open_func(path, 'rt', encoding=encoding) as fp:
+            for line in fp:
+                try:
+                    data = json.loads(line.strip())
+                except json.decoder.JSONDecodeError as e:
+                    raise ParseError(f"Problem parsing json from {path}: {e}")
+                try:
+                    yield data['id'], ' '.join([data['title'].strip(), data['text'].strip()])
+                except KeyError as e:
+                    raise ParseError(f"Missing field {e} in json docs element: {data}")
 
-class DocWriter:
+
+class DocWriter(Task):
+    """Write documents to files
+
+    This is not very efficient and should be rewritten if we want to use in production.
+    This will create one file per document in a single directory.
+    """
+
     def __init__(self, path):
+        super().__init__()
         self.dir = pathlib.Path(path)
         self.dir.mkdir(parents=True)
 
-    def write(self, doc):
+    def process(self, doc):
+        """
+        Args:
+            doc (Doc)
+
+        Returns:
+            Doc
+        """
         path = self.dir / doc.id
         with open(path, 'w') as fp:
             fp.write(doc.text)
+        return doc
 
 
 class DocumentStore(sqlitedict.SqliteDict):
@@ -113,7 +135,7 @@ class DocumentStore(sqlitedict.SqliteDict):
         super().__init__(path, *args, **kwargs)
 
 
-class DocumentProcessor(TextProcessor):
+class DocumentProcessor(Task, TextProcessor):
     """Document Preprocessing"""
 
     def __init__(self, config, store):
@@ -122,10 +144,11 @@ class DocumentProcessor(TextProcessor):
             config (ProcessorConfig)
             store (DocumentStore): Document storage for later retrieval
         """
-        super().__init__(config)
+        Task.__init__(self)
+        TextProcessor.__init__(self, config)
         self.store = store
 
-    def run(self, doc):
+    def process(self, doc):
         """
         Args:
             doc (Doc)
