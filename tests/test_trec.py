@@ -59,3 +59,19 @@ def test_parse_qrels():
     assert qrels['142']['doc3'] == 0
     with pytest.raises(StopIteration):
         next(qrels_iter)
+
+
+def test_parse_qrels_tsv():
+    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    path = directory / 'qrels_2020.tsv'
+    qrels_iter = parse_qrels(str(path))
+    qrels = next(qrels_iter)
+    assert len(qrels['141']) == 3
+    assert qrels['141']['doc1'] == 0
+    assert qrels['141']['doc2'] == 1
+    assert qrels['141']['doc3'] == 0
+    assert qrels['142']['doc1'] == 1
+    assert qrels['142']['doc2'] == 0
+    assert qrels['142']['doc3'] == 0
+    with pytest.raises(StopIteration):
+        next(qrels_iter)

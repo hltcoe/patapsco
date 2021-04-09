@@ -1,4 +1,5 @@
 import collections
+import csv
 import json
 import pathlib
 
@@ -33,7 +34,8 @@ class ProcessorConfig(BaseConfig):
 
 class TopicReaderFactory(ComponentFactory):
     classes = {
-        'trec': 'TrecTopicReader'
+        'trec': 'TrecTopicReader',
+        'msmarco': 'TsvTopicReader'
     }
     config_class = InputConfig
 
@@ -60,6 +62,28 @@ class TrecTopicReader:
         topic = next(self.topics)
         identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
         return Topic(identifier, self.lang, topic[1], topic[2], topic[3])
+
+
+class TsvTopicReader:
+    """Iterator over topics from tsv file """
+
+    def __init__(self, config):
+        self.lang = config.lang
+        self.topics = GlobFileGenerator(config.path, self.parse, config.encoding)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        topic = next(self.topics)
+        return Topic(topic[0], self.lang, topic[1], topic[2], topic[3])
+
+    @staticmethod
+    def parse(path, encoding='utf8'):
+        with open(path, 'r', encoding=encoding) as fp:
+            reader = csv.reader(fp, delimiter='\t')
+            for line in reader:
+                yield line[0], line[1].strip(), None, None
 
 
 class QueryWriter(Task):

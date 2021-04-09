@@ -1,4 +1,5 @@
 import collections
+import csv
 import gzip
 import json
 import pathlib
@@ -35,7 +36,8 @@ class ProcessorConfig(BaseConfig):
 class DocumentReaderFactory(ComponentFactory):
     classes = {
         'trec': 'TrecDocumentReader',
-        'json': 'JsonDocumentReader'
+        'json': 'JsonDocumentReader',
+        'msmarco': 'TsvDocumentReader'
     }
     config_class = InputConfig
 
@@ -89,6 +91,29 @@ class JsonDocumentReader:
                     yield data['id'], ' '.join([data['title'].strip(), data['text'].strip()])
                 except KeyError as e:
                     raise ParseError(f"Missing field {e} in json docs element: {data}")
+
+
+class TsvDocumentReader:
+    """Iterator that reads TSV documents like from MSMARCO"""
+
+    def __init__(self, config):
+        self.lang = config.lang
+        self.docs = GlobFileGenerator(config.path, self.parse, config.encoding)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        doc = next(self.docs)
+        return Doc(doc[0], self.lang, doc[1])
+
+    @staticmethod
+    def parse(path, encoding='utf8'):
+        open_func = gzip.open if path.endswith('.gz') else open
+        with open_func(path, 'rt', encoding=encoding) as fp:
+            reader = csv.reader(fp, delimiter='\t')
+            for line in reader:
+                yield line[0], line[1].strip()
 
 
 class DocWriter(Task):

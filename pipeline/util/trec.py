@@ -47,7 +47,12 @@ def parse_topics(path, xml_prefix=None, encoding='utf8'):
 
 def parse_qrels(path):
     with open(path, 'r') as fp:
-        reader = csv.reader(fp, delimiter=' ')
+        delimiter = ' '
+        first_line = fp.readline()
+        if '\t' in first_line:
+            delimiter = '\t'
+        fp.seek(0)
+        reader = csv.reader(fp, delimiter=delimiter)
         qrels = collections.defaultdict(dict)
         for row in reader:
             qrels[row[0]][row[2]] = int(row[3])

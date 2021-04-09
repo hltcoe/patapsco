@@ -24,7 +24,8 @@ class ScorerConfig(BaseConfig):
 
 class QrelsReaderFactory(ComponentFactory):
     classes = {
-        'trec': 'TrecQrelsReader'
+        'trec': 'TrecQrelsReader',
+        'msmarco': 'TrecQrelsReader',
     }
     config_class = InputConfig
 
