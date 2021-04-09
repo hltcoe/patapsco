@@ -49,10 +49,6 @@ def parse_sgml_topics(path, xml_prefix=None, encoding='utf8'):
 
 def parse_xml_topics(path, encoding='utf8'):
     """Parse from XML"""
-    title_tag = 'title'
-    desc_tag = 'desc'
-    narr_tag = 'narr'
-
     with open(path, 'r', encoding=encoding) as fp:
         text = fp.read()
     root = ElementTree.fromstring(text)
