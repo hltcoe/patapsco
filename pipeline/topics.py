@@ -4,6 +4,7 @@ import json
 import pathlib
 
 from .config import BaseConfig, Union
+from .error import ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
@@ -35,6 +36,7 @@ class ProcessorConfig(BaseConfig):
 class TopicReaderFactory(ComponentFactory):
     classes = {
         'trec': 'TrecTopicReader',
+        'json': 'JsonTopicReader',
         'msmarco': 'TsvTopicReader'
     }
     config_class = InputConfig
@@ -64,6 +66,36 @@ class TrecTopicReader:
         return Topic(identifier, self.lang, topic[1], topic[2], topic[3])
 
 
+class JsonTopicReader:
+    """Iterator over topics from jsonl file """
+
+    def __init__(self, config):
+        self.lang = config.lang
+        self.topics = GlobFileGenerator(config.path, self.parse, config.encoding)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        topic = next(self.topics)
+        return Topic(topic[0], self.lang, topic[1], topic[2], None)
+
+    @staticmethod
+    def parse(path, encoding='utf8'):
+        with open(path, 'r', encoding=encoding) as fp:
+            for line in fp:
+                try:
+                    data = json.loads(line.strip())
+                except json.decoder.JSONDecodeError as e:
+                    raise ParseError(f"Problem parsing json from {path}: {e}")
+                try:
+                    title = data['topic_name'].strip()
+                    desc = data['topic_description'].strip()
+                    yield data['topic_id'], title, desc
+                except KeyError as e:
+                    raise ParseError(f"Missing field {e} in json docs element: {data}")
+
+
 class TsvTopicReader:
     """Iterator over topics from tsv file """
 
@@ -76,14 +108,14 @@ class TsvTopicReader:
 
     def __next__(self):
         topic = next(self.topics)
-        return Topic(topic[0], self.lang, topic[1], topic[2], topic[3])
+        return Topic(topic[0], self.lang, topic[1], None, None)
 
     @staticmethod
     def parse(path, encoding='utf8'):
         with open(path, 'r', encoding=encoding) as fp:
             reader = csv.reader(fp, delimiter='\t')
             for line in reader:
-                yield line[0], line[1].strip(), None, None
+                yield line[0], line[1].strip()
 
 
 class QueryWriter(Task):
