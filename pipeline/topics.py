@@ -34,7 +34,8 @@ class ProcessorConfig(BaseConfig):
 
 class TopicReaderFactory(ComponentFactory):
     classes = {
-        'trec': 'TrecTopicReader'
+        'trec': 'TrecTopicReader',
+        'msmarco': 'TsvTopicReader'
     }
     config_class = InputConfig
 
