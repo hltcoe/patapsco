@@ -55,7 +55,7 @@ class TrecTopicReader:
     def __init__(self, config):
         self.lang = config.lang
         self.strip_non_digits = config.strip_non_digits
-        self.topics = GlobFileGenerator(config.path, trec.parse_topics, 'EN-', config.encoding)
+        self.topics = GlobFileGenerator(config.path, trec.parse_sgml_topics, 'EN-', config.encoding)
 
     def __iter__(self):
         return self

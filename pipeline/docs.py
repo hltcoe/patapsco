@@ -54,7 +54,7 @@ class TrecDocumentReader:
 
     def __init__(self, config):
         self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, trec.parse_documents, config.encoding)
+        self.docs = GlobFileGenerator(config.path, trec.parse_sgml_documents, config.encoding)
 
     def __iter__(self):
         return self

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<topics>
+<topic lang="en">
+<identifier>1-ZZ</identifier>
+<title>Test 1</title>
+<description>This is a test.</description>
+<narrative>Narrative of first test</narrative>
+</topic>
+<topic lang="en">
+<identifier>2-ZZ</identifier>
+<title>Test 2</title>
+<description>This is another test.</description>
+<narrative>Narrative of second test</narrative>
+</topic>
+</topics>
