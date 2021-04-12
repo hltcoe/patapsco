@@ -27,6 +27,21 @@ def test_parse_sgml_documents_with_bad_encoding():
         next(doc_iter)
 
 
+def test_parse_hamshahri_documents():
+    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    path = directory / 'hamshahri_docs.txt'
+    doc_iter = parse_hamshahri_documents(str(path.absolute()), encoding='utf8')
+    doc = next(doc_iter)
+    assert doc[0] == '1'
+    assert doc[1].startswith('This is a test.')
+    assert doc[1].endswith('End of first test.')
+    doc = next(doc_iter)
+    assert doc[0] == '2'
+    assert doc[1] == 'This is a second test.'
+    with pytest.raises(StopIteration):
+        next(doc_iter)
+
+
 def test_parse_sgml_topics():
     directory = pathlib.Path('.') / 'tests' / 'trec_files'
     path = directory / 'topics.txt'

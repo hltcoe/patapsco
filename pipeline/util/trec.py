@@ -27,6 +27,26 @@ def parse_sgml_documents(path, encoding='utf8'):
             yield doc_id, ' '.join(text_parts)
 
 
+def parse_hamshahri_documents(path, encoding='utf8'):
+    with open(path, 'r', encoding=encoding) as fp:
+        doc_id = None
+        while True:
+            line = fp.readline()
+            if line == '':
+                break
+            line = line.strip()
+            if '.DID' in line:
+                if doc_id:
+                    yield doc_id, ' '.join(text).strip()
+                text = []
+                doc_id = line.split('\t')[1]
+                fp.readline()  # skip date
+                fp.readline()  # skip category
+            else:
+                text.append(line)
+        yield doc_id, ' '.join(text)
+
+
 def parse_sgml_topics(path, xml_prefix=None, encoding='utf8'):
     """Parse from SGML"""
     if xml_prefix is None:
