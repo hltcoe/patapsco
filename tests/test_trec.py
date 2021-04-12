@@ -5,10 +5,10 @@ import pytest
 from pipeline.util.trec import *
 
 
-def test_parse_documents():
+def test_parse_sgml_documents():
     directory = pathlib.Path('.') / 'tests' / 'trec_files'
     path = directory / 'docs1.sgml'
-    doc_iter = parse_documents(str(path.absolute()))
+    doc_iter = parse_sgml_documents(str(path.absolute()))
     doc = next(doc_iter)
     assert doc[0] == 'ABCDEF'
     assert doc[1].startswith('Aliens learn to code 20200601 Aliens learn to code using the Java')
@@ -19,18 +19,33 @@ def test_parse_documents():
         next(doc_iter)
 
 
-def test_parse_documents_with_bad_encoding():
+def test_parse_sgml_documents_with_bad_encoding():
     directory = pathlib.Path('.') / 'tests' / 'trec_files'
     path = directory / 'not_utf8.txt'
-    doc_iter = parse_documents(str(path.absolute()), encoding='utf8')
+    doc_iter = parse_sgml_documents(str(path.absolute()), encoding='utf8')
     with pytest.raises(ParseError):
         next(doc_iter)
 
 
-def test_parse_topics():
+def test_parse_hamshahri_documents():
+    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    path = directory / 'hamshahri_docs.txt'
+    doc_iter = parse_hamshahri_documents(str(path.absolute()), encoding='utf8')
+    doc = next(doc_iter)
+    assert doc[0] == '1'
+    assert doc[1].startswith('This is a test.')
+    assert doc[1].endswith('End of first test.')
+    doc = next(doc_iter)
+    assert doc[0] == '2'
+    assert doc[1] == 'This is a second test.'
+    with pytest.raises(StopIteration):
+        next(doc_iter)
+
+
+def test_parse_sgml_topics():
     directory = pathlib.Path('.') / 'tests' / 'trec_files'
     path = directory / 'topics.txt'
-    topic_iter = parse_topics(str(path))
+    topic_iter = parse_sgml_topics(str(path))
     topic = next(topic_iter)
     assert topic[0] == 'C141'
     assert topic[1] == 'Mating habits of robins'
@@ -41,6 +56,26 @@ def test_parse_topics():
     assert topic[1] == 'Planting peas in the garden'
     assert topic[2].startswith('Find reports on the best conditions')
     assert topic[3].endswith('than many vegetables.')
+    with pytest.raises(StopIteration):
+        next(topic_iter)
+
+
+def test_parse_xml_topics():
+    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    path = directory / 'topics.xml'
+    topic_iter = parse_xml_topics(str(path))
+    topic = next(topic_iter)
+    assert topic[0] == '1-ZZ'
+    assert topic[1] == 'en'
+    assert topic[2] == 'Test 1'
+    assert topic[3] == 'This is a test.'
+    assert topic[4] == 'Narrative of first test'
+    topic = next(topic_iter)
+    assert topic[0] == '2-ZZ'
+    assert topic[1] == 'en'
+    assert topic[2] == 'Test 2'
+    assert topic[3] == 'This is another test.'
+    assert topic[4] == 'Narrative of second test'
     with pytest.raises(StopIteration):
         next(topic_iter)
 

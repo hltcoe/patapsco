@@ -35,7 +35,8 @@ class ProcessorConfig(BaseConfig):
 
 class TopicReaderFactory(ComponentFactory):
     classes = {
-        'trec': 'TrecTopicReader',
+        'sgml': 'SgmlTopicReader',
+        'xml': 'XmlTopicReader',
         'json': 'JsonTopicReader',
         'msmarco': 'TsvTopicReader'
     }
@@ -49,13 +50,13 @@ class TopicProcessorFactory(ComponentFactory):
     config_class = ProcessorConfig
 
 
-class TrecTopicReader:
+class SgmlTopicReader:
     """Iterator over topics from trec sgml"""
 
     def __init__(self, config):
         self.lang = config.lang
         self.strip_non_digits = config.strip_non_digits
-        self.topics = GlobFileGenerator(config.path, trec.parse_topics, 'EN-', config.encoding)
+        self.topics = GlobFileGenerator(config.path, trec.parse_sgml_topics, 'EN-', config.encoding)
 
     def __iter__(self):
         return self
@@ -64,6 +65,23 @@ class TrecTopicReader:
         topic = next(self.topics)
         identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
         return Topic(identifier, self.lang, topic[1], topic[2], topic[3])
+
+
+class XmlTopicReader:
+    """Iterator over topics from trec xml"""
+
+    def __init__(self, config):
+        self.lang = config.lang
+        self.strip_non_digits = config.strip_non_digits
+        self.topics = GlobFileGenerator(config.path, trec.parse_xml_topics, config.encoding)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        topic = next(self.topics)
+        identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
+        return Topic(identifier, topic[1], topic[2], topic[3], topic[4])
 
 
 class JsonTopicReader:

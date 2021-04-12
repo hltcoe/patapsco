@@ -35,9 +35,10 @@ class ProcessorConfig(BaseConfig):
 
 class DocumentReaderFactory(ComponentFactory):
     classes = {
-        'trec': 'TrecDocumentReader',
+        'sgml': 'SgmlDocumentReader',
         'json': 'JsonDocumentReader',
-        'msmarco': 'TsvDocumentReader'
+        'msmarco': 'TsvDocumentReader',
+        'clef0809': 'HamshahriDocumentReader'
     }
     config_class = InputConfig
 
@@ -49,12 +50,12 @@ class DocumentProcessorFactory(ComponentFactory):
     config_class = ProcessorConfig
 
 
-class TrecDocumentReader:
+class SgmlDocumentReader:
     """Iterator that reads TREC sgml documents"""
 
     def __init__(self, config):
         self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, trec.parse_documents, config.encoding)
+        self.docs = GlobFileGenerator(config.path, trec.parse_sgml_documents, config.encoding)
 
     def __iter__(self):
         return self
@@ -114,6 +115,21 @@ class TsvDocumentReader:
             reader = csv.reader(fp, delimiter='\t')
             for line in reader:
                 yield line[0], line[1].strip()
+
+
+class HamshahriDocumentReader:
+    """Iterator that reads CLEF Farsi documents"""
+
+    def __init__(self, config):
+        self.lang = config.lang
+        self.docs = GlobFileGenerator(config.path, trec.parse_hamshahri_documents, config.encoding)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        doc = next(self.docs)
+        return Doc(doc[0], self.lang, doc[1])
 
 
 class DocWriter(Task):

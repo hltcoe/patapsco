@@ -8,7 +8,8 @@ import bs4
 from ..error import ParseError
 
 
-def parse_documents(path, encoding='utf8'):
+def parse_sgml_documents(path, encoding='utf8'):
+    """Parse from SGML"""
     doc_text_tags = ["headline", "title", "hl", "head", "ttl", "dd", "date", "lp", "leadpara", "text"]
     open_func = gzip.open if path.endswith('.gz') else open
     with open_func(path, 'rt', encoding=encoding) as fp:
@@ -26,7 +27,29 @@ def parse_documents(path, encoding='utf8'):
             yield doc_id, ' '.join(text_parts)
 
 
-def parse_topics(path, xml_prefix=None, encoding='utf8'):
+def parse_hamshahri_documents(path, encoding='utf8'):
+    with open(path, 'r', encoding=encoding) as fp:
+        doc_id = None
+        text = []
+        while True:
+            line = fp.readline()
+            if line == '':
+                break
+            line = line.strip()
+            if '.DID' in line:
+                if doc_id:
+                    yield doc_id, ' '.join(text).strip()
+                text = []
+                doc_id = line.split('\t')[1]
+                fp.readline()  # skip date
+                fp.readline()  # skip category
+            else:
+                text.append(line)
+        yield doc_id, ' '.join(text)
+
+
+def parse_sgml_topics(path, xml_prefix=None, encoding='utf8'):
+    """Parse from SGML"""
     if xml_prefix is None:
         xml_prefix = ''
     title_tag = xml_prefix + 'title'
@@ -43,6 +66,20 @@ def parse_topics(path, xml_prefix=None, encoding='utf8'):
         desc = topic.find(desc_tag).text.strip()
         narr = topic.find(narr_tag).text.strip()
         yield num, title, desc, narr
+
+
+def parse_xml_topics(path, encoding='utf8'):
+    """Parse from XML"""
+    with open(path, 'r', encoding=encoding) as fp:
+        text = fp.read()
+    root = ElementTree.fromstring(text)
+    for topic in root:
+        lang = topic.attrib['lang']
+        identifier = topic.find('identifier').text.strip()
+        title = topic.find('title').text.strip()
+        desc = topic.find('description').text.strip()
+        narr = topic.find('narrative').text.strip()
+        yield identifier, lang, title, desc, narr
 
 
 def parse_qrels(path):
