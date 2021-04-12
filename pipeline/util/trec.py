@@ -30,6 +30,7 @@ def parse_sgml_documents(path, encoding='utf8'):
 def parse_hamshahri_documents(path, encoding='utf8'):
     with open(path, 'r', encoding=encoding) as fp:
         doc_id = None
+        text = []
         while True:
             line = fp.readline()
             if line == '':
