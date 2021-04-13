@@ -8,7 +8,7 @@ documents:
     path: sample/en_mini_dataset.jsonl
   save: processed_docs
   process:
-    utf8_normalize: true
+    char_normalize: true
     lowercase: true
     tokenize:
       name: whitespace

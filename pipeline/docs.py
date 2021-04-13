@@ -27,7 +27,7 @@ class InputConfig(BaseConfig):
 class ProcessorConfig(BaseConfig):
     """Configuration for the document processor"""
     name: str = "default"
-    utf8_normalize: bool = True
+    char_normalize: bool = True
     lowercase: bool = True
     tokenize: TokenizeConfig
     stem: Union[StemConfig, TruncStemConfig]
@@ -208,7 +208,7 @@ class DocumentProcessor(Task, TextProcessor):
             Doc
         """
         text = doc.text
-        if self.config.utf8_normalize:
+        if self.config.char_normalize:
             text = self.normalize(text)
         if self.config.lowercase:
             text = self.lowercase_text(text)

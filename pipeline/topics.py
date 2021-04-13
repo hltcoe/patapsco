@@ -29,7 +29,7 @@ class ProcessorConfig(BaseConfig):
     """Configuration of the topic processor"""
     name: str = "default"
     query: str = "title"  # field1+field2 where field is title, desc, narr
-    utf8_normalize: bool = True
+    char_normalize: bool = True
     lowercase: bool = True
     tokenize: TokenizeConfig
     stem: Union[StemConfig, TruncStemConfig]
@@ -196,7 +196,7 @@ class TopicProcessor(Task, TextProcessor):
             Query
         """
         text = self._select_text(topic)
-        if self.config.utf8_normalize:
+        if self.config.char_normalize:
             text = self.normalize(text)
         if self.config.lowercase:
             text = self.lowercase_text(text)

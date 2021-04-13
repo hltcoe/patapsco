@@ -36,8 +36,8 @@ class System:
         self.prepare_config(conf_dict)
         conf = RunConfig(**conf_dict)
 
-        #if 'overwrite' in conf and conf['overwrite'] and pathlib.Path(conf['path']).exists():
-        #    LOGGER.debug("Deleting %s", conf['path'])
+        # if 'overwrite' in conf and conf['overwrite'] and pathlib.Path(conf['path']).exists():
+        #     LOGGER.debug("Deleting %s", conf['path'])
         delete_dir(conf.path)
 
         self.doc_store = DocumentStore(conf.document_store.path)
