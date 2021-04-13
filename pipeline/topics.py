@@ -38,7 +38,7 @@ class ProcessorConfig(BaseConfig):
 class TopicsConfig(BaseConfig):
     input: InputConfig
     process: ProcessorConfig
-    save: str
+    save: Union[bool, str]
 
 
 class TopicReaderFactory(ComponentFactory):

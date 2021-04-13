@@ -5,7 +5,7 @@ import pathlib
 import random
 from typing import List
 
-from .config import BaseConfig
+from .config import BaseConfig, Union
 from .pipeline import Task
 from .topics import Query
 from .util import ComponentFactory
@@ -32,7 +32,7 @@ class RetrieveConfig(BaseConfig):
     """Configuration for retrieval"""
     name: str
     number: int = 1000
-    save: str
+    save: Union[bool, str]
     input: RetrieveInputConfig
 
 

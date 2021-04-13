@@ -45,7 +45,8 @@ class System:
         self.stage1 = self.build_phase1_pipeline(conf, doc_store)
 
         self.topic_reader = TopicReaderFactory.create(conf.topics.input)
-        self.stage2 = self.build_phase2_pipeline(conf, doc_store)
+        self.rerank_writer = ResultsWriter(conf.rerank.save)
+        self.stage2 = self.build_phase2_pipeline(conf, doc_store, self.rerank_writer)
 
     def run(self):
         LOGGER.info("Stage 1 pipeline: %s", self.stage1)
@@ -61,25 +62,24 @@ class System:
         LOGGER.info("System output available at %s", self.rerank_writer.path)
 
     def build_phase1_pipeline(self, conf, doc_store):
-        doc_processor = DocumentProcessorFactory.create(conf.documents.process, doc_store)
-        doc_writer = DocWriter(conf.documents.save)
-        indexer = IndexerFactory.create(conf.index)
-        return Pipeline(doc_processor | doc_writer | indexer)
+        tasks = [DocumentProcessorFactory.create(conf.documents.process, doc_store)]
+        if conf.documents.save is not False:
+            tasks.append(DocWriter(conf.documents.save))
+        tasks.append(IndexerFactory.create(conf.index))
+        return Pipeline(tasks)
 
-    def build_phase2_pipeline(self, conf, doc_store):
-        topic_processor = TopicProcessorFactory.create(conf.topics.process)
-        query_writer = QueryWriter(conf.topics.save)
-
-        retriever = RetrieverFactory.create(conf.retrieve)
-        retrieve_writer = ResultsWriter(conf.retrieve.save)
-
-        reranker = RerankFactory.create(conf.rerank, doc_store)
-        self.rerank_writer = ResultsWriter(conf.rerank.save)
-
+    def build_phase2_pipeline(self, conf, doc_store, writer):
+        tasks = [TopicProcessorFactory.create(conf.topics.process)]
+        if conf.topics.save is not False:
+            tasks.append(QueryWriter(conf.topics.save))
+        tasks.append(RetrieverFactory.create(conf.retrieve))
+        if conf.retrieve.save is not False:
+            tasks.append(ResultsWriter(conf.retrieve.save))
+        tasks.append(RerankFactory.create(conf.rerank, doc_store))
+        tasks.append(writer)
         qrels = QrelsReaderFactory.create(conf.score.input).read()
-        scorer = Scorer(conf.score, qrels)
-        return Pipeline(topic_processor | query_writer | retriever | retrieve_writer | reranker |
-                        self.rerank_writer | scorer)
+        tasks.append(Scorer(conf.score, qrels))
+        return Pipeline(tasks)
 
     @staticmethod
     def setup_logging(verbose):
@@ -98,7 +98,7 @@ class System:
         # set path for components to be under the base directory of run
         for c in conf.values():
             if isinstance(c, dict):
-                if 'save' in c:
+                if 'save' in c and not isinstance(c['save'], bool):
                     c['save'] = str(base / c['save'])
         conf['document_store']['path'] = str(base / conf['document_store']['path'])
         # if input to retrieve is not set, we grab it from index

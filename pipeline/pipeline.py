@@ -48,19 +48,10 @@ class Task(abc.ABC):
         if self.downstream:
             self.downstream._end()
 
-    def __or__(self, other):
-        # a chain of tasks gets handled from left to right.
-        # we traverse rightward until we hit the first task that hasn't been connected.
-        left = self
-        while left.downstream:
-            left = left.downstream
-        left.downstream = other
-        return self
-
 
 class Pipeline:
-    def __init__(self, task):
-        self.task = task
+    def __init__(self, tasks):
+        self.task = self._connect(tasks)
         self.count = 0
 
     def run(self, iterable):
@@ -76,6 +67,14 @@ class Pipeline:
 
     def end(self):
         self.task._end()
+
+    def _connect(self, tasks):
+        head_task = prev_task = tasks.pop(0)
+        while tasks:
+            cur_task = tasks.pop(0)
+            prev_task.downstream = cur_task
+            prev_task = cur_task
+        return head_task
 
     def __str__(self):
         task_names = []
