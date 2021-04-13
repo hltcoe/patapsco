@@ -1,5 +1,5 @@
-import collections
 import dataclasses
+import json
 import logging
 import pathlib
 import random
@@ -9,10 +9,17 @@ from .config import BaseConfig, Union
 from .pipeline import Task
 from .topics import Query
 from .util import ComponentFactory
+from .util.file import touch_complete, DataclassJSONEncoder
 
 LOGGER = logging.getLogger(__name__)
 
-Result = collections.namedtuple('Result', ('doc_id', 'rank', 'score'))
+
+@dataclasses.dataclass
+class Result:
+    """Single result for a query"""
+    doc_id: str
+    rank: int
+    score: Union[int, float]
 
 
 @dataclasses.dataclass
@@ -43,8 +50,8 @@ class RetrieverFactory(ComponentFactory):
     config_class = RetrieveConfig
 
 
-class ResultsWriter(Task):
-    """Write results to a file"""
+class TrecResultsWriter(Task):
+    """Write results to a file in TREC format"""
 
     def __init__(self, path):
         """
@@ -52,9 +59,9 @@ class ResultsWriter(Task):
             path (str): Path of file to write to.
         """
         super().__init__()
-        directory = pathlib.Path(path)
-        directory.mkdir(parents=True)
-        self.path = directory / 'results.txt'
+        self.dir = pathlib.Path(path)
+        self.dir.mkdir(parents=True)
+        self.path = self.dir / 'results.txt'
         self.file = open(self.path, 'w')
 
     def process(self, results):
@@ -68,6 +75,54 @@ class ResultsWriter(Task):
 
     def end(self):
         self.file.close()
+        touch_complete(self.dir)
+
+
+class JsonResultsWriter(Task):
+    """Write results to a json file"""
+
+    def __init__(self, path):
+        """
+        Args:
+            path (str): Path of file to write to.
+        """
+        super().__init__()
+        self.dir = pathlib.Path(path)
+        self.dir.mkdir(parents=True)
+        self.path = self.dir / 'results.jsonl'
+        self.file = open(self.path, 'w')
+
+    def process(self, results):
+        """
+        Args:
+            results (Results): Results for a query
+        """
+        self.file.write(json.dumps(results, cls=DataclassJSONEncoder) + "\n")
+        return results
+
+    def end(self):
+        self.file.close()
+        touch_complete(self.dir)
+
+
+class JsonResultsReader:
+    """Iterator over results from a jsonl file """
+
+    def __init__(self, path):
+        path = pathlib.Path(path) / 'results.jsonl'
+        self.file = open(path, 'r')
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        line = self.file.readline()
+        if not line:
+            self.file.close()
+            raise StopIteration
+        data = json.loads(line)
+        results = [Result(**result) for result in data['results']]
+        return Results(Query(**data['query']), data['system'], results)
 
 
 class MockRetriever(Task):

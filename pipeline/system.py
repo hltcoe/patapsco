@@ -7,7 +7,7 @@ from .docs import DocumentsConfig, DocumentStoreConfig, DocumentProcessorFactory
 from .index import IndexConfig, IndexerFactory
 from .pipeline import Pipeline
 from .rerank import RerankConfig, RerankFactory
-from .retrieve import ResultsWriter, RetrieveConfig, RetrieverFactory
+from .retrieve import JsonResultsWriter, JsonResultsReader, TrecResultsWriter, RetrieveConfig, RetrieverFactory
 from .score import QrelsReaderFactory, ScoreConfig, Scorer
 from .topics import TopicProcessorFactory, TopicReaderFactory, TopicsConfig, QueryReader, QueryWriter
 from .util.file import delete_dir, is_complete
@@ -76,15 +76,19 @@ class System:
         tasks = [TopicProcessorFactory.create(conf.topics.process)]
         if conf.topics.save is not False:
             if is_complete(conf.topics.save):
-                iterable = QueryReader(conf.topics.save)
                 tasks = []
+                iterable = QueryReader(conf.topics.save)
             else:
                 tasks.append(QueryWriter(conf.topics.save))
         tasks.append(RetrieverFactory.create(conf.retrieve))
         if conf.retrieve.save is not False:
-            tasks.append(ResultsWriter(conf.retrieve.save))
+            if is_complete(conf.retrieve.save):
+                tasks = []
+                iterable = JsonResultsReader(conf.retrieve.save)
+            else:
+                tasks.append(JsonResultsWriter(conf.retrieve.save))
         tasks.append(RerankFactory.create(conf.rerank, doc_store))
-        tasks.append(ResultsWriter(conf.rerank.save))
+        tasks.append(TrecResultsWriter(conf.rerank.save))
         qrels = QrelsReaderFactory.create(conf.score.input).read()
         tasks.append(Scorer(conf.score, qrels))
         return Pipeline(tasks, iterable)

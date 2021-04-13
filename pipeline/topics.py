@@ -1,18 +1,31 @@
 import collections
 import csv
+import dataclasses
 import json
 import pathlib
 
-from .config import BaseConfig, Union
+from .config import BaseConfig, Union, Optional
 from .error import ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
-from .util.file import GlobFileGenerator, touch_complete
+from .util.file import GlobFileGenerator, touch_complete, DataclassJSONEncoder
 
-# If a field does not exist, it is set to None
-Topic = collections.namedtuple('Topic', ('id', 'lang', 'title', 'desc', 'narr'))
-Query = collections.namedtuple('Query', ('id', 'lang', 'text'))
+
+@dataclasses.dataclass
+class Topic:
+    id: str
+    lang: str
+    title: str
+    desc: Optional[str]
+    narr: Optional[str]
+
+
+@dataclasses.dataclass
+class Query:
+    id: str
+    lang: str
+    text: str
 
 
 class InputConfig(BaseConfig):
@@ -168,7 +181,7 @@ class QueryWriter(Task):
             Query
         """
 
-        self.file.write(json.dumps(query._asdict()) + "\n")
+        self.file.write(json.dumps(query, cls=DataclassJSONEncoder) + "\n")
         return query
 
     def end(self):
