@@ -33,6 +33,16 @@ class ProcessorConfig(BaseConfig):
     stem: Union[StemConfig, TruncStemConfig]
 
 
+class DocumentsConfig(BaseConfig):
+    input: InputConfig
+    process: ProcessorConfig
+    save: str
+
+
+class DocumentStoreConfig(BaseConfig):
+    path: str
+
+
 class DocumentReaderFactory(ComponentFactory):
     classes = {
         'sgml': 'SgmlDocumentReader',

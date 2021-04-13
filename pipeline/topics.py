@@ -35,6 +35,12 @@ class ProcessorConfig(BaseConfig):
     stem: Union[StemConfig, TruncStemConfig]
 
 
+class TopicsConfig(BaseConfig):
+    input: InputConfig
+    process: ProcessorConfig
+    save: str
+
+
 class TopicReaderFactory(ComponentFactory):
     classes = {
         'sgml': 'SgmlTopicReader',

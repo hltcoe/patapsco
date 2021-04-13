@@ -1,17 +1,30 @@
 import logging
 import pathlib
 
-from .config import ConfigService
-from .docs import DocumentProcessorFactory, DocumentReaderFactory, DocumentStore, DocWriter
-from .index import IndexerFactory
-from .pipeline import Pipeline, Task
-from .rerank import RerankFactory
-from .retrieve import ResultsWriter, RetrieverFactory
-from .score import QrelsReaderFactory, Scorer
-from .topics import TopicReaderFactory, TopicProcessorFactory, QueryWriter
+from .config import BaseConfig, ConfigService
+from .docs import DocumentsConfig, DocumentStoreConfig, DocumentProcessorFactory, DocumentReaderFactory, \
+    DocumentStore, DocWriter
+from .index import IndexConfig, IndexerFactory
+from .pipeline import Pipeline
+from .rerank import RerankConfig, RerankFactory
+from .retrieve import ResultsWriter, RetrieveConfig, RetrieverFactory
+from .score import QrelsReaderFactory, ScoreConfig, Scorer
+from .topics import TopicProcessorFactory, TopicReaderFactory, TopicsConfig, QueryWriter
 from .util.file import delete_dir
 
 LOGGER = logging.getLogger(__name__)
+
+
+class RunConfig(BaseConfig):
+    """Configuration for a run of the system"""
+    path: str
+    documents: DocumentsConfig
+    document_store: DocumentStoreConfig
+    topics: TopicsConfig
+    index: IndexConfig
+    retrieve: RetrieveConfig
+    rerank: RerankConfig
+    score: ScoreConfig
 
 
 class System:
@@ -19,43 +32,34 @@ class System:
         self.setup_logging(verbose)
 
         config_service = ConfigService(overrides)
-        conf = config_service.read_config(config_filename)
-        self.prepare_config(conf)
+        conf_dict = config_service.read_config(config_filename)
+        self.prepare_config(conf_dict)
+        conf = RunConfig(**conf_dict)
 
-        if 'overwrite' in conf and conf['overwrite'] and pathlib.Path(conf['path']).exists():
-            LOGGER.debug("Deleting %s", conf['path'])
-            delete_dir(conf['path'])
+        #if 'overwrite' in conf and conf['overwrite'] and pathlib.Path(conf['path']).exists():
+        #    LOGGER.debug("Deleting %s", conf['path'])
+        delete_dir(conf.path)
 
-        self.doc_store = DocumentStore(conf['document_store']['path'])
+        self.doc_store = DocumentStore(conf.document_store.path)
+        self.doc_reader = DocumentReaderFactory.create(conf.documents.input)
+        self.doc_processor = DocumentProcessorFactory.create(conf.documents.process, self.doc_store)
+        self.doc_writer = DocWriter(conf.documents.save)
 
-        docs_conf = conf['documents']
-        self.doc_reader = DocumentReaderFactory.create(docs_conf['input'])
-        docs_process_conf = docs_conf['process']
-        self.doc_processor = DocumentProcessorFactory.create(docs_process_conf, self.doc_store)
-        self.doc_writer = DocWriter(docs_conf['save'])
-
-        index_conf = conf['index']
-        self.indexer = IndexerFactory.create(index_conf)
+        self.indexer = IndexerFactory.create(conf.index)
         self.stage1 = Pipeline(self.doc_processor | self.doc_writer | self.indexer)
 
-        topics_conf = conf['topics']
-        self.topic_reader = TopicReaderFactory.create(topics_conf['input'])
-        topics_process_conf = topics_conf['process']
-        self.topic_processor = TopicProcessorFactory.create(topics_process_conf)
-        self.query_writer = QueryWriter(topics_conf['save'])
+        self.topic_reader = TopicReaderFactory.create(conf.topics.input)
+        self.topic_processor = TopicProcessorFactory.create(conf.topics.process)
+        self.query_writer = QueryWriter(conf.topics.save)
 
-        retrieve_conf = conf['retrieve']
-        retrieve_conf['input'] = index_conf['save']
-        self.retriever = RetrieverFactory.create(retrieve_conf)
-        self.retrieve_writer = ResultsWriter(retrieve_conf['save'])
+        self.retriever = RetrieverFactory.create(conf.retrieve)
+        self.retrieve_writer = ResultsWriter(conf.retrieve.save)
 
-        rerank_conf = conf['rerank']
-        self.reranker = RerankFactory.create(rerank_conf, self.doc_store)
-        self.rerank_writer = ResultsWriter(rerank_conf['save'])
+        self.reranker = RerankFactory.create(conf.rerank, self.doc_store)
+        self.rerank_writer = ResultsWriter(conf.rerank.save)
 
-        score_conf = conf['score']
-        self.qrels = QrelsReaderFactory.create(score_conf['input']).read()
-        self.scorer = Scorer(score_conf, self.qrels)
+        self.qrels = QrelsReaderFactory.create(conf.score.input).read()
+        self.scorer = Scorer(conf.score, self.qrels)
         self.stage2 = Pipeline(self.topic_processor | self.query_writer | self.retriever |
                                self.retrieve_writer | self.reranker | self.rerank_writer | self.scorer)
 
@@ -70,13 +74,18 @@ class System:
         console.setFormatter(formatter)
         logger.addHandler(console)
 
-    def prepare_config(self, conf):
+    @staticmethod
+    def prepare_config(conf):
         base = pathlib.Path(conf['path'])
+        # set path for components to be under the base directory of run
         for c in conf.values():
             if isinstance(c, dict):
                 if 'save' in c:
                     c['save'] = str(base / c['save'])
         conf['document_store']['path'] = str(base / conf['document_store']['path'])
+        # if input to retrieve is not set, we grab it from index
+        if 'input' not in conf['retrieve']:
+            conf['retrieve']['input'] = {'path': conf['index']['save']}
 
     def run(self):
         LOGGER.info("Stage 1 pipeline: %s", self.stage1)

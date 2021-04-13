@@ -5,7 +5,7 @@ from .pipeline import Task
 from .util import ComponentFactory
 
 
-class IndexerConfig(BaseConfig):
+class IndexConfig(BaseConfig):
     """Configuration for building an index"""
     name: str
     save: str
@@ -15,7 +15,7 @@ class IndexerFactory(ComponentFactory):
     classes = {
         'anserini': 'MockIndexer',
     }
-    config_class = IndexerConfig
+    config_class = IndexConfig
 
 
 class MockIndexer(Task):

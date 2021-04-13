@@ -16,7 +16,7 @@ class InputConfig(BaseConfig):
     path: str
 
 
-class ScorerConfig(BaseConfig):
+class ScoreConfig(BaseConfig):
     """Configuration for the scorer module"""
     metrics: list = ['map']
     input: InputConfig
@@ -54,11 +54,11 @@ class Scorer(Task):
     def __init__(self, config, qrels):
         """
         Args:
-            config (dict)
+            config (ScoreConfig)
             qrels (dict): qrels dictionary
         """
         super().__init__()
-        self.config = ScorerConfig(**config)
+        self.config = config
         self.qrels = qrels
         self.run = collections.defaultdict(dict)
 

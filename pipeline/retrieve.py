@@ -23,12 +23,17 @@ class Results:
     results: List[Result]
 
 
+class RetrieveInputConfig(BaseConfig):
+    """Configuration of retrieval index location"""
+    path: str
+
+
 class RetrieveConfig(BaseConfig):
     """Configuration for retrieval"""
     name: str
     number: int = 1000
-    input: str
     save: str
+    input: RetrieveInputConfig
 
 
 class RetrieverFactory(ComponentFactory):
@@ -71,7 +76,7 @@ class MockRetriever(Task):
     def __init__(self, config):
         super().__init__()
         self.number = config.number
-        self.path = pathlib.Path(config.input) / 'index.txt'
+        self.path = pathlib.Path(config.input.path) / 'index.txt'
         self.doc_ids = None
 
     def process(self, query):
