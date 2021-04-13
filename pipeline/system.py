@@ -22,7 +22,7 @@ class System:
         conf = config_service.read_config(config_filename)
         self.prepare_config(conf)
 
-        if conf['overwrite'] and pathlib.Path(conf['path']).exists():
+        if 'overwrite' in conf and conf['overwrite'] and pathlib.Path(conf['path']).exists():
             LOGGER.debug("Deleting %s", conf['path'])
             delete_dir(conf['path'])
 

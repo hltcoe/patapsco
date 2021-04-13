@@ -1,0 +1,54 @@
+path: runs/en_mini
+
+documents:
+  input:
+    name: json
+    lang: en
+    encoding: utf8
+    path: sample/en_mini_dataset.jsonl
+  save: processed_docs
+  process:
+    utf8_normalize: true
+    lowercase: true
+    tokenize:
+      name: whitespace
+    stem:
+      name: trunc
+      length: 4
+
+document_store:
+  path: doc_store
+
+topics:
+  input:
+    name: json
+    lang: en
+    encoding: utf8
+    path: sample/en_mini_dataset_topics.jsonl
+  save: queries
+  process:
+    inherit: documents.process
+    query: title
+
+index:
+  name: anserini
+  save: index
+
+retrieve:
+  name: bm25
+  number: 5
+  save: initial_results
+
+rerank:
+  name: pacrr
+  embedding: bert
+  save: pacrr_results
+
+score:
+  input:
+    name: trec
+    path: sample/en_mini_dataset_qrels
+  metrics:
+    - map
+    - p@20
+    - ndcg
