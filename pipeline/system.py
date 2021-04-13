@@ -40,28 +40,46 @@ class System:
         #     LOGGER.debug("Deleting %s", conf['path'])
         delete_dir(conf.path)
 
-        self.doc_store = DocumentStore(conf.document_store.path)
+        doc_store = DocumentStore(conf.document_store.path)
         self.doc_reader = DocumentReaderFactory.create(conf.documents.input)
-        self.doc_processor = DocumentProcessorFactory.create(conf.documents.process, self.doc_store)
-        self.doc_writer = DocWriter(conf.documents.save)
-
-        self.indexer = IndexerFactory.create(conf.index)
-        self.stage1 = Pipeline(self.doc_processor | self.doc_writer | self.indexer)
+        self.stage1 = self.build_phase1_pipeline(conf, doc_store)
 
         self.topic_reader = TopicReaderFactory.create(conf.topics.input)
-        self.topic_processor = TopicProcessorFactory.create(conf.topics.process)
-        self.query_writer = QueryWriter(conf.topics.save)
+        self.stage2 = self.build_phase2_pipeline(conf, doc_store)
 
-        self.retriever = RetrieverFactory.create(conf.retrieve)
-        self.retrieve_writer = ResultsWriter(conf.retrieve.save)
+    def run(self):
+        LOGGER.info("Stage 1 pipeline: %s", self.stage1)
+        LOGGER.info("Stage 2 pipeline: %s", self.stage2)
 
-        self.reranker = RerankFactory.create(conf.rerank, self.doc_store)
+        LOGGER.info("Starting processing of documents")
+        self.stage1.run(self.doc_reader)
+        LOGGER.info("Ingested %s documents", self.stage1.count)
+
+        LOGGER.info("Starting processing of topics")
+        self.stage2.run(self.topic_reader)
+        LOGGER.info("Processed %s topics", self.stage2.count)
+        LOGGER.info("System output available at %s", self.rerank_writer.path)
+
+    def build_phase1_pipeline(self, conf, doc_store):
+        doc_processor = DocumentProcessorFactory.create(conf.documents.process, doc_store)
+        doc_writer = DocWriter(conf.documents.save)
+        indexer = IndexerFactory.create(conf.index)
+        return Pipeline(doc_processor | doc_writer | indexer)
+
+    def build_phase2_pipeline(self, conf, doc_store):
+        topic_processor = TopicProcessorFactory.create(conf.topics.process)
+        query_writer = QueryWriter(conf.topics.save)
+
+        retriever = RetrieverFactory.create(conf.retrieve)
+        retrieve_writer = ResultsWriter(conf.retrieve.save)
+
+        reranker = RerankFactory.create(conf.rerank, doc_store)
         self.rerank_writer = ResultsWriter(conf.rerank.save)
 
-        self.qrels = QrelsReaderFactory.create(conf.score.input).read()
-        self.scorer = Scorer(conf.score, self.qrels)
-        self.stage2 = Pipeline(self.topic_processor | self.query_writer | self.retriever |
-                               self.retrieve_writer | self.reranker | self.rerank_writer | self.scorer)
+        qrels = QrelsReaderFactory.create(conf.score.input).read()
+        scorer = Scorer(conf.score, qrels)
+        return Pipeline(topic_processor | query_writer | retriever | retrieve_writer | reranker |
+                        self.rerank_writer | scorer)
 
     @staticmethod
     def setup_logging(verbose):
@@ -86,16 +104,3 @@ class System:
         # if input to retrieve is not set, we grab it from index
         if 'input' not in conf['retrieve']:
             conf['retrieve']['input'] = {'path': conf['index']['save']}
-
-    def run(self):
-        LOGGER.info("Stage 1 pipeline: %s", self.stage1)
-        LOGGER.info("Stage 2 pipeline: %s", self.stage2)
-
-        LOGGER.info("Starting processing of documents")
-        self.stage1.run(self.doc_reader)
-        LOGGER.info("Ingested %s documents", self.stage1.count)
-
-        LOGGER.info("Starting processing of topics")
-        self.stage2.run(self.topic_reader)
-        LOGGER.info("Processed %s topics", self.stage2.count)
-        LOGGER.info("System output available at %s", self.rerank_writer.path)
