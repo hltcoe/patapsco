@@ -4,6 +4,7 @@ import pathlib
 from .config import BaseConfig, ConfigService
 from .docs import DocumentsConfig, DocumentStoreConfig, DocumentProcessorFactory, DocumentReaderFactory, \
     DocumentStore, DocWriter
+from .error import PipelineError
 from .index import IndexConfig, IndexerFactory
 from .pipeline import Pipeline
 from .rerank import RerankConfig, RerankFactory
@@ -35,10 +36,6 @@ class System:
         conf_dict = config_service.read_config(config_filename)
         self.prepare_config(conf_dict)
         conf = RunConfig(**conf_dict)
-
-        # if 'overwrite' in conf and conf['overwrite'] and pathlib.Path(conf['path']).exists():
-        #     LOGGER.debug("Deleting %s", conf['path'])
-        # delete_dir(conf.path)
 
         readonly = True if is_complete(conf.document_store.path) else False
         doc_store = DocumentStore(conf.document_store.path, readonly)
@@ -74,24 +71,29 @@ class System:
     def build_phase2_pipeline(self, conf, doc_store):
         iterable = TopicReaderFactory.create(conf.topics.input)
         tasks = [TopicProcessorFactory.create(conf.topics.process)]
-        if conf.topics.save is not False:
-            if is_complete(conf.topics.save):
-                tasks = []
-                iterable = QueryReader(conf.topics.save)
-            else:
-                tasks.append(QueryWriter(conf.topics.save))
+        tasks, iterable = self.add_io_task(tasks, iterable, conf.topics.save, QueryReader, QueryWriter)
         tasks.append(RetrieverFactory.create(conf.retrieve))
-        if conf.retrieve.save is not False:
-            if is_complete(conf.retrieve.save):
-                tasks = []
-                iterable = JsonResultsReader(conf.retrieve.save)
-            else:
-                tasks.append(JsonResultsWriter(conf.retrieve.save))
+        tasks, iterable = self.add_io_task(tasks, iterable, conf.retrieve.save, JsonResultsReader, JsonResultsWriter)
         tasks.append(RerankFactory.create(conf.rerank, doc_store))
+        if is_complete(conf.rerank.save):
+            raise PipelineError("Rerank results already complete")
+        elif pathlib.Path(conf.rerank.save).exists():
+            delete_dir(conf.rerank.save)
         tasks.append(TrecResultsWriter(conf.rerank.save))
         qrels = QrelsReaderFactory.create(conf.score.input).read()
         tasks.append(Scorer(conf.score, qrels))
         return Pipeline(tasks, iterable)
+
+    def add_io_task(self, tasks, iterable, path, reader, writer):
+        if path is not False:
+            if is_complete(path):
+                tasks = []
+                iterable = reader(path)
+            else:
+                if pathlib.Path(path).exists():
+                    delete_dir(path)
+                tasks.append(writer(path))
+        return tasks, iterable
 
     @staticmethod
     def setup_logging(verbose):

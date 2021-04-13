@@ -23,6 +23,8 @@ def touch_complete(path):
 
 def is_complete(path):
     """Check if the .complete file exists in directory"""
+    if not pathlib.Path(path).exists:
+        return False
     file = pathlib.Path(path) / ".complete"
     return file.exists()
 
