@@ -11,7 +11,7 @@ from .error import ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
-from .util.file import GlobFileGenerator
+from .util.file import GlobFileGenerator, touch_complete
 
 Doc = collections.namedtuple('Doc', ('id', 'lang', 'text'))
 
@@ -178,12 +178,22 @@ class DocumentStore(sqlitedict.SqliteDict):
         print(store['doc_77'])
     """
 
-    def __init__(self, path, *args, **kwargs):
+    def __init__(self, path, readonly=False, *args, **kwargs):
         kwargs['autocommit'] = True
+        self.readonly = readonly
         self.dir = pathlib.Path(path)
-        self.dir.mkdir(parents=True)
+        if not self.dir.exists():
+            self.dir.mkdir(parents=True)
         path = str(pathlib.Path(path) / "docs.db")
         super().__init__(path, *args, **kwargs)
+
+    def __setitem__(self, key, value):
+        if self.readonly:
+            return
+        super().__setitem__(key, value)
+
+    def end(self):
+        touch_complete(self.dir)
 
 
 class DocumentProcessor(Task, TextProcessor):
@@ -218,3 +228,6 @@ class DocumentProcessor(Task, TextProcessor):
             tokens = self.stem(tokens)
         text = ' '.join(tokens)
         return Doc(doc.id, doc.lang, text)
+
+    def end(self):
+        self.store.end()

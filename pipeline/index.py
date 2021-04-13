@@ -3,6 +3,7 @@ import pathlib
 from .config import BaseConfig
 from .pipeline import Task
 from .util import ComponentFactory
+from .util.file import touch_complete
 
 
 class IndexConfig(BaseConfig):
@@ -30,8 +31,9 @@ class MockIndexer(Task):
             config (IndexerConfig)
         """
         super().__init__()
-        self.path = pathlib.Path(config.save) / 'index.txt'
-        self.path.parent.mkdir(parents=True)
+        self.dir = pathlib.Path(config.save)
+        self.dir.mkdir(parents=True)
+        self.path = self.dir / 'index.txt'
         self.file = open(self.path, 'w')
 
     def process(self, doc):
@@ -47,3 +49,4 @@ class MockIndexer(Task):
 
     def end(self):
         self.file.close()
+        touch_complete(self.dir)

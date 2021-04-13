@@ -13,6 +13,18 @@ def delete_dir(path):
     path.rmdir()
 
 
+def touch_complete(path):
+    """Touch a file called .complete in the directory"""
+    file = pathlib.Path(path) / ".complete"
+    file.touch()
+
+
+def is_complete(path):
+    """Check if the .complete file exists in directory"""
+    file = pathlib.Path(path) / ".complete"
+    return file.exists()
+
+
 class GlobFileGenerator:
     """
     You have a function that returns a generator given a file.

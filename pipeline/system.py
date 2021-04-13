@@ -10,7 +10,7 @@ from .rerank import RerankConfig, RerankFactory
 from .retrieve import ResultsWriter, RetrieveConfig, RetrieverFactory
 from .score import QrelsReaderFactory, ScoreConfig, Scorer
 from .topics import TopicProcessorFactory, TopicReaderFactory, TopicsConfig, QueryWriter
-from .util.file import delete_dir
+from .util.file import delete_dir, is_complete
 
 LOGGER = logging.getLogger(__name__)
 
@@ -38,9 +38,10 @@ class System:
 
         # if 'overwrite' in conf and conf['overwrite'] and pathlib.Path(conf['path']).exists():
         #     LOGGER.debug("Deleting %s", conf['path'])
-        delete_dir(conf.path)
+        # delete_dir(conf.path)
 
-        doc_store = DocumentStore(conf.document_store.path)
+        readonly = True if is_complete(conf.document_store.path) else False
+        doc_store = DocumentStore(conf.document_store.path, readonly)
         self.doc_reader = DocumentReaderFactory.create(conf.documents.input)
         self.stage1 = self.build_phase1_pipeline(conf, doc_store)
 
@@ -49,12 +50,16 @@ class System:
         self.stage2 = self.build_phase2_pipeline(conf, doc_store, self.rerank_writer)
 
     def run(self):
-        LOGGER.info("Stage 1 pipeline: %s", self.stage1)
+        if self.stage1:
+            LOGGER.info("Stage 1 pipeline: %s", self.stage1)
+        else:
+            LOGGER.info("Stage 1 already complete")
         LOGGER.info("Stage 2 pipeline: %s", self.stage2)
 
-        LOGGER.info("Starting processing of documents")
-        self.stage1.run(self.doc_reader)
-        LOGGER.info("Ingested %s documents", self.stage1.count)
+        if self.stage1:
+            LOGGER.info("Starting processing of documents")
+            self.stage1.run(self.doc_reader)
+            LOGGER.info("Ingested %s documents", self.stage1.count)
 
         LOGGER.info("Starting processing of topics")
         self.stage2.run(self.topic_reader)
@@ -62,6 +67,8 @@ class System:
         LOGGER.info("System output available at %s", self.rerank_writer.path)
 
     def build_phase1_pipeline(self, conf, doc_store):
+        if is_complete(conf.index.save):
+            return None
         tasks = [DocumentProcessorFactory.create(conf.documents.process, doc_store)]
         if conf.documents.save is not False:
             tasks.append(DocWriter(conf.documents.save))
