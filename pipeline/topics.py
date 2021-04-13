@@ -10,6 +10,7 @@ from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
 from .util.file import GlobFileGenerator
 
+# If a field does not exist, it is set to None
 Topic = collections.namedtuple('Topic', ('id', 'lang', 'title', 'desc', 'narr'))
 Query = collections.namedtuple('Query', ('id', 'lang', 'text'))
 
@@ -20,6 +21,7 @@ class InputConfig(BaseConfig):
     lang: str
     encoding: str = "utf8"
     strip_non_digits: bool = False
+    prefix: Union[bool, str] = "EN-"
     path: Union[str, list]
 
 
@@ -56,7 +58,8 @@ class SgmlTopicReader:
     def __init__(self, config):
         self.lang = config.lang
         self.strip_non_digits = config.strip_non_digits
-        self.topics = GlobFileGenerator(config.path, trec.parse_sgml_topics, 'EN-', config.encoding)
+        prefix = config.prefix
+        self.topics = GlobFileGenerator(config.path, trec.parse_sgml_topics, prefix, config.encoding)
 
     def __iter__(self):
         return self

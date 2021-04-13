@@ -48,13 +48,20 @@ def parse_hamshahri_documents(path, encoding='utf8'):
         yield doc_id, ' '.join(text)
 
 
-def parse_sgml_topics(path, xml_prefix=None, encoding='utf8'):
+def get_sgml_field(tag):
+    if tag is not None:
+        return tag.text.strip()
+    else:
+        return None
+
+
+def parse_sgml_topics(path, sgml_prefix=None, encoding='utf8'):
     """Parse from SGML"""
-    if xml_prefix is None:
-        xml_prefix = ''
-    title_tag = xml_prefix + 'title'
-    desc_tag = xml_prefix + 'desc'
-    narr_tag = xml_prefix + 'narr'
+    if not sgml_prefix:
+        sgml_prefix = ''
+    title_tag = sgml_prefix + 'title'
+    desc_tag = sgml_prefix + 'desc'
+    narr_tag = sgml_prefix + 'narr'
 
     with open(path, 'r', encoding=encoding) as fp:
         text = fp.read()
@@ -64,7 +71,7 @@ def parse_sgml_topics(path, xml_prefix=None, encoding='utf8'):
         num = topic.find('num').text.strip()
         title = topic.find(title_tag).text.strip()
         desc = topic.find(desc_tag).text.strip()
-        narr = topic.find(narr_tag).text.strip()
+        narr = get_sgml_field(topic.find(narr_tag))  # narrative is optional
         yield num, title, desc, narr
 
 
