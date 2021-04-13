@@ -8,7 +8,7 @@ from .error import ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
-from .util.file import GlobFileGenerator
+from .util.file import GlobFileGenerator, touch_complete
 
 # If a field does not exist, it is set to None
 Topic = collections.namedtuple('Topic', ('id', 'lang', 'title', 'desc', 'narr'))
@@ -146,7 +146,7 @@ class TsvTopicReader:
 
 
 class QueryWriter(Task):
-    """Write queries to a file"""
+    """Write queries to a jsonl file"""
 
     def __init__(self, path):
         """
@@ -154,9 +154,9 @@ class QueryWriter(Task):
             path (str): Path of query file to write.
         """
         super().__init__()
-        dir = pathlib.Path(path)
-        dir.mkdir(parents=True)
-        path = dir / 'queries.json'
+        self.dir = pathlib.Path(path)
+        self.dir.mkdir(parents=True)
+        path = self.dir / 'queries.jsonl'
         self.file = open(path, 'w')
 
     def process(self, query):
@@ -173,6 +173,25 @@ class QueryWriter(Task):
 
     def end(self):
         self.file.close()
+        touch_complete(self.dir)
+
+
+class QueryReader:
+    """Iterator over queries from jsonl file """
+
+    def __init__(self, path):
+        path = pathlib.Path(path) / 'queries.jsonl'
+        with open(path) as fp:
+            self.data = fp.readlines()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            return Query(**json.loads(self.data.pop(0)))
+        except IndexError:
+            raise StopIteration()
 
 
 class TopicProcessor(Task, TextProcessor):

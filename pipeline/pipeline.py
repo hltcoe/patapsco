@@ -50,13 +50,14 @@ class Task(abc.ABC):
 
 
 class Pipeline:
-    def __init__(self, tasks):
+    def __init__(self, tasks, iterable):
         self.task = self._connect(tasks)
+        self.iterable = iterable
         self.count = 0
 
-    def run(self, iterable):
+    def run(self):
         self.begin()
-        for item in iterable:
+        for item in self.iterable:
             self.task._process(item)
             self.count += 1
         self.end()
@@ -77,7 +78,7 @@ class Pipeline:
         return head_task
 
     def __str__(self):
-        task_names = []
+        task_names = [str(self.iterable.__class__.__name__)]
         task = self.task
         while task:
             task_names.append(str(task.__class__.__name__))

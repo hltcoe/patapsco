@@ -44,3 +44,18 @@ def test_parse_json_topics():
     assert topic[2] == 'Second test'
     with pytest.raises(StopIteration):
         next(topic_iter)
+
+
+def test_query_reader():
+    directory = pathlib.Path('.') / 'tests' / 'json_files'
+    query_iter = QueryReader(str(directory))
+    query = next(query_iter)
+    assert query.id == '001'
+    assert query.lang == 'en'
+    assert query.text == 'test 1'
+    query = next(query_iter)
+    assert query.id == '002'
+    assert query.lang == 'en'
+    assert query.text == 'test 2'
+    with pytest.raises(StopIteration):
+        next(query_iter)

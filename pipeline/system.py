@@ -9,7 +9,7 @@ from .pipeline import Pipeline
 from .rerank import RerankConfig, RerankFactory
 from .retrieve import ResultsWriter, RetrieveConfig, RetrieverFactory
 from .score import QrelsReaderFactory, ScoreConfig, Scorer
-from .topics import TopicProcessorFactory, TopicReaderFactory, TopicsConfig, QueryWriter
+from .topics import TopicProcessorFactory, TopicReaderFactory, TopicsConfig, QueryReader, QueryWriter
 from .util.file import delete_dir, is_complete
 
 LOGGER = logging.getLogger(__name__)
@@ -42,12 +42,8 @@ class System:
 
         readonly = True if is_complete(conf.document_store.path) else False
         doc_store = DocumentStore(conf.document_store.path, readonly)
-        self.doc_reader = DocumentReaderFactory.create(conf.documents.input)
         self.stage1 = self.build_phase1_pipeline(conf, doc_store)
-
-        self.topic_reader = TopicReaderFactory.create(conf.topics.input)
-        self.rerank_writer = ResultsWriter(conf.rerank.save)
-        self.stage2 = self.build_phase2_pipeline(conf, doc_store, self.rerank_writer)
+        self.stage2 = self.build_phase2_pipeline(conf, doc_store)
 
     def run(self):
         if self.stage1:
@@ -58,35 +54,40 @@ class System:
 
         if self.stage1:
             LOGGER.info("Starting processing of documents")
-            self.stage1.run(self.doc_reader)
+            self.stage1.run()
             LOGGER.info("Ingested %s documents", self.stage1.count)
 
         LOGGER.info("Starting processing of topics")
-        self.stage2.run(self.topic_reader)
+        self.stage2.run()
         LOGGER.info("Processed %s topics", self.stage2.count)
-        LOGGER.info("System output available at %s", self.rerank_writer.path)
 
     def build_phase1_pipeline(self, conf, doc_store):
         if is_complete(conf.index.save):
             return None
+        iterable = DocumentReaderFactory.create(conf.documents.input)
         tasks = [DocumentProcessorFactory.create(conf.documents.process, doc_store)]
         if conf.documents.save is not False:
             tasks.append(DocWriter(conf.documents.save))
         tasks.append(IndexerFactory.create(conf.index))
-        return Pipeline(tasks)
+        return Pipeline(tasks, iterable)
 
-    def build_phase2_pipeline(self, conf, doc_store, writer):
+    def build_phase2_pipeline(self, conf, doc_store):
+        iterable = TopicReaderFactory.create(conf.topics.input)
         tasks = [TopicProcessorFactory.create(conf.topics.process)]
         if conf.topics.save is not False:
-            tasks.append(QueryWriter(conf.topics.save))
+            if is_complete(conf.topics.save):
+                iterable = QueryReader(conf.topics.save)
+                tasks = []
+            else:
+                tasks.append(QueryWriter(conf.topics.save))
         tasks.append(RetrieverFactory.create(conf.retrieve))
         if conf.retrieve.save is not False:
             tasks.append(ResultsWriter(conf.retrieve.save))
         tasks.append(RerankFactory.create(conf.rerank, doc_store))
-        tasks.append(writer)
+        tasks.append(ResultsWriter(conf.rerank.save))
         qrels = QrelsReaderFactory.create(conf.score.input).read()
         tasks.append(Scorer(conf.score, qrels))
-        return Pipeline(tasks)
+        return Pipeline(tasks, iterable)
 
     @staticmethod
     def setup_logging(verbose):
