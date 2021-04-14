@@ -4,7 +4,7 @@ import pathlib
 
 from .config import BaseConfig, ConfigService, Optional
 from .docs import DocumentsConfig, DocumentProcessorFactory, DocumentReaderFactory, \
-    DocumentDatabaseFactory, DocWriter
+    DocumentDatabaseFactory, DocReader, DocWriter
 from .error import ConfigError
 from .index import IndexConfig, IndexerFactory
 from .pipeline import Pipeline
@@ -122,6 +122,14 @@ class PipelineBuilder:
         if Tasks.INDEX in plan:
             # TODO set iterable if documents output exists or throw error if we don't support that
             self.clear_output(conf.index)
+            if Tasks.DOCUMENTS not in plan:
+                try:
+                    iterable = DocReader(conf.index.input.documents.path)
+                except AttributeError:
+                    try:
+                        iterable = DocReader(conf.documents.output.path)
+                    except AttributeError:
+                        raise ConfigError('index not configured with documents')
             tasks.append(IndexerFactory.create(conf.index))
         return Pipeline(tasks, iterable)
 
@@ -137,8 +145,8 @@ class PipelineBuilder:
             if conf.topics.output:
                 tasks.append(QueryWriter(conf.topics.output.path))
         if Tasks.RETRIEVE in plan:
+            self.clear_output(conf.retrieve)
             if Tasks.TOPICS not in plan:
-                self.clear_output(conf.retrieve)
                 try:
                     iterable = QueryReader(conf.retrieve.input.queries.path)
                 except AttributeError:
@@ -169,8 +177,9 @@ class PipelineBuilder:
     def create_plan(self, conf):
         stage1 = []
         if conf.documents:
-            # TODO not handling documents complete or validating input
-            if not self.is_task_complete(conf.index):
+            # TODO not handling validating input
+            index_complete = conf.index and self.is_task_complete(conf.index)
+            if not self.is_task_complete(conf.documents) and not index_complete:
                 stage1.append(Tasks.DOCUMENTS)
         if conf.index:
             # TODO not handling checking input

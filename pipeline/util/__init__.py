@@ -1,3 +1,5 @@
+import dataclasses
+import json
 import sys
 
 from ..config import BaseConfig
@@ -26,3 +28,10 @@ class ComponentFactory:
         except KeyError:
             raise RuntimeError(f"Cannot find {class_name} in {cls.__name__}")
         return class_(config, *args, **kwargs)
+
+
+class DataclassJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if dataclasses.is_dataclass(obj):
+            return dataclasses.asdict(obj)
+        return super().default(obj)

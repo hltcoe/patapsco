@@ -16,7 +16,7 @@ class RerankInputConfig(BaseConfig):
 
 class RerankConfig(BaseConfig):
     """Configuration for the rerank task"""
-    input: Optional[RerankInputConfig]
+    input: RerankInputConfig
     name: str
     embedding: str
     output: PathConfig
