@@ -36,7 +36,7 @@ class ProcessorConfig(BaseConfig):
 class DocumentsConfig(BaseConfig):
     input: InputConfig
     process: ProcessorConfig
-    save: Union[bool, str]
+    output: Union[bool, PathConfig]
     db: PathConfig
 
 

@@ -1,10 +1,9 @@
-import collections
 import csv
 import dataclasses
 import json
 import pathlib
 
-from .config import BaseConfig, Union, Optional
+from .config import BaseConfig, PathConfig, Optional, Union
 from .error import ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
@@ -51,7 +50,7 @@ class ProcessorConfig(BaseConfig):
 class TopicsConfig(BaseConfig):
     input: InputConfig
     process: ProcessorConfig
-    save: Union[bool, str]
+    output: Union[bool, PathConfig]
 
 
 class TopicReaderFactory(ComponentFactory):

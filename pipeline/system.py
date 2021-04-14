@@ -60,13 +60,14 @@ class RunConfigPreprocessor:
     def _set_retrieve_input_path(conf_dict):
         # if index location for retrieve is not set, we grab it from index config
         if 'input' not in conf_dict['retrieve'] or 'index' not in conf_dict['retrieve']['input']:
-            if 'documents' in conf_dict and 'save' in conf_dict['index']:
+            if 'index' in conf_dict and 'output' in conf_dict['index'] and conf_dict['index']['output'] and \
+                    'path' in conf_dict['index']['output']:
                 if 'input' not in conf_dict['retrieve']:
                     conf_dict['retrieve']['input'] = {}
                 if 'db' not in conf_dict['retrieve']['input']:
-                    conf_dict['retrieve']['input']['index'] = {'path': conf_dict['index']['save']}
+                    conf_dict['retrieve']['input']['index'] = {'path': conf_dict['index']['output']['path']}
             else:
-                raise ConfigError("documents.index.save needs to be set for this run")
+                raise ConfigError("index.output.path needs to be set")
 
     @staticmethod
     def _set_rerank_db_path(conf_dict):
@@ -86,8 +87,9 @@ class RunConfigPreprocessor:
         base = pathlib.Path(conf_dict['path'])
         for c in conf_dict.values():
             if isinstance(c, dict):
-                if 'save' in c and not isinstance(c['save'], bool):
-                    c['save'] = str(base / c['save'])
+                if 'output' in c and not isinstance(c['output'], bool):
+                    if 'path' in c['output']:
+                        c['output']['path'] = str(base / c['output']['path'])
         if 'documents' in conf_dict:
             conf_dict['documents']['db']['path'] = str(base / conf_dict['documents']['db']['path'])
 
@@ -113,12 +115,11 @@ class PipelineBuilder:
                 delete_dir(conf.documents.db.path)
             db = DocumentDatabaseFactory.create(conf.documents.db.path)
             tasks.append(DocumentProcessorFactory.create(conf.documents.process, db))
-            if conf.documents.save:
-                tasks.append(DocWriter(conf.documents.save))
+            if conf.documents.output and conf.documents.output.path:
+                tasks.append(DocWriter(conf.documents.output.path))
         if Tasks.INDEX in plan:
             # TODO set iterable if documents output exists or throw error if we don't support that
-            if pathlib.Path(conf.index.save).exists():
-                delete_dir(conf.index.save)
+            self.clear_output(conf.index)
             tasks.append(IndexerFactory.create(conf.index))
         return Pipeline(tasks, iterable)
 
@@ -128,27 +129,24 @@ class PipelineBuilder:
         tasks = []
         iterable = None
         if Tasks.TOPICS in plan:
-            if pathlib.Path(conf.topics.save).exists():
-                delete_dir(conf.topics.save)
+            self.clear_output(conf.topics)
             iterable = TopicReaderFactory.create(conf.topics.input)
             tasks.append(TopicProcessorFactory.create(conf.topics.process))
-            if conf.topics.save:
-                tasks.append(QueryWriter(conf.topics.save))
+            if conf.topics.output:
+                tasks.append(QueryWriter(conf.topics.output.path))
         if Tasks.RETRIEVE in plan:
-            if pathlib.Path(conf.retrieve.save).exists():
-                delete_dir(conf.retrieve.save)
+            self.clear_output(conf.retrieve)
             if Tasks.TOPICS not in plan:
-                iterable = QueryReader(conf.topics.save)
+                iterable = QueryReader(conf.topics.output.path)
             tasks.append(RetrieverFactory.create(conf.retrieve))
-            if conf.retrieve.save:
-                tasks.append(JsonResultsWriter(conf.retrieve.save))
+            if conf.retrieve.output:
+                tasks.append(JsonResultsWriter(conf.retrieve.output.path))
         if Tasks.RERANK in plan:
-            if pathlib.Path(conf.rerank.save).exists():
-                delete_dir(conf.rerank.save)
+            self.clear_output(conf.rerank)
             if Tasks.RETRIEVE not in plan:
-                iterable = JsonResultsReader(conf.retrieve.save)
+                iterable = JsonResultsReader(conf.retrieve.output.path)
             tasks.append(RerankFactory.create(conf.rerank))
-            tasks.append(TrecResultsWriter(conf.rerank.save))
+            tasks.append(TrecResultsWriter(conf.rerank.output.path))
         if Tasks.SCORE in plan:
             qrels = QrelsReaderFactory.create(conf.score.input).read()
             tasks.append(Scorer(conf.score, qrels))
@@ -175,7 +173,7 @@ class PipelineBuilder:
             if not self.is_task_complete(conf.retrieve):
                 stage2.append(Tasks.RETRIEVE)
         if conf.rerank:
-            # TODO not handling input check
+            # TODO not handling input check and not checking if results exist
             stage2.append(Tasks.RERANK)
         if conf.score:
             if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:
@@ -187,8 +185,14 @@ class PipelineBuilder:
 
         return stage1, stage2
 
-    def is_task_complete(self, task_conf):
-        return task_conf.save and is_complete(task_conf.save)
+    @staticmethod
+    def is_task_complete(task_conf):
+        return task_conf.output and is_complete(task_conf.output.path)
+
+    @staticmethod
+    def clear_output(task_conf):
+        if task_conf.output and pathlib.Path(task_conf.output.path).exists():
+            delete_dir(task_conf.output.path)
 
 
 class System:

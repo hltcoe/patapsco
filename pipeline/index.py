@@ -1,6 +1,6 @@
 import pathlib
 
-from .config import BaseConfig
+from .config import BaseConfig, PathConfig
 from .pipeline import Task
 from .util import ComponentFactory
 from .util.file import touch_complete
@@ -9,7 +9,7 @@ from .util.file import touch_complete
 class IndexConfig(BaseConfig):
     """Configuration for building an index"""
     name: str
-    save: str
+    output: PathConfig
 
 
 class IndexerFactory(ComponentFactory):
@@ -31,7 +31,7 @@ class MockIndexer(Task):
             config (IndexerConfig)
         """
         super().__init__()
-        self.dir = pathlib.Path(config.save)
+        self.dir = pathlib.Path(config.output.path)
         self.dir.mkdir(parents=True)
         self.path = self.dir / 'index.txt'
         self.file = open(self.path, 'w')

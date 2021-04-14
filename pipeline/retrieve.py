@@ -40,8 +40,8 @@ class RetrieveConfig(BaseConfig):
     """Configuration for retrieval"""
     name: str
     number: int = 1000
-    save: Union[bool, str]
     input: RetrieveInputConfig
+    output: Union[bool, PathConfig]
 
 
 class RetrieverFactory(ComponentFactory):

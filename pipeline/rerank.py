@@ -19,7 +19,7 @@ class RerankConfig(BaseConfig):
     input: Optional[RerankInputConfig]
     name: str
     embedding: str
-    save: str
+    output: PathConfig
 
 
 class RerankFactory(ComponentFactory):
