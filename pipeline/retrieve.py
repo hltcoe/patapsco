@@ -8,8 +8,8 @@ from typing import List
 from .config import BaseConfig, Optional, PathConfig, Union
 from .pipeline import Task
 from .topics import Query
-from .util import ComponentFactory
-from .util.file import touch_complete, DataclassJSONEncoder
+from .util import ComponentFactory, DataclassJSONEncoder
+from .util.file import touch_complete
 
 LOGGER = logging.getLogger(__name__)
 

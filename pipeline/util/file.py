@@ -1,6 +1,4 @@
-import dataclasses
 import glob
-import json
 import pathlib
 
 
@@ -86,10 +84,3 @@ class GlobFileGenerator:
         path = next(self.paths)
         self.first_use_of_gen = True
         return self.parsing_func(path, *self.args, **self.kwargs)
-
-
-class DataclassJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if dataclasses.is_dataclass(obj):
-            return dataclasses.asdict(obj)
-        return super().default(obj)

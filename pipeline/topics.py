@@ -7,8 +7,8 @@ from .config import BaseConfig, PathConfig, Optional, Union
 from .error import ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
-from .util import trec, ComponentFactory
-from .util.file import GlobFileGenerator, touch_complete, DataclassJSONEncoder
+from .util import trec, ComponentFactory, DataclassJSONEncoder
+from .util.file import GlobFileGenerator, touch_complete
 
 
 @dataclasses.dataclass

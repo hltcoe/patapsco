@@ -1,5 +1,5 @@
-import collections
 import csv
+import dataclasses
 import gzip
 import json
 import pathlib
@@ -10,10 +10,15 @@ from .config import BaseConfig, PathConfig, Union
 from .error import ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
-from .util import trec, ComponentFactory
+from .util import trec, ComponentFactory, DataclassJSONEncoder
 from .util.file import GlobFileGenerator, is_complete, touch_complete
 
-Doc = collections.namedtuple('Doc', ('id', 'lang', 'text'))
+
+@dataclasses.dataclass
+class Doc:
+    id: str
+    lang: str
+    text: str
 
 
 class InputConfig(BaseConfig):
@@ -43,7 +48,8 @@ class DocumentsConfig(BaseConfig):
 class DocumentReaderFactory(ComponentFactory):
     classes = {
         'sgml': 'SgmlDocumentReader',
-        'json': 'JsonDocumentReader',
+        'json': 'Tc4JsonDocumentReader',
+        'jsonl': 'Tc4JsonDocumentReader',
         'msmarco': 'TsvDocumentReader',
         'clef0809': 'HamshahriDocumentReader'
     }
@@ -72,7 +78,7 @@ class SgmlDocumentReader:
         return Doc(doc[0], self.lang, doc[1])
 
 
-class JsonDocumentReader:
+class Tc4JsonDocumentReader:
     """Read JSONL documents to start a pipeline"""
 
     def __init__(self, config):
@@ -140,16 +146,14 @@ class HamshahriDocumentReader:
 
 
 class DocWriter(Task):
-    """Write documents to files
-
-    This is not very efficient and should be rewritten if we want to use in production.
-    This will create one file per document in a single directory.
-    """
+    """Write documents to a json file"""
 
     def __init__(self, path):
         super().__init__()
         self.dir = pathlib.Path(path)
         self.dir.mkdir(parents=True)
+        path = self.dir / 'documents.jsonl'
+        self.file = open(path, 'w')
 
     def process(self, doc):
         """
@@ -159,10 +163,31 @@ class DocWriter(Task):
         Returns:
             Doc
         """
-        path = self.dir / doc.id
-        with open(path, 'w') as fp:
-            fp.write(doc.text)
+        self.file.write(json.dumps(doc, cls=DataclassJSONEncoder) + "\n")
         return doc
+
+    def end(self):
+        self.file.close()
+        touch_complete(self.dir)
+
+
+class DocReader:
+    """Iterator over documents written by DocWriter"""
+
+    def __init__(self, path):
+        path = pathlib.Path(path) / 'documents.jsonl'
+        self.file = open(path, 'r')
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        line = self.file.readline()
+        if not line:
+            self.file.close()
+            raise StopIteration
+        data = json.loads(line)
+        return Doc(**data)
 
 
 class DocumentDatabase(sqlitedict.SqliteDict):
