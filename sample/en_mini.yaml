@@ -6,18 +6,18 @@ documents:
     lang: en
     encoding: utf8
     path: sample/en_mini_dataset.jsonl
-  save: processed_docs
+  db:
+    path: docs_db
   process:
-    utf8_normalize: true
+    char_normalize: true
     lowercase: true
     tokenize:
       name: whitespace
     stem:
       name: trunc
       length: 4
-
-document_store:
-  path: doc_store
+  output:
+    path: processed_docs
 
 topics:
   input:
@@ -25,24 +25,28 @@ topics:
     lang: en
     encoding: utf8
     path: sample/en_mini_dataset_topics.jsonl
-  save: queries
   process:
     inherit: documents.process
     query: title
+  output:
+    path: queries
 
 index:
   name: anserini
-  save: index
+  output:
+    path: index
 
 retrieve:
   name: bm25
   number: 5
-  save: initial_results
+  output:
+    path: initial_results
 
 rerank:
   name: pacrr
   embedding: bert
-  save: pacrr_results
+  output:
+    path: pacrr_results
 
 score:
   input:

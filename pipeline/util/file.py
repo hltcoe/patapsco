@@ -1,4 +1,6 @@
+import dataclasses
 import glob
+import json
 import pathlib
 
 
@@ -11,6 +13,20 @@ def delete_dir(path):
         else:
             delete_dir(child)
     path.rmdir()
+
+
+def touch_complete(path):
+    """Touch a file called .complete in the directory"""
+    file = pathlib.Path(path) / ".complete"
+    file.touch()
+
+
+def is_complete(path):
+    """Check if the .complete file exists in directory"""
+    if not pathlib.Path(path).exists:
+        return False
+    file = pathlib.Path(path) / ".complete"
+    return file.exists()
 
 
 class GlobFileGenerator:
@@ -70,3 +86,10 @@ class GlobFileGenerator:
         path = next(self.paths)
         self.first_use_of_gen = True
         return self.parsing_func(path, *self.args, **self.kwargs)
+
+
+class DataclassJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if dataclasses.is_dataclass(obj):
+            return dataclasses.asdict(obj)
+        return super().default(obj)

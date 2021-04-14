@@ -1,18 +1,30 @@
-import collections
 import csv
+import dataclasses
 import json
 import pathlib
 
-from .config import BaseConfig, Union
+from .config import BaseConfig, PathConfig, Optional, Union
 from .error import ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
-from .util.file import GlobFileGenerator
+from .util.file import GlobFileGenerator, touch_complete, DataclassJSONEncoder
 
-# If a field does not exist, it is set to None
-Topic = collections.namedtuple('Topic', ('id', 'lang', 'title', 'desc', 'narr'))
-Query = collections.namedtuple('Query', ('id', 'lang', 'text'))
+
+@dataclasses.dataclass
+class Topic:
+    id: str
+    lang: str
+    title: str
+    desc: Optional[str]
+    narr: Optional[str]
+
+
+@dataclasses.dataclass
+class Query:
+    id: str
+    lang: str
+    text: str
 
 
 class InputConfig(BaseConfig):
@@ -29,10 +41,16 @@ class ProcessorConfig(BaseConfig):
     """Configuration of the topic processor"""
     name: str = "default"
     query: str = "title"  # field1+field2 where field is title, desc, narr
-    utf8_normalize: bool = True
+    char_normalize: bool = True
     lowercase: bool = True
     tokenize: TokenizeConfig
     stem: Union[StemConfig, TruncStemConfig]
+
+
+class TopicsConfig(BaseConfig):
+    input: InputConfig
+    process: ProcessorConfig
+    output: Union[bool, PathConfig]
 
 
 class TopicReaderFactory(ComponentFactory):
@@ -140,7 +158,7 @@ class TsvTopicReader:
 
 
 class QueryWriter(Task):
-    """Write queries to a file"""
+    """Write queries to a jsonl file"""
 
     def __init__(self, path):
         """
@@ -148,9 +166,9 @@ class QueryWriter(Task):
             path (str): Path of query file to write.
         """
         super().__init__()
-        dir = pathlib.Path(path)
-        dir.mkdir(parents=True)
-        path = dir / 'queries.json'
+        self.dir = pathlib.Path(path)
+        self.dir.mkdir(parents=True)
+        path = self.dir / 'queries.jsonl'
         self.file = open(path, 'w')
 
     def process(self, query):
@@ -162,11 +180,30 @@ class QueryWriter(Task):
             Query
         """
 
-        self.file.write(json.dumps(query._asdict()) + "\n")
+        self.file.write(json.dumps(query, cls=DataclassJSONEncoder) + "\n")
         return query
 
     def end(self):
         self.file.close()
+        touch_complete(self.dir)
+
+
+class QueryReader:
+    """Iterator over queries from jsonl file """
+
+    def __init__(self, path):
+        path = pathlib.Path(path) / 'queries.jsonl'
+        with open(path) as fp:
+            self.data = fp.readlines()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            return Query(**json.loads(self.data.pop(0)))
+        except IndexError:
+            raise StopIteration()
 
 
 class TopicProcessor(Task, TextProcessor):
@@ -190,7 +227,7 @@ class TopicProcessor(Task, TextProcessor):
             Query
         """
         text = self._select_text(topic)
-        if self.config.utf8_normalize:
+        if self.config.char_normalize:
             text = self.normalize(text)
         if self.config.lowercase:
             text = self.lowercase_text(text)

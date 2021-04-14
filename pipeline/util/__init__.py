@@ -12,7 +12,7 @@ class ComponentFactory:
     def create(cls, config, *args, **kwargs):
         """
         Args:
-            config (dict)
+            config (dict, BaseConfig)
         """
         if not isinstance(config, BaseConfig):
             config = cls.config_class(**config)
