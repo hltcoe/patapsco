@@ -59,27 +59,29 @@ class RunConfigPreprocessor:
     @staticmethod
     def _set_retrieve_input_path(conf_dict):
         # if index location for retrieve is not set, we grab it from index config
-        if 'input' not in conf_dict['retrieve'] or 'index' not in conf_dict['retrieve']['input']:
-            if 'index' in conf_dict and 'output' in conf_dict['index'] and conf_dict['index']['output'] and \
-                    'path' in conf_dict['index']['output']:
-                if 'input' not in conf_dict['retrieve']:
-                    conf_dict['retrieve']['input'] = {}
-                if 'db' not in conf_dict['retrieve']['input']:
-                    conf_dict['retrieve']['input']['index'] = {'path': conf_dict['index']['output']['path']}
-            else:
-                raise ConfigError("index.output.path needs to be set")
+        if 'retrieve' in conf_dict:
+            if 'input' not in conf_dict['retrieve'] or 'index' not in conf_dict['retrieve']['input']:
+                if 'index' in conf_dict and 'output' in conf_dict['index'] and conf_dict['index']['output'] and \
+                        'path' in conf_dict['index']['output']:
+                    if 'input' not in conf_dict['retrieve']:
+                        conf_dict['retrieve']['input'] = {}
+                    if 'db' not in conf_dict['retrieve']['input']:
+                        conf_dict['retrieve']['input']['index'] = {'path': conf_dict['index']['output']['path']}
+                else:
+                    raise ConfigError("retrieve.input.index.path needs to be set")
 
     @staticmethod
     def _set_rerank_db_path(conf_dict):
         # if db path for rerank is not set, we grab it from documents config
-        if 'input' not in conf_dict['rerank'] or 'db' not in conf_dict['rerank']['input']:
-            if 'documents' in conf_dict and 'db' in conf_dict['documents'] and 'path' in conf_dict['documents']['db']:
-                if 'input' not in conf_dict['rerank']:
-                    conf_dict['rerank']['input'] = {}
-                if 'db' not in conf_dict['rerank']['input']:
-                    conf_dict['rerank']['input']['db'] = {'path': conf_dict['documents']['db']['path']}
-            else:
-                raise ConfigError("documents.db.path needs to be set for this run")
+        if 'rerank' in conf_dict:
+            if 'input' not in conf_dict['rerank'] or 'db' not in conf_dict['rerank']['input']:
+                if 'documents' in conf_dict and 'db' in conf_dict['documents'] and 'path' in conf_dict['documents']['db']:
+                    if 'input' not in conf_dict['rerank']:
+                        conf_dict['rerank']['input'] = {}
+                    if 'db' not in conf_dict['rerank']['input']:
+                        conf_dict['rerank']['input']['db'] = {'path': conf_dict['documents']['db']['path']}
+                else:
+                    raise ConfigError("rerank.input.db.path needs to be set")
 
     @staticmethod
     def _update_relative_paths(conf_dict):
@@ -135,16 +137,28 @@ class PipelineBuilder:
             if conf.topics.output:
                 tasks.append(QueryWriter(conf.topics.output.path))
         if Tasks.RETRIEVE in plan:
-            self.clear_output(conf.retrieve)
             if Tasks.TOPICS not in plan:
-                iterable = QueryReader(conf.topics.output.path)
+                self.clear_output(conf.retrieve)
+                try:
+                    iterable = QueryReader(conf.retrieve.input.queries.path)
+                except AttributeError:
+                    try:
+                        iterable = QueryReader(conf.topics.output.path)
+                    except AttributeError:
+                        raise ConfigError('retrieve not configured with queries')
             tasks.append(RetrieverFactory.create(conf.retrieve))
             if conf.retrieve.output:
                 tasks.append(JsonResultsWriter(conf.retrieve.output.path))
         if Tasks.RERANK in plan:
             self.clear_output(conf.rerank)
             if Tasks.RETRIEVE not in plan:
-                iterable = JsonResultsReader(conf.retrieve.output.path)
+                try:
+                    iterable = JsonResultsReader(conf.rerank.input.results.path)
+                except AttributeError:
+                    try:
+                        iterable = JsonResultsReader(conf.retrieve.output.path)
+                    except AttributeError:
+                        raise ConfigError('rerank not configured with retrieve results')
             tasks.append(RerankFactory.create(conf.rerank))
             tasks.append(TrecResultsWriter(conf.rerank.output.path))
         if Tasks.SCORE in plan:
@@ -166,7 +180,9 @@ class PipelineBuilder:
         stage2 = []
         if conf.topics:
             # TODO not handling input check
-            if not self.is_task_complete(conf.topics) and not self.is_task_complete(conf.retrieve):
+            # only add topics task if it is not complete and the retrieve task is not complete
+            retrieve_complete = conf.retrieve and self.is_task_complete(conf.retrieve)
+            if not self.is_task_complete(conf.topics) and not retrieve_complete:
                 stage2.append(Tasks.TOPICS)
         if conf.retrieve:
             # TODO not handling input check
@@ -217,6 +233,7 @@ class System:
             LOGGER.info("Starting processing of topics")
             self.stage2.run()
             LOGGER.info("Processed %s topics", self.stage2.count)
+        LOGGER.info("Run complete")
 
     @staticmethod
     def setup_logging(verbose):
