@@ -2,8 +2,8 @@ import logging
 import pathlib
 
 from .config import BaseConfig, ConfigService
-from .docs import DocumentsConfig, DocumentStoreConfig, DocumentProcessorFactory, DocumentReaderFactory, \
-    DocumentStore, DocWriter
+from .docs import DocumentsConfig, DocumentProcessorFactory, DocumentReaderFactory, \
+    DocumentDatabase, DocWriter
 from .error import ConfigError, PipelineError
 from .index import IndexConfig, IndexerFactory
 from .pipeline import Pipeline
@@ -20,7 +20,6 @@ class RunConfig(BaseConfig):
     """Configuration for a run of the system"""
     path: str
     documents: DocumentsConfig
-    document_store: DocumentStoreConfig
     topics: TopicsConfig
     index: IndexConfig
     retrieve: RetrieveConfig
@@ -58,7 +57,7 @@ class RunConfigManager:
             if isinstance(c, dict):
                 if 'save' in c and not isinstance(c['save'], bool):
                     c['save'] = str(base / c['save'])
-        conf_dict['document_store']['path'] = str(base / conf_dict['document_store']['path'])
+        conf_dict['documents']['db']['path'] = str(base / conf_dict['documents']['db']['path'])
 
 
 class System:
@@ -67,14 +66,14 @@ class System:
         config_manager = RunConfigManager(config_filename, overrides)
         conf = config_manager.conf
 
-        if is_complete(conf.index.save) and not is_complete(conf.document_store.path):
+        if is_complete(conf.index.save) and not is_complete(conf.documents.db.path):
             raise PipelineError("Cannot run with a complete index and incomplete doc store")
-        if not is_complete(conf.document_store.path) and pathlib.Path(conf.document_store.path).exists():
-            delete_dir(conf.document_store.path)
-        readonly = True if is_complete(conf.document_store.path) else False
-        doc_store = DocumentStore(conf.document_store.path, readonly)
-        self.stage1 = self.build_phase1_pipeline(conf, doc_store)
-        self.stage2 = self.build_phase2_pipeline(conf, doc_store)
+        if not is_complete(conf.documents.db.path) and pathlib.Path(conf.documents.db.path).exists():
+            delete_dir(conf.documents.db.path)
+        readonly = True if is_complete(conf.documents.db.path) else False
+        doc_db = DocumentDatabase(conf.documents.db.path, readonly)
+        self.stage1 = self.build_phase1_pipeline(conf, doc_db)
+        self.stage2 = self.build_phase2_pipeline(conf, doc_db)
 
     def run(self):
         if self.stage1:

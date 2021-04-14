@@ -6,7 +6,7 @@ import pathlib
 
 import sqlitedict
 
-from .config import BaseConfig, Union
+from .config import BaseConfig, PathConfig, Union
 from .error import ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
@@ -37,10 +37,7 @@ class DocumentsConfig(BaseConfig):
     input: InputConfig
     process: ProcessorConfig
     save: Union[bool, str]
-
-
-class DocumentStoreConfig(BaseConfig):
-    path: str
+    db: PathConfig
 
 
 class DocumentReaderFactory(ComponentFactory):
@@ -168,12 +165,12 @@ class DocWriter(Task):
         return doc
 
 
-class DocumentStore(sqlitedict.SqliteDict):
-    """Key value store for documents
+class DocumentDatabase(sqlitedict.SqliteDict):
+    """Key value database for documents
 
     Uses a dictionary interface.
     Example:
-        store = DocumentStore('docs.sqlite')
+        store = DocumentDatabase('docs.sqlite')
         store['doc_77'] = 'some text'
         print(store['doc_77'])
     """
@@ -199,15 +196,15 @@ class DocumentStore(sqlitedict.SqliteDict):
 class DocumentProcessor(Task, TextProcessor):
     """Document Preprocessing"""
 
-    def __init__(self, config, store):
+    def __init__(self, config, db):
         """
         Args:
             config (ProcessorConfig)
-            store (DocumentStore): Document storage for later retrieval
+            db (DocumentDatabase): Document db for later retrieval
         """
         Task.__init__(self)
         TextProcessor.__init__(self, config)
-        self.store = store
+        self.db = db
 
     def process(self, doc):
         """
@@ -223,11 +220,11 @@ class DocumentProcessor(Task, TextProcessor):
         if self.config.lowercase:
             text = self.lowercase_text(text)
         tokens = self.tokenize(text)
-        self.store[doc.id] = doc.text
+        self.db[doc.id] = doc.text
         if self.config.stem:
             tokens = self.stem(tokens)
         text = ' '.join(tokens)
         return Doc(doc.id, doc.lang, text)
 
     def end(self):
-        self.store.end()
+        self.db.end()
