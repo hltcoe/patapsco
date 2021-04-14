@@ -37,6 +37,10 @@ class System:
         self.prepare_config(conf_dict)
         conf = RunConfig(**conf_dict)
 
+        if is_complete(conf.index.save) and not is_complete(conf.document_store.path):
+            raise PipelineError("Cannot run with a complete index and incomplete doc store")
+        if not is_complete(conf.document_store.path) and pathlib.Path(conf.document_store.path).exists():
+            delete_dir(conf.document_store.path)
         readonly = True if is_complete(conf.document_store.path) else False
         doc_store = DocumentStore(conf.document_store.path, readonly)
         self.stage1 = self.build_phase1_pipeline(conf, doc_store)
@@ -61,6 +65,8 @@ class System:
     def build_phase1_pipeline(self, conf, doc_store):
         if is_complete(conf.index.save):
             return None
+        elif pathlib.Path(conf.index.save).exists():
+            delete_dir(conf.index.save)
         iterable = DocumentReaderFactory.create(conf.documents.input)
         tasks = [DocumentProcessorFactory.create(conf.documents.process, doc_store)]
         if conf.documents.save is not False:
