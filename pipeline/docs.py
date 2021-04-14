@@ -11,7 +11,7 @@ from .error import ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory
-from .util.file import GlobFileGenerator, touch_complete
+from .util.file import GlobFileGenerator, is_complete, touch_complete
 
 Doc = collections.namedtuple('Doc', ('id', 'lang', 'text'))
 
@@ -191,6 +191,13 @@ class DocumentDatabase(sqlitedict.SqliteDict):
 
     def end(self):
         touch_complete(self.dir)
+
+
+class DocumentDatabaseFactory:
+    @staticmethod
+    def create(path):
+        readonly = True if is_complete(path) else False
+        return DocumentDatabase(path, readonly)
 
 
 class DocumentProcessor(Task, TextProcessor):

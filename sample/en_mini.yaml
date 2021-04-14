@@ -6,6 +6,8 @@ documents:
     lang: en
     encoding: utf8
     path: sample/en_mini_dataset.jsonl
+  db:
+    path: docs_db
   save: processed_docs
   process:
     char_normalize: true
@@ -15,9 +17,6 @@ documents:
     stem:
       name: trunc
       length: 4
-
-document_store:
-  path: doc_store
 
 topics:
   input:

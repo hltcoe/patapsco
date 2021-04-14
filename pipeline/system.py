@@ -3,7 +3,7 @@ import pathlib
 
 from .config import BaseConfig, ConfigService
 from .docs import DocumentsConfig, DocumentProcessorFactory, DocumentReaderFactory, \
-    DocumentDatabase, DocWriter
+    DocumentDatabaseFactory, DocWriter
 from .error import ConfigError, PipelineError
 from .index import IndexConfig, IndexerFactory
 from .pipeline import Pipeline
@@ -36,6 +36,7 @@ class RunConfigManager:
         self._validate(conf_dict)
         self._update_relative_paths(conf_dict)
         self._set_retrieve_input_path(conf_dict)
+        self._set_rerank_db_path(conf_dict)
         self.conf = RunConfig(**conf_dict)
 
     @staticmethod
@@ -48,6 +49,12 @@ class RunConfigManager:
         # if input to retrieve is not set, we grab it from index config
         if 'input' not in conf_dict['retrieve']:
             conf_dict['retrieve']['input'] = {'index': {'path': conf_dict['index']['save']}}
+
+    @staticmethod
+    def _set_rerank_db_path(conf_dict):
+        # if db path for rerank is not set, we grab it from documents config
+        if 'db' not in conf_dict['rerank']:
+            conf_dict['rerank']['db'] = {'path': conf_dict['documents']['db']['path']}
 
     @staticmethod
     def _update_relative_paths(conf_dict):
@@ -70,10 +77,8 @@ class System:
             raise PipelineError("Cannot run with a complete index and incomplete doc store")
         if not is_complete(conf.documents.db.path) and pathlib.Path(conf.documents.db.path).exists():
             delete_dir(conf.documents.db.path)
-        readonly = True if is_complete(conf.documents.db.path) else False
-        doc_db = DocumentDatabase(conf.documents.db.path, readonly)
-        self.stage1 = self.build_phase1_pipeline(conf, doc_db)
-        self.stage2 = self.build_phase2_pipeline(conf, doc_db)
+        self.stage1 = self.build_phase1_pipeline(conf)
+        self.stage2 = self.build_phase2_pipeline(conf)
 
     def run(self):
         if self.stage1:
@@ -91,25 +96,26 @@ class System:
         self.stage2.run()
         LOGGER.info("Processed %s topics", self.stage2.count)
 
-    def build_phase1_pipeline(self, conf, doc_store):
+    def build_phase1_pipeline(self, conf):
         if is_complete(conf.index.save):
             return None
         elif pathlib.Path(conf.index.save).exists():
             delete_dir(conf.index.save)
         iterable = DocumentReaderFactory.create(conf.documents.input)
-        tasks = [DocumentProcessorFactory.create(conf.documents.process, doc_store)]
+        db = DocumentDatabaseFactory.create(conf.documents.db.path)
+        tasks = [DocumentProcessorFactory.create(conf.documents.process, db)]
         if conf.documents.save is not False:
             tasks.append(DocWriter(conf.documents.save))
         tasks.append(IndexerFactory.create(conf.index))
         return Pipeline(tasks, iterable)
 
-    def build_phase2_pipeline(self, conf, doc_store):
+    def build_phase2_pipeline(self, conf):
         iterable = TopicReaderFactory.create(conf.topics.input)
         tasks = [TopicProcessorFactory.create(conf.topics.process)]
         tasks, iterable = self.add_io_task(tasks, iterable, conf.topics.save, QueryReader, QueryWriter)
         tasks.append(RetrieverFactory.create(conf.retrieve))
         tasks, iterable = self.add_io_task(tasks, iterable, conf.retrieve.save, JsonResultsReader, JsonResultsWriter)
-        tasks.append(RerankFactory.create(conf.rerank, doc_store))
+        tasks.append(RerankFactory.create(conf.rerank))
         if is_complete(conf.rerank.save):
             raise PipelineError("Rerank results already complete")
         elif pathlib.Path(conf.rerank.save).exists():
