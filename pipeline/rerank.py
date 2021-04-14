@@ -8,11 +8,18 @@ from .retrieve import Results
 from .util import ComponentFactory
 
 
+class RerankInputConfig(BaseConfig):
+    """Configuration of optional rerank inputs"""
+    db: PathConfig
+    results: Optional[PathConfig]
+
+
 class RerankConfig(BaseConfig):
+    """Configuration for the rerank task"""
+    input: Optional[RerankInputConfig]
     name: str
     embedding: str
     save: str
-    db: Optional[PathConfig]
 
 
 class RerankFactory(ComponentFactory):
@@ -32,7 +39,7 @@ class Reranker(Task):
         """
         super().__init__()
         self.config = config
-        self.db = DocumentDatabaseFactory.create(config.db.path)
+        self.db = DocumentDatabaseFactory.create(config.input.db.path)
 
     def process(self, results):
         """Rerank query results

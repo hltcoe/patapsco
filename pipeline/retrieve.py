@@ -31,7 +31,7 @@ class Results:
 
 
 class RetrieveInputConfig(BaseConfig):
-    """Configuration of retrieval inputs"""
+    """Configuration of optional retrieval inputs"""
     index: PathConfig
     queries: Optional[PathConfig]
 
