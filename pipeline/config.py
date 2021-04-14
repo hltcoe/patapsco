@@ -22,6 +22,11 @@ class BaseConfig(pydantic.BaseModel):
         extra = pydantic.Extra.forbid
 
 
+class PathConfig(BaseConfig):
+    """Simple config with only a path variable"""
+    path: str
+
+
 class ConfigService:
     """Configuration service
 

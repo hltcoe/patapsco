@@ -4,7 +4,7 @@ import pathlib
 from .config import BaseConfig, ConfigService
 from .docs import DocumentsConfig, DocumentStoreConfig, DocumentProcessorFactory, DocumentReaderFactory, \
     DocumentStore, DocWriter
-from .error import PipelineError
+from .error import ConfigError, PipelineError
 from .index import IndexConfig, IndexerFactory
 from .pipeline import Pipeline
 from .rerank import RerankConfig, RerankFactory
@@ -28,14 +28,44 @@ class RunConfig(BaseConfig):
     score: ScoreConfig
 
 
+class RunConfigManager:
+    """Performs advanced validation and preprocessing of run configuration"""
+
+    def __init__(self, config_filename, overrides):
+        config_service = ConfigService(overrides)
+        conf_dict = config_service.read_config(config_filename)
+        self._validate(conf_dict)
+        self._update_relative_paths(conf_dict)
+        self._set_retrieve_input_path(conf_dict)
+        self.conf = RunConfig(**conf_dict)
+
+    @staticmethod
+    def _validate(conf_dict):
+        if 'path' not in conf_dict:
+            raise ConfigError("path is not set")
+
+    @staticmethod
+    def _set_retrieve_input_path(conf_dict):
+        # if input to retrieve is not set, we grab it from index config
+        if 'input' not in conf_dict['retrieve']:
+            conf_dict['retrieve']['input'] = {'index': {'path': conf_dict['index']['save']}}
+
+    @staticmethod
+    def _update_relative_paths(conf_dict):
+        # set path for components to be under the base directory of run
+        base = pathlib.Path(conf_dict['path'])
+        for c in conf_dict.values():
+            if isinstance(c, dict):
+                if 'save' in c and not isinstance(c['save'], bool):
+                    c['save'] = str(base / c['save'])
+        conf_dict['document_store']['path'] = str(base / conf_dict['document_store']['path'])
+
+
 class System:
     def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
-
-        config_service = ConfigService(overrides)
-        conf_dict = config_service.read_config(config_filename)
-        self.prepare_config(conf_dict)
-        conf = RunConfig(**conf_dict)
+        config_manager = RunConfigManager(config_filename, overrides)
+        conf = config_manager.conf
 
         if is_complete(conf.index.save) and not is_complete(conf.document_store.path):
             raise PipelineError("Cannot run with a complete index and incomplete doc store")
@@ -111,16 +141,3 @@ class System:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         console.setFormatter(formatter)
         logger.addHandler(console)
-
-    @staticmethod
-    def prepare_config(conf):
-        base = pathlib.Path(conf['path'])
-        # set path for components to be under the base directory of run
-        for c in conf.values():
-            if isinstance(c, dict):
-                if 'save' in c and not isinstance(c['save'], bool):
-                    c['save'] = str(base / c['save'])
-        conf['document_store']['path'] = str(base / conf['document_store']['path'])
-        # if input to retrieve is not set, we grab it from index
-        if 'input' not in conf['retrieve']:
-            conf['retrieve']['input'] = {'path': conf['index']['save']}

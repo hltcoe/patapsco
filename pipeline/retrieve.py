@@ -5,7 +5,7 @@ import pathlib
 import random
 from typing import List
 
-from .config import BaseConfig, Union
+from .config import BaseConfig, Optional, PathConfig, Union
 from .pipeline import Task
 from .topics import Query
 from .util import ComponentFactory
@@ -31,8 +31,9 @@ class Results:
 
 
 class RetrieveInputConfig(BaseConfig):
-    """Configuration of retrieval index location"""
-    path: str
+    """Configuration of retrieval inputs"""
+    index: PathConfig
+    queries: Optional[PathConfig]
 
 
 class RetrieveConfig(BaseConfig):
@@ -131,7 +132,7 @@ class MockRetriever(Task):
     def __init__(self, config):
         super().__init__()
         self.number = config.number
-        self.path = pathlib.Path(config.input.path) / 'index.txt'
+        self.path = pathlib.Path(config.input.index.path) / 'index.txt'
         self.doc_ids = None
 
     def process(self, query):
