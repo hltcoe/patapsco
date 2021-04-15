@@ -1,6 +1,7 @@
 import dataclasses
 import json
 import sys
+import timeit
 
 from ..config import BaseConfig
 from ..error import ConfigError
@@ -35,3 +36,15 @@ class DataclassJSONEncoder(json.JSONEncoder):
         if dataclasses.is_dataclass(obj):
             return dataclasses.asdict(obj)
         return super().default(obj)
+
+
+class Timer:
+    def __init__(self, name=None):
+        self.name = name
+        self.time = 0
+
+    def __enter__(self):
+        self.start = timeit.default_timer()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.time += timeit.default_timer() - self.start

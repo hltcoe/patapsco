@@ -12,6 +12,7 @@ from .rerank import RerankConfig, RerankFactory
 from .retrieve import JsonResultsWriter, JsonResultsReader, TrecResultsWriter, RetrieveConfig, RetrieverFactory
 from .score import QrelsReaderFactory, ScoreConfig, Scorer
 from .topics import TopicProcessorFactory, TopicReaderFactory, TopicsConfig, QueryReader, QueryWriter
+from .util import Timer
 from .util.file import delete_dir, is_complete
 
 LOGGER = logging.getLogger(__name__)
@@ -234,14 +235,20 @@ class System:
             LOGGER.info("Stage 2 pipeline: %s", self.stage2)
 
         if self.stage1:
-            LOGGER.info("Starting processing of documents")
-            self.stage1.run()
-            LOGGER.info("Ingested %s documents", self.stage1.count)
+            timer1 = Timer()
+            LOGGER.info("Stage 1: Starting processing of documents")
+            with timer1:
+                self.stage1.run()
+            LOGGER.info("Stage 1: Ingested %d documents", self.stage1.count)
+            LOGGER.info("Stage 1 took %.1f secs", timer1.time)
 
         if self.stage2:
-            LOGGER.info("Starting processing of topics")
-            self.stage2.run()
-            LOGGER.info("Processed %s topics", self.stage2.count)
+            timer2 = Timer()
+            LOGGER.info("Stage 2: Starting processing of topics")
+            with timer2:
+                self.stage2.run()
+            LOGGER.info("Stage 2: Processed %d topics", self.stage2.count)
+            LOGGER.info("Stage 2 took %.1f secs", timer2.time)
         LOGGER.info("Run complete")
 
     @staticmethod
