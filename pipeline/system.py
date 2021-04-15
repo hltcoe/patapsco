@@ -1,4 +1,5 @@
 import enum
+import json
 import logging
 import pathlib
 
@@ -224,8 +225,8 @@ class PipelineBuilder:
 class System:
     def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
-        conf = RunConfigPreprocessor.process(config_filename, overrides)
-        builder = PipelineBuilder(conf)
+        self.conf = RunConfigPreprocessor.process(config_filename, overrides)
+        builder = PipelineBuilder(self.conf)
         self.stage1, self.stage2 = builder.build()
 
     def run(self):
@@ -249,6 +250,8 @@ class System:
                 self.stage2.run()
             LOGGER.info("Stage 2: Processed %d topics", self.stage2.count)
             LOGGER.info("Stage 2 took %.1f secs", timer2.time)
+
+        self.write_report()
         LOGGER.info("Run complete")
 
     @staticmethod
@@ -261,3 +264,14 @@ class System:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         console.setFormatter(formatter)
         logger.addHandler(console)
+
+    def write_report(self):
+        # TODO maybe rename this as timing.txt
+        path = pathlib.Path(self.conf.path) / 'report.txt'
+        data = {}
+        if self.stage1:
+            data['stage1'] = self.stage1.report
+        if self.stage2:
+            data['stage2'] = self.stage2.report
+        with open(path, 'w') as fp:
+            json.dump(data, fp, indent=4)
