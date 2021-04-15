@@ -1,4 +1,5 @@
 import enum
+import json
 import logging
 import pathlib
 
@@ -12,6 +13,7 @@ from .rerank import RerankConfig, RerankFactory
 from .retrieve import JsonResultsWriter, JsonResultsReader, TrecResultsWriter, RetrieveConfig, RetrieverFactory
 from .score import QrelsReaderFactory, ScoreConfig, Scorer
 from .topics import TopicProcessorFactory, TopicReaderFactory, TopicsConfig, QueryReader, QueryWriter
+from .util import Timer
 from .util.file import delete_dir, is_complete
 
 LOGGER = logging.getLogger(__name__)
@@ -223,8 +225,8 @@ class PipelineBuilder:
 class System:
     def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
-        conf = RunConfigPreprocessor.process(config_filename, overrides)
-        builder = PipelineBuilder(conf)
+        self.conf = RunConfigPreprocessor.process(config_filename, overrides)
+        builder = PipelineBuilder(self.conf)
         self.stage1, self.stage2 = builder.build()
 
     def run(self):
@@ -234,14 +236,22 @@ class System:
             LOGGER.info("Stage 2 pipeline: %s", self.stage2)
 
         if self.stage1:
-            LOGGER.info("Starting processing of documents")
-            self.stage1.run()
-            LOGGER.info("Ingested %s documents", self.stage1.count)
+            timer1 = Timer()
+            LOGGER.info("Stage 1: Starting processing of documents")
+            with timer1:
+                self.stage1.run()
+            LOGGER.info("Stage 1: Ingested %d documents", self.stage1.count)
+            LOGGER.info("Stage 1 took %.1f secs", timer1.time)
 
         if self.stage2:
-            LOGGER.info("Starting processing of topics")
-            self.stage2.run()
-            LOGGER.info("Processed %s topics", self.stage2.count)
+            timer2 = Timer()
+            LOGGER.info("Stage 2: Starting processing of topics")
+            with timer2:
+                self.stage2.run()
+            LOGGER.info("Stage 2: Processed %d topics", self.stage2.count)
+            LOGGER.info("Stage 2 took %.1f secs", timer2.time)
+
+        self.write_report()
         LOGGER.info("Run complete")
 
     @staticmethod
@@ -254,3 +264,14 @@ class System:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         console.setFormatter(formatter)
         logger.addHandler(console)
+
+    def write_report(self):
+        # TODO maybe rename this as timing.txt
+        path = pathlib.Path(self.conf.path) / 'report.txt'
+        data = {}
+        if self.stage1:
+            data['stage1'] = self.stage1.report
+        if self.stage2:
+            data['stage2'] = self.stage2.report
+        with open(path, 'w') as fp:
+            json.dump(data, fp, indent=4)

@@ -1,6 +1,8 @@
 import abc
 import logging
 
+from .util import Timer
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -14,6 +16,7 @@ class Task(abc.ABC):
 
     def __init__(self):
         self.downstream = None
+        self.timer = Timer()
 
     @abc.abstractmethod
     def process(self, item):
@@ -32,9 +35,18 @@ class Task(abc.ABC):
         """Optional end method for cleaning up"""
         pass
 
+    @property
+    def name(self):
+        return self.__class__.__name__
+
+    @property
+    def time(self):
+        return self.timer.time
+
     def _process(self, item):
         """Push the output of process() to the next task"""
-        item = self.process(item)
+        with self.timer:
+            item = self.process(item)
         if self.downstream:
             self.downstream._process(item)
 
@@ -69,6 +81,15 @@ class Pipeline:
     def end(self):
         self.task._end()
 
+    @property
+    def report(self):
+        task = self.task
+        report = [(task.name, task.time)]
+        while task.downstream:
+            task = task.downstream
+            report.append((task.name, task.time))
+        return report
+
     def _connect(self, tasks):
         head_task = prev_task = tasks.pop(0)
         while tasks:
@@ -81,6 +102,6 @@ class Pipeline:
         task_names = [str(self.iterable.__class__.__name__)]
         task = self.task
         while task:
-            task_names.append(str(task.__class__.__name__))
+            task_names.append(str(task.name))
             task = task.downstream
         return ' | '.join(task_names)
