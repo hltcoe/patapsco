@@ -41,7 +41,12 @@ class Tasks(enum.Enum):
 
 
 class RunConfigPreprocessor:
-    """Performs advanced validation and preprocessing of run configuration"""
+    """Processes the config dictionary before creating the config object with its validation
+
+    1. sets the paths for output to be under the run directory
+    2. sets the retriever's index path based on the index task if not already set
+    3. sets the rerankers' db path based on the document processor if not already set
+    """
 
     @classmethod
     def process(cls, config_filename, overrides):
@@ -109,22 +114,27 @@ class PipelineBuilder:
         return stage1, stage2
 
     def build_stage1(self, conf, plan):
+        # Stage 1 is generally: read docs, process them, build index.
+        # For each task, we clear previous data from a failed run if it exists.
+        # Then we build the tasks from the plan and create the iterator to drive the pipeline.
         if not plan:
             return None
         tasks = []
         iterable = None
         if Tasks.DOCUMENTS in plan:
-            iterable = DocumentReaderFactory.create(conf.documents.input)
+            # doc reader -> doc processor with doc db -> optional doc writer
+            self.clear_output(conf.documents)
             if not is_complete(conf.documents.db.path) and pathlib.Path(conf.documents.db.path).exists():
                 delete_dir(conf.documents.db.path)
+            iterable = DocumentReaderFactory.create(conf.documents.input)
             db = DocumentDatabaseFactory.create(conf.documents.db.path)
             tasks.append(DocumentProcessorFactory.create(conf.documents.process, db))
             if conf.documents.output and conf.documents.output.path:
                 tasks.append(DocWriter(conf.documents.output.path))
         if Tasks.INDEX in plan:
-            # TODO set iterable if documents output exists or throw error if we don't support that
             self.clear_output(conf.index)
             if Tasks.DOCUMENTS not in plan:
+                # documents already processed so locate them to set the iterator
                 try:
                     iterable = DocReader(conf.index.input.documents.path)
                 except AttributeError:
@@ -136,11 +146,15 @@ class PipelineBuilder:
         return Pipeline(tasks, iterable)
 
     def build_stage2(self, conf, plan):
+        # Stage 1 is generally: read topics, process them, retrieve results, rerank them, score.
+        # For each task, we clear previous data from a failed run if it exists.
+        # Then we build the tasks from the plan and create the iterator to drive the pipeline.
         if not plan:
             return None
         tasks = []
         iterable = None
         if Tasks.TOPICS in plan:
+            # topic reader -> topic processor -> optional query writer
             self.clear_output(conf.topics)
             iterable = TopicReaderFactory.create(conf.topics.input)
             tasks.append(TopicProcessorFactory.create(conf.topics.process))
@@ -149,6 +163,7 @@ class PipelineBuilder:
         if Tasks.RETRIEVE in plan:
             self.clear_output(conf.retrieve)
             if Tasks.TOPICS not in plan:
+                # topics already processed so locate them to set the iterator
                 try:
                     iterable = QueryReader(conf.retrieve.input.queries.path)
                 except AttributeError:
@@ -162,6 +177,7 @@ class PipelineBuilder:
         if Tasks.RERANK in plan:
             self.clear_output(conf.rerank)
             if Tasks.RETRIEVE not in plan:
+                # results already processed so locate them to set the iterator
                 try:
                     iterable = JsonResultsReader(conf.rerank.input.results.path)
                 except AttributeError:
@@ -177,30 +193,29 @@ class PipelineBuilder:
         return Pipeline(tasks, iterable)
 
     def create_plan(self, conf):
+        # Analyze the config and check there are any artifacts from a previous run.
+        # A plan consists of a list of Tasks to be constructed into a pipeline.
         stage1 = []
         if conf.documents:
-            # TODO not handling validating input
             index_complete = conf.index and self.is_task_complete(conf.index)
             if not self.is_task_complete(conf.documents) and not index_complete:
                 stage1.append(Tasks.DOCUMENTS)
         if conf.index:
-            # TODO not handling checking input
             if not self.is_task_complete(conf.index):
                 stage1.append(Tasks.INDEX)
 
         stage2 = []
         if conf.topics:
-            # TODO not handling input check
             # only add topics task if it is not complete and the retrieve task is not complete
+            # TODO need to confirm that the db is built also
             retrieve_complete = conf.retrieve and self.is_task_complete(conf.retrieve)
             if not self.is_task_complete(conf.topics) and not retrieve_complete:
                 stage2.append(Tasks.TOPICS)
         if conf.retrieve:
-            # TODO not handling input check
             if not self.is_task_complete(conf.retrieve):
                 stage2.append(Tasks.RETRIEVE)
         if conf.rerank:
-            # TODO not handling input check and not checking if results exist
+            # TODO not checking if results exist
             stage2.append(Tasks.RERANK)
         if conf.score:
             if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:
