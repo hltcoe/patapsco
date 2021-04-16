@@ -237,7 +237,7 @@ class PipelineBuilder:
             delete_dir(task_conf.output.path)
 
 
-class System:
+class Runner:
     def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
         self.conf = RunConfigPreprocessor.process(config_filename, overrides)
