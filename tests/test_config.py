@@ -3,7 +3,7 @@ import io
 import pytest
 import yaml
 
-import pipeline.config as config
+import patapsco.config as config
 
 
 def test_flat_dict_get():

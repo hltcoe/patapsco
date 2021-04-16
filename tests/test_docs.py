@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from pipeline.docs import *
+from patapsco.docs import *
 
 
 def test_parse_json_documents():

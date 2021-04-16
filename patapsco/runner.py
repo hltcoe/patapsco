@@ -272,7 +272,7 @@ class Runner:
     @staticmethod
     def setup_logging(verbose):
         log_level = logging.DEBUG if verbose else logging.INFO
-        logger = logging.getLogger('pipeline')
+        logger = logging.getLogger('patapsco')
         logger.setLevel(log_level)
         console = logging.StreamHandler()
         console.setLevel(log_level)
