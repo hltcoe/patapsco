@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from pipeline.topics import *
+from patapsco.topics import *
 
 
 def test_select_text():

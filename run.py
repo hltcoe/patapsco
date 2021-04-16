@@ -1,6 +1,6 @@
 import argparse
 
-from pipeline import Runner
+from patapsco import Runner
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from pipeline.util import file
+from patapsco.util import file
 
 
 def next_line(path):

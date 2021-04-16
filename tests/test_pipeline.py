@@ -1,4 +1,4 @@
-from pipeline.pipeline import *
+from patapsco.pipeline import *
 
 
 class MockTask(Task):
