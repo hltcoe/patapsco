@@ -1,7 +1,7 @@
 import abc
 import logging
 
-from .util import Timer
+from .util import Timer, TimedIterable
 
 LOGGER = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class Task(abc.ABC):
 class Pipeline:
     def __init__(self, tasks, iterable):
         self.task = self._connect(tasks)
-        self.iterable = iterable
+        self.iterable = TimedIterable(iterable)
         self.count = 0
 
     def run(self):
@@ -84,7 +84,7 @@ class Pipeline:
     @property
     def report(self):
         task = self.task
-        report = [(task.name, task.time)]
+        report = [(self.iterable.name, self.iterable.time), (task.name, task.time)]
         while task.downstream:
             task = task.downstream
             report.append((task.name, task.time))
@@ -99,9 +99,9 @@ class Pipeline:
         return head_task
 
     def __str__(self):
-        task_names = [str(self.iterable.__class__.__name__)]
+        task_names = [self.iterable.name]
         task = self.task
         while task:
-            task_names.append(str(task.name))
+            task_names.append(task.name)
             task = task.downstream
         return ' | '.join(task_names)
