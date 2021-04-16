@@ -1,3 +1,4 @@
+import collections
 import dataclasses
 import json
 import sys
@@ -48,3 +49,24 @@ class Timer:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.time += timeit.default_timer() - self.start
+
+
+class TimedIterable(collections.Iterable):
+    def __init__(self, iterable):
+        self.iterable = iterable
+        self.timer = Timer()
+
+    @property
+    def time(self):
+        return self.timer.time
+
+    @property
+    def name(self):
+        return self.iterable.__class__.__name__
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        with self.timer:
+            return next(self.iterable)

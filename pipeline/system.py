@@ -67,7 +67,7 @@ class RunConfigPreprocessor:
                         'path' in conf_dict['index']['output']:
                     if 'input' not in conf_dict['retrieve']:
                         conf_dict['retrieve']['input'] = {}
-                    if 'db' not in conf_dict['retrieve']['input']:
+                    if 'index' not in conf_dict['retrieve']['input']:
                         conf_dict['retrieve']['input']['index'] = {'path': conf_dict['index']['output']['path']}
                 else:
                     raise ConfigError("retrieve.input.index.path needs to be set")
