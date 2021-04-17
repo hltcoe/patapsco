@@ -26,7 +26,7 @@ class ComponentFactory:
         elif hasattr(config, 'format'):
             name = config.format
         else:
-            raise RuntimeError(f"Component has no name or format")
+            raise RuntimeError("Component has no name or format")
         try:
             class_name = cls.classes[name]
         except KeyError:
