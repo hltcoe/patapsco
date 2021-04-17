@@ -23,7 +23,7 @@ class Doc:
 
 class InputConfig(BaseConfig):
     """Configuration for the document corpus"""
-    name: str
+    format: str
     lang: str
     encoding: str = "utf8"
     path: Union[str, list]
@@ -39,6 +39,7 @@ class ProcessorConfig(BaseConfig):
 
 
 class DocumentsConfig(BaseConfig):
+    """Document processing task configuration"""
     input: InputConfig
     process: ProcessorConfig
     output: Union[bool, PathConfig]

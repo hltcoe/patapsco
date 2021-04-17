@@ -4,7 +4,7 @@ run:
 
 documents:
   input:
-    name: json
+    format: json
     lang: en
     encoding: utf8
     path: sample/en_mini_dataset.jsonl
@@ -19,7 +19,7 @@ documents:
 
 topics:
   input:
-    name: json
+    format: json
     lang: en
     encoding: utf8
     path: sample/en_mini_dataset_topics.jsonl
@@ -40,7 +40,7 @@ rerank:
 
 score:
   input:
-    name: trec
+    format: trec
     path: sample/en_mini_dataset_qrels
   metrics:
     - map
