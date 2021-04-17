@@ -6,7 +6,7 @@ import pathlib
 from .config import BaseConfig, ConfigService, Optional
 from .docs import DocumentsConfig, DocumentProcessorFactory, DocumentReaderFactory, \
     DocumentDatabaseFactory, DocReader, DocWriter
-from .error import ConfigError
+from .error import ConfigError, PipelineError
 from .index import IndexConfig, IndexerFactory
 from .pipeline import Pipeline
 from .rerank import RerankConfig, RerankFactory
@@ -192,7 +192,7 @@ class PipelineBuilder:
         if Tasks.RERANK in plan:
             self.clear_output(conf.rerank)
             if Tasks.RETRIEVE not in plan:
-                # results already processed so locate them to set the iterator
+                # retrieve results already processed so locate them to set the iterator
                 try:
                     iterable = JsonResultsReader(conf.rerank.input.results.path)
                 except AttributeError:
@@ -230,7 +230,8 @@ class PipelineBuilder:
             if not self.is_task_complete(conf.retrieve):
                 stage2.append(Tasks.RETRIEVE)
         if conf.rerank:
-            # TODO not checking if results exist
+            if self.is_task_complete(conf.rerank):
+                raise PipelineError('Rerank is already complete. Delete its output directory to rerun reranking.')
             stage2.append(Tasks.RERANK)
         if conf.score:
             if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:
