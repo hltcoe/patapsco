@@ -307,6 +307,7 @@ class Runner:
             LOGGER.info("Stage 2: Processed %d topics", self.stage2.count)
             LOGGER.info("Stage 2 took %.1f secs", timer2.time)
 
+        self.write_config()
         self.write_report()
         LOGGER.info("Run complete")
 
@@ -331,3 +332,7 @@ class Runner:
             data['stage2'] = self.stage2.report
         with open(path, 'w') as fp:
             json.dump(data, fp, indent=4)
+
+    def write_config(self):
+        path = pathlib.Path(self.conf.run.path) / 'config.yml'
+        ConfigService.write_config_file(str(path), self.conf)

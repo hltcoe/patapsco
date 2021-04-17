@@ -37,6 +37,9 @@ class ConfigService:
       * Section inheritance
     """
 
+    YAML = 1
+    JSON = 2
+
     def __init__(self, overrides=None, inheritance=True):
         """
         Args:
@@ -74,7 +77,7 @@ class ConfigService:
             raise ConfigError(error_msg)
 
     def read_config_file(self, filename):
-        """Loads the configuration detecting file type
+        """Read the configuration detecting file type
 
         Args:
             filename (str): path to the configuration file
@@ -82,13 +85,11 @@ class ConfigService:
         Returns:
             dict
         """
-        ext = pathlib.Path(filename).suffix.lower()
-        if ext in ['.yaml', '.yml']:
+        ftype = self._detect_filetype(filename)
+        if ftype == self.YAML:
             reader_fn = self._read_yaml_config
-        elif ext == '.json':
-            reader_fn = self._read_json_config
         else:
-            raise ConfigError(f"Unknown config file extension {ext}")
+            reader_fn = self._read_json_config
         with open(filename, 'r') as fp:
             LOGGER.info("Loading configuration from %s", filename)
             conf = reader_fn(fp)
@@ -98,9 +99,36 @@ class ConfigService:
                 ConfigInheritance.process(conf)
             return conf
 
+    @classmethod
+    def write_config_file(cls, filename, config):
+        """Write the configuration file detecting file type
+
+        Args:
+            filename (str): path to the configuration file to write
+            config (BaseConfig): configuration object
+        """
+        ftype = cls._detect_filetype(filename)
+        if ftype == cls.YAML:
+            writer_fn = cls._write_yaml_config
+        else:
+            writer_fn = cls._write_json_config
+        with open(filename, 'w') as fp:
+            writer_fn(fp, config.dict(exclude_none=True))
+
+    @staticmethod
+    def _detect_filetype(filename):
+        """Detect file type from the filename"""
+        ext = pathlib.Path(filename).suffix.lower()
+        if ext in ['.yaml', '.yml']:
+            return ConfigService.YAML
+        elif ext == '.json':
+            return ConfigService.JSON
+        else:
+            raise ConfigError(f"Unknown config file extension {ext} for {filename}")
+
     @staticmethod
     def _read_yaml_config(fp):
-        """Loads a configuration from a YAML stream
+        """Read a configuration from a YAML stream
 
         Args:
             fp (file): File like object or string to parse
@@ -117,7 +145,7 @@ class ConfigService:
 
     @staticmethod
     def _write_yaml_config(fp, data):
-        """Save a configuration to a YAML file
+        """Write a configuration to a YAML file
 
         Args:
             fp (file): file object opened for writing
@@ -126,7 +154,7 @@ class ConfigService:
         yaml.dump(data, fp)
 
     def _read_json_config(self, fp):
-        """Loads a configuration from a JSON file
+        """Read a configuration from a JSON file
 
         Args:
             fp (file): File like object to parse
@@ -163,8 +191,8 @@ class ConfigService:
                     d[key] = False
 
     @staticmethod
-    def _save_json_config(file, data):
-        """Save a configuration to a JSON file
+    def _write_json_config(file, data):
+        """Write a configuration to a JSON file
 
         Args:
             file (file): file object opened for writing
