@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from patapsco.retrieve import *
+from patapsco.results import *
 
 
 def test_json_results_reader():

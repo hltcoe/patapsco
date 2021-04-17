@@ -10,7 +10,8 @@ from .error import ConfigError
 from .index import IndexConfig, IndexerFactory
 from .pipeline import Pipeline
 from .rerank import RerankConfig, RerankFactory
-from .retrieve import JsonResultsWriter, JsonResultsReader, TrecResultsWriter, RetrieveConfig, RetrieverFactory
+from .results import JsonResultsWriter, JsonResultsReader, TrecResultsWriter
+from .retrieve import RetrieveConfig, RetrieverFactory
 from .score import QrelsReaderFactory, ScoreConfig, Scorer
 from .topics import TopicProcessorFactory, TopicReaderFactory, TopicsConfig, QueryReader, QueryWriter
 from .util import Timer
