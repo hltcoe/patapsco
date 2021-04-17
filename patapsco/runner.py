@@ -6,7 +6,7 @@ import pathlib
 from .config import BaseConfig, ConfigService, Optional
 from .docs import DocumentsConfig, DocumentProcessorFactory, DocumentReaderFactory, \
     DocumentDatabaseFactory, DocReader, DocWriter
-from .error import ConfigError, PipelineError
+from .error import ConfigError
 from .index import IndexConfig, IndexerFactory
 from .pipeline import Pipeline
 from .rerank import RerankConfig, RerankFactory
@@ -59,13 +59,16 @@ class ConfigPreprocessor:
     @classmethod
     def process(cls, config_filename, overrides):
         config_service = ConfigService(overrides)
-        conf_dict = config_service.read_config(config_filename)
+        try:
+            conf_dict = config_service.read_config_file(config_filename)
+        except FileNotFoundError as error:
+            raise ConfigError(error)
         cls._validate(conf_dict)
         cls._set_output_paths(conf_dict)
         cls._update_relative_paths(conf_dict)
         cls._set_retrieve_input_path(conf_dict)
         cls._set_rerank_db_path(conf_dict)
-        return RunnerConfig(**conf_dict)
+        return config_service.create_config_object(RunnerConfig, conf_dict)
 
     @staticmethod
     def _validate(conf_dict):
@@ -251,7 +254,7 @@ class PipelineBuilder:
                 stage2.append(Tasks.RETRIEVE)
         if conf.rerank:
             if self.is_task_complete(conf.rerank):
-                raise PipelineError('Rerank is already complete. Delete its output directory to rerun reranking.')
+                raise ConfigError('Rerank is already complete. Delete its output directory to rerun reranking.')
             stage2.append(Tasks.RERANK)
         if conf.score:
             if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:

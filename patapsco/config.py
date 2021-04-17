@@ -46,7 +46,34 @@ class ConfigService:
         self.overrides = overrides
         self.inheritance = inheritance
 
-    def read_config(self, filename):
+    @staticmethod
+    def create_config_object(config_class, config_dict):
+        """Create a configuration object using pydantic
+
+        Performs validation
+
+        Args:
+            config_class (class): BaseConfig object to create
+            config_dict (dict): Dictionary to convert to object
+        """
+        try:
+            return config_class(**config_dict)
+        except pydantic.ValidationError as error:
+            # provides a more tailored error message than the default
+            errors = {'.'.join(e['loc']): e['type'] for e in error.errors()}
+            error_msg = f"{len(errors)} validation errors in configuration"
+            for field, error_type in errors.items():
+                if error_type == 'value_error.missing':
+                    error_msg += f"\n  {field} - missing field"
+                elif error_type == 'value_error.extra':
+                    error_msg += f"\n  {field} - unknown field"
+                elif error_type.startswith('type_error'):
+                    error_msg += f"\n  {field} - wrong type, should be {error_type.split('.')[1]}"
+                else:
+                    error_msg += f"\n  {field} - {error_type}"
+            raise ConfigError(error_msg)
+
+    def read_config_file(self, filename):
         """Loads the configuration detecting file type
 
         Args:
