@@ -11,6 +11,20 @@ def test_config_preprocessor_validate():
         ConfigPreprocessor._validate(conf)
 
 
+def test_config_preprocessor_set_output_paths():
+    conf = {
+        'run': {'path': 'test'},
+        'documents': {'db': {'path': 'docs_db'}},
+        'index': {},
+        'retrieve': {'output': {'path': 'initial_results'}},
+    }
+    ConfigPreprocessor._set_output_paths(conf)
+    assert conf['documents']['output'] is False
+    assert conf['documents']['db']['path'] == 'docs_db'
+    assert conf['index']['output']['path'] == 'index'
+    assert conf['retrieve']['output']['path'] == 'initial_results'
+
+
 def test_config_preprocessor_update_relative_paths():
     conf = {
         'run': {'path': 'test'},

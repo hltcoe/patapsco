@@ -50,9 +50,10 @@ class Tasks(enum.Enum):
 class ConfigPreprocessor:
     """Processes the config dictionary before creating the config object with its validation
 
-    1. sets the paths for output to be under the run directory
-    2. sets the retriever's index path based on the index task if not already set
-    3. sets the rerankers' db path based on the document processor if not already set
+    1. sets the output directory names from defaults if not already set
+    2. sets the paths for output to be under the run directory
+    3. sets the retriever's index path based on the index task if not already set
+    4. sets the rerankers' db path based on the document processor if not already set
     """
 
     @classmethod
@@ -60,6 +61,7 @@ class ConfigPreprocessor:
         config_service = ConfigService(overrides)
         conf_dict = config_service.read_config(config_filename)
         cls._validate(conf_dict)
+        cls._set_output_paths(conf_dict)
         cls._update_relative_paths(conf_dict)
         cls._set_retrieve_input_path(conf_dict)
         cls._set_rerank_db_path(conf_dict)
@@ -73,6 +75,24 @@ class ConfigPreprocessor:
             conf_dict['run']['path']
         except KeyError:
             raise ConfigError("run.path is not set")
+
+    output_defaults = {
+        'documents': False,
+        'index': {'path': 'index'},
+        'topics': {'path': 'queries'},
+        'retrieve': {'path': 'retrieve'},
+        'rerank': {'path': 'rerank'},
+        'database': {'path': 'database'}
+    }
+
+    @classmethod
+    def _set_output_paths(cls, conf_dict):
+        # set output path for components from defaults
+        for task in cls.output_defaults.keys():
+            if task in conf_dict and 'output' not in conf_dict[task]:
+                conf_dict[task]['output'] = cls.output_defaults[task]
+        if 'documents' in conf_dict and 'db' not in conf_dict['documents']:
+            conf_dict['documents']['db'] = cls.output_defaults['database']
 
     @staticmethod
     def _update_relative_paths(conf_dict):
