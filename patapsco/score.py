@@ -12,7 +12,7 @@ LOGGER = logging.getLogger(__name__)
 
 class InputConfig(BaseConfig):
     """Qrels downstream configuration"""
-    name: str = "trec"
+    format: str = "trec"
     path: str
 
 

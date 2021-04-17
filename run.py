@@ -1,6 +1,6 @@
 import argparse
 
-from patapsco import Runner
+from patapsco import Runner, PatapscoError
 
 
 if __name__ == "__main__":
@@ -10,5 +10,8 @@ if __name__ == "__main__":
     parser.add_argument("--set", metavar="KEY=VALUE", nargs="+", help="Key-value pairs of parameters to override")
     args = parser.parse_args()
 
-    runner = Runner(args.config, args.verbose, args.set)
-    runner.run()
+    try:
+        runner = Runner(args.config, args.verbose, args.set)
+        runner.run()
+    except PatapscoError as error:
+        print(f"Error: {error}")

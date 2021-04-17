@@ -10,7 +10,8 @@ from .error import ConfigError
 from .index import IndexConfig, IndexerFactory
 from .pipeline import Pipeline
 from .rerank import RerankConfig, RerankFactory
-from .retrieve import JsonResultsWriter, JsonResultsReader, TrecResultsWriter, RetrieveConfig, RetrieverFactory
+from .results import JsonResultsWriter, JsonResultsReader, TrecResultsWriter
+from .retrieve import RetrieveConfig, RetrieverFactory
 from .score import QrelsReaderFactory, ScoreConfig, Scorer
 from .topics import TopicProcessorFactory, TopicReaderFactory, TopicsConfig, QueryReader, QueryWriter
 from .util import Timer
@@ -21,7 +22,13 @@ LOGGER = logging.getLogger(__name__)
 
 class RunConfig(BaseConfig):
     """Configuration for a run of the system"""
-    path: str
+    path: str  # base path for run output
+    name: Optional[str]
+
+
+class RunnerConfig(BaseConfig):
+    """Configuration for the patapsco runner"""
+    run: RunConfig
     documents: Optional[DocumentsConfig]
     index: Optional[IndexConfig]
     topics: Optional[TopicsConfig]
@@ -40,28 +47,71 @@ class Tasks(enum.Enum):
     SCORE = enum.auto()
 
 
-class RunConfigPreprocessor:
+class ConfigPreprocessor:
     """Processes the config dictionary before creating the config object with its validation
 
-    1. sets the paths for output to be under the run directory
-    2. sets the retriever's index path based on the index task if not already set
-    3. sets the rerankers' db path based on the document processor if not already set
+    1. sets the output directory names from defaults if not already set
+    2. sets the paths for output to be under the run directory
+    3. sets the retriever's index path based on the index task if not already set
+    4. sets the rerankers' db path based on the document processor if not already set
     """
 
     @classmethod
     def process(cls, config_filename, overrides):
         config_service = ConfigService(overrides)
-        conf_dict = config_service.read_config(config_filename)
+        try:
+            conf_dict = config_service.read_config_file(config_filename)
+        except FileNotFoundError as error:
+            raise ConfigError(error)
         cls._validate(conf_dict)
+        cls._set_output_paths(conf_dict)
         cls._update_relative_paths(conf_dict)
         cls._set_retrieve_input_path(conf_dict)
         cls._set_rerank_db_path(conf_dict)
-        return RunConfig(**conf_dict)
+        return config_service.create_config_object(RunnerConfig, conf_dict)
 
     @staticmethod
     def _validate(conf_dict):
-        if 'path' not in conf_dict:
-            raise ConfigError("path is not set")
+        # This tests for:
+        # 1. The run base path is set
+        try:
+            conf_dict['run']['path']
+        except KeyError:
+            raise ConfigError("run.path is not set")
+
+    output_defaults = {
+        'documents': False,
+        'index': {'path': 'index'},
+        'topics': {'path': 'queries'},
+        'retrieve': {'path': 'retrieve'},
+        'rerank': {'path': 'rerank'},
+        'database': {'path': 'database'}
+    }
+
+    @classmethod
+    def _set_output_paths(cls, conf_dict):
+        # set output path for components from defaults
+        for task in cls.output_defaults.keys():
+            if task in conf_dict and 'output' not in conf_dict[task]:
+                conf_dict[task]['output'] = cls.output_defaults[task]
+        if 'documents' in conf_dict and 'db' not in conf_dict['documents']:
+            conf_dict['documents']['db'] = cls.output_defaults['database']
+
+    @staticmethod
+    def _update_relative_paths(conf_dict):
+        # set path for components to be under the base directory of run
+        # note that if the path is an absoluate path, pathlib does not change it.
+        base = pathlib.Path(conf_dict['run']['path'])
+        for c in conf_dict.values():
+            if isinstance(c, dict):
+                if 'output' in c and not isinstance(c['output'], bool):
+                    if 'path' in c['output']:
+                        c['output']['path'] = str(base / c['output']['path'])
+        if 'documents' in conf_dict:
+            try:
+                conf_dict['documents']['db']['path'] = str(base / conf_dict['documents']['db']['path'])
+            except KeyError:
+                raise ConfigError("documents.db.path needs to be set")
 
     @staticmethod
     def _set_retrieve_input_path(conf_dict):
@@ -89,18 +139,6 @@ class RunConfigPreprocessor:
                         conf_dict['rerank']['input']['db'] = {'path': conf_dict['documents']['db']['path']}
                 else:
                     raise ConfigError("rerank.input.db.path needs to be set")
-
-    @staticmethod
-    def _update_relative_paths(conf_dict):
-        # set path for components to be under the base directory of run
-        base = pathlib.Path(conf_dict['path'])
-        for c in conf_dict.values():
-            if isinstance(c, dict):
-                if 'output' in c and not isinstance(c['output'], bool):
-                    if 'path' in c['output']:
-                        c['output']['path'] = str(base / c['output']['path'])
-        if 'documents' in conf_dict:
-            conf_dict['documents']['db']['path'] = str(base / conf_dict['documents']['db']['path'])
 
 
 class PipelineBuilder:
@@ -177,7 +215,7 @@ class PipelineBuilder:
         if Tasks.RERANK in plan:
             self.clear_output(conf.rerank)
             if Tasks.RETRIEVE not in plan:
-                # results already processed so locate them to set the iterator
+                # retrieve results already processed so locate them to set the iterator
                 try:
                     iterable = JsonResultsReader(conf.rerank.input.results.path)
                 except AttributeError:
@@ -215,7 +253,8 @@ class PipelineBuilder:
             if not self.is_task_complete(conf.retrieve):
                 stage2.append(Tasks.RETRIEVE)
         if conf.rerank:
-            # TODO not checking if results exist
+            if self.is_task_complete(conf.rerank):
+                raise ConfigError('Rerank is already complete. Delete its output directory to rerun reranking.')
             stage2.append(Tasks.RERANK)
         if conf.score:
             if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:
@@ -240,11 +279,13 @@ class PipelineBuilder:
 class Runner:
     def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
-        self.conf = RunConfigPreprocessor.process(config_filename, overrides)
+        self.conf = ConfigPreprocessor.process(config_filename, overrides)
         builder = PipelineBuilder(self.conf)
         self.stage1, self.stage2 = builder.build()
 
     def run(self):
+        if self.conf.run.name:
+            LOGGER.info("Starting run %s", self.conf.run.name)
         if self.stage1:
             LOGGER.info("Stage 1 pipeline: %s", self.stage1)
         if self.stage2:
@@ -266,6 +307,7 @@ class Runner:
             LOGGER.info("Stage 2: Processed %d topics", self.stage2.count)
             LOGGER.info("Stage 2 took %.1f secs", timer2.time)
 
+        self.write_config()
         self.write_report()
         LOGGER.info("Run complete")
 
@@ -282,7 +324,7 @@ class Runner:
 
     def write_report(self):
         # TODO maybe rename this as timing.txt
-        path = pathlib.Path(self.conf.path) / 'report.txt'
+        path = pathlib.Path(self.conf.run.path) / 'report.txt'
         data = {}
         if self.stage1:
             data['stage1'] = self.stage1.report
@@ -290,3 +332,7 @@ class Runner:
             data['stage2'] = self.stage2.report
         with open(path, 'w') as fp:
             json.dump(data, fp, indent=4)
+
+    def write_config(self):
+        path = pathlib.Path(self.conf.run.path) / 'config.yml'
+        ConfigService.write_config_file(str(path), self.conf)

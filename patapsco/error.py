@@ -1,12 +1,12 @@
 
 
-class PipelineError(Exception):
+class PatapscoError(Exception):
     pass
 
 
-class ConfigError(PipelineError):
+class ConfigError(PatapscoError):
     pass
 
 
-class ParseError(PipelineError):
+class ParseError(PatapscoError):
     pass

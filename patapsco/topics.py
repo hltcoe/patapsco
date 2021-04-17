@@ -29,7 +29,7 @@ class Query:
 
 class InputConfig(BaseConfig):
     """Configuration for Topic input"""
-    name: str
+    format: str
     lang: str
     encoding: str = "utf8"
     strip_non_digits: bool = False

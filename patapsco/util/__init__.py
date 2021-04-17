@@ -21,10 +21,16 @@ class ComponentFactory:
         if not isinstance(config, BaseConfig):
             config = cls.config_class(**config)
         namespace = vars(sys.modules[cls.__module__])
+        if hasattr(config, 'name'):
+            name = config.name
+        elif hasattr(config, 'format'):
+            name = config.format
+        else:
+            raise RuntimeError("Component has no name or format")
         try:
-            class_name = cls.classes[config.name]
+            class_name = cls.classes[name]
         except KeyError:
-            raise ConfigError(f"Unknown component: {config.name}")
+            raise ConfigError(f"Unknown component: {name}")
         try:
             class_ = namespace[class_name]
         except KeyError:

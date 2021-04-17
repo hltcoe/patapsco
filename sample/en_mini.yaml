@@ -1,13 +1,13 @@
-path: runs/en_mini
+run:
+  name: English test run
+  path: runs/en_mini
 
 documents:
   input:
-    name: json
+    format: json
     lang: en
     encoding: utf8
     path: sample/en_mini_dataset.jsonl
-  db:
-    path: docs_db
   process:
     char_normalize: true
     lowercase: true
@@ -16,41 +16,31 @@ documents:
     stem:
       name: trunc
       length: 4
-  output:
-    path: processed_docs
 
 topics:
   input:
-    name: json
+    format: json
     lang: en
     encoding: utf8
     path: sample/en_mini_dataset_topics.jsonl
   process:
     inherit: documents.process
     query: title
-  output:
-    path: queries
 
 index:
   name: anserini
-  output:
-    path: index
 
 retrieve:
   name: bm25
   number: 5
-  output:
-    path: initial_results
 
 rerank:
   name: pacrr
   embedding: bert
-  output:
-    path: pacrr_results
 
 score:
   input:
-    name: trec
+    format: trec
     path: sample/en_mini_dataset_qrels
   metrics:
     - map
