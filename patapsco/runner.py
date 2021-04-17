@@ -76,6 +76,7 @@ class ConfigPreprocessor:
     @staticmethod
     def _update_relative_paths(conf_dict):
         # set path for components to be under the base directory of run
+        # note that if the path is an absoluate path, pathlib does not change it.
         base = pathlib.Path(conf_dict['run']['path'])
         for c in conf_dict.values():
             if isinstance(c, dict):

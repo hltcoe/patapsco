@@ -22,6 +22,17 @@ def test_config_preprocessor_update_relative_paths():
     assert conf['documents']['db']['path'] == 'test' + os.path.sep + 'database'
 
 
+def test_config_preprocessor_update_relative_paths_with_abs_path():
+    conf = {
+        'run': {'path': '/opt/test'},
+        'retrieve': {'output': {'path': '/opt/patapsco/retrieve'}},
+        'documents': {'db': {'path': '/opt/patapsco/database'}}
+    }
+    ConfigPreprocessor._update_relative_paths(conf)
+    assert conf['retrieve']['output']['path'] == '/opt/patapsco/retrieve'
+    assert conf['documents']['db']['path'] == '/opt/patapsco/database'
+
+
 def test_config_preprocessor_update_relative_paths_with_bad_db_conf():
     conf = {
         'run': {'path': 'test'},
