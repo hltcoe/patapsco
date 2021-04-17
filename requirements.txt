@@ -1,5 +1,4 @@
 beautifulsoup4
-flatten-dict
 pydantic
 pyyaml
 sqlitedict
