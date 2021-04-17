@@ -1,4 +1,6 @@
-path: runs/en_mini
+run:
+  name: English test run
+  path: runs/en_mini
 
 documents:
   input:

@@ -21,7 +21,13 @@ LOGGER = logging.getLogger(__name__)
 
 class RunConfig(BaseConfig):
     """Configuration for a run of the system"""
-    path: str
+    path: str  # base path for run output
+    name: Optional[str]
+
+
+class RunnerConfig(BaseConfig):
+    """Configuration for the patapsco runner"""
+    run: RunConfig
     documents: Optional[DocumentsConfig]
     index: Optional[IndexConfig]
     topics: Optional[TopicsConfig]
@@ -40,7 +46,7 @@ class Tasks(enum.Enum):
     SCORE = enum.auto()
 
 
-class RunConfigPreprocessor:
+class ConfigPreprocessor:
     """Processes the config dictionary before creating the config object with its validation
 
     1. sets the paths for output to be under the run directory
@@ -56,12 +62,31 @@ class RunConfigPreprocessor:
         cls._update_relative_paths(conf_dict)
         cls._set_retrieve_input_path(conf_dict)
         cls._set_rerank_db_path(conf_dict)
-        return RunConfig(**conf_dict)
+        return RunnerConfig(**conf_dict)
 
     @staticmethod
     def _validate(conf_dict):
-        if 'path' not in conf_dict:
-            raise ConfigError("path is not set")
+        # This tests for:
+        # 1. The run base path is set
+        try:
+            conf_dict['run']['path']
+        except KeyError:
+            raise ConfigError("run.path is not set")
+
+    @staticmethod
+    def _update_relative_paths(conf_dict):
+        # set path for components to be under the base directory of run
+        base = pathlib.Path(conf_dict['run']['path'])
+        for c in conf_dict.values():
+            if isinstance(c, dict):
+                if 'output' in c and not isinstance(c['output'], bool):
+                    if 'path' in c['output']:
+                        c['output']['path'] = str(base / c['output']['path'])
+        if 'documents' in conf_dict:
+            try:
+                conf_dict['documents']['db']['path'] = str(base / conf_dict['documents']['db']['path'])
+            except KeyError:
+                raise ConfigError("documents.db.path needs to be set")
 
     @staticmethod
     def _set_retrieve_input_path(conf_dict):
@@ -89,18 +114,6 @@ class RunConfigPreprocessor:
                         conf_dict['rerank']['input']['db'] = {'path': conf_dict['documents']['db']['path']}
                 else:
                     raise ConfigError("rerank.input.db.path needs to be set")
-
-    @staticmethod
-    def _update_relative_paths(conf_dict):
-        # set path for components to be under the base directory of run
-        base = pathlib.Path(conf_dict['path'])
-        for c in conf_dict.values():
-            if isinstance(c, dict):
-                if 'output' in c and not isinstance(c['output'], bool):
-                    if 'path' in c['output']:
-                        c['output']['path'] = str(base / c['output']['path'])
-        if 'documents' in conf_dict:
-            conf_dict['documents']['db']['path'] = str(base / conf_dict['documents']['db']['path'])
 
 
 class PipelineBuilder:
@@ -240,11 +253,13 @@ class PipelineBuilder:
 class Runner:
     def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
-        self.conf = RunConfigPreprocessor.process(config_filename, overrides)
+        self.conf = ConfigPreprocessor.process(config_filename, overrides)
         builder = PipelineBuilder(self.conf)
         self.stage1, self.stage2 = builder.build()
 
     def run(self):
+        if self.conf.run.name:
+            LOGGER.info("Starting run %s", self.conf.run.name)
         if self.stage1:
             LOGGER.info("Stage 1 pipeline: %s", self.stage1)
         if self.stage2:
@@ -282,7 +297,7 @@ class Runner:
 
     def write_report(self):
         # TODO maybe rename this as timing.txt
-        path = pathlib.Path(self.conf.path) / 'report.txt'
+        path = pathlib.Path(self.conf.run.path) / 'report.txt'
         data = {}
         if self.stage1:
             data['stage1'] = self.stage1.report
