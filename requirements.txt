@@ -1,4 +1,6 @@
 beautifulsoup4
+numpy
 pydantic
+pytrec_eval
 pyyaml
 sqlitedict
