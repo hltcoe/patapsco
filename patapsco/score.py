@@ -59,6 +59,8 @@ class Scorer(Task):
         """
         super().__init__()
         self.config = config
+        self.config.metrics = [m.replace('@', '_') for m in
+                               self.config.metrics]
         self.qrels = qrels
         self.run = collections.defaultdict(dict)
 
