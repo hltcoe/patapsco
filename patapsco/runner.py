@@ -13,7 +13,8 @@ from .rerank import RerankConfig, RerankFactory
 from .results import JsonResultsWriter, JsonResultsReader, TrecResultsWriter
 from .retrieve import RetrieveConfig, RetrieverFactory
 from .score import QrelsReaderFactory, ScoreConfig, Scorer
-from .topics import TopicProcessorFactory, TopicReaderFactory, TopicsConfig, QueryReader, QueryWriter
+from .topics import TopicProcessor, TopicReaderFactory, TopicsConfig, QueriesConfig, QueryProcessor, \
+    QueryReader, QueryWriter
 from .util import Timer
 from .util.file import delete_dir, is_complete
 
@@ -32,6 +33,7 @@ class RunnerConfig(BaseConfig):
     documents: Optional[DocumentsConfig]
     index: Optional[IndexConfig]
     topics: Optional[TopicsConfig]
+    queries: Optional[QueriesConfig]
     retrieve: Optional[RetrieveConfig]
     rerank: Optional[RerankConfig]
     score: Optional[ScoreConfig]
@@ -42,6 +44,7 @@ class Tasks(enum.Enum):
     DOCUMENTS = enum.auto()
     INDEX = enum.auto()
     TOPICS = enum.auto()
+    QUERIES = enum.auto()
     RETRIEVE = enum.auto()
     RERANK = enum.auto()
     SCORE = enum.auto()
@@ -82,7 +85,8 @@ class ConfigPreprocessor:
     output_defaults = {
         'documents': False,
         'index': {'path': 'index'},
-        'topics': {'path': 'queries'},
+        'topics': {'path': 'raw_queries'},
+        'queries': {'path': 'processed_queries'},
         'retrieve': {'path': 'retrieve'},
         'rerank': {'path': 'rerank'},
         'database': {'path': 'database'}
@@ -184,7 +188,7 @@ class PipelineBuilder:
         return Pipeline(tasks, iterable)
 
     def build_stage2(self, conf, plan):
-        # Stage 1 is generally: read topics, process them, retrieve results, rerank them, score.
+        # Stage 2 is generally: read topics, extract query, process them, retrieve results, rerank them, score.
         # For each task, we clear previous data from a failed run if it exists.
         # Then we build the tasks from the plan and create the iterator to drive the pipeline.
         if not plan:
@@ -195,18 +199,32 @@ class PipelineBuilder:
             # topic reader -> topic processor -> optional query writer
             self.clear_output(conf.topics)
             iterable = TopicReaderFactory.create(conf.topics.input)
-            tasks.append(TopicProcessorFactory.create(conf.topics.process))
+            tasks.append(TopicProcessor(conf.topics))
             if conf.topics.output:
                 tasks.append(QueryWriter(conf.topics.output.path))
+        if Tasks.QUERIES in plan:
+            # optional query reader -> query processor -> optional query writer
+            self.clear_output(conf.queries)
+            if Tasks.TOPICS not in plan:
+                try:
+                    iterable = QueryReader(conf.queries.input.path)
+                except AttributeError:
+                    try:
+                        iterable = QueryReader(conf.topics.output.path)
+                    except AttributeError:
+                        raise ConfigError('query processor not configured with input')
+            tasks.append(QueryProcessor(conf.queries.process))
+            if conf.queries.output:
+                tasks.append(QueryWriter(conf.queries.output.path))
         if Tasks.RETRIEVE in plan:
             self.clear_output(conf.retrieve)
-            if Tasks.TOPICS not in plan:
-                # topics already processed so locate them to set the iterator
+            if Tasks.QUERIES not in plan:
+                # queries already processed so locate them to set the iterator
                 try:
                     iterable = QueryReader(conf.retrieve.input.queries.path)
                 except AttributeError:
                     try:
-                        iterable = QueryReader(conf.topics.output.path)
+                        iterable = QueryReader(conf.queries.output.path)
                     except AttributeError:
                         raise ConfigError('retrieve not configured with queries')
             tasks.append(RetrieverFactory.create(conf.retrieve))
@@ -243,12 +261,16 @@ class PipelineBuilder:
                 stage1.append(Tasks.INDEX)
 
         stage2 = []
+        # TODO need to confirm that the db is also built
+        retrieve_complete = conf.retrieve and self.is_task_complete(conf.retrieve)
         if conf.topics:
-            # only add topics task if it is not complete and the retrieve task is not complete
-            # TODO need to confirm that the db is built also
-            retrieve_complete = conf.retrieve and self.is_task_complete(conf.retrieve)
-            if not self.is_task_complete(conf.topics) and not retrieve_complete:
+            # add topics task if it is not complete, the queries are not available and the retrieve task is not complete
+            if not self.is_task_complete(conf.topics) and not self.is_task_complete(conf.queries) and \
+                    not retrieve_complete:
                 stage2.append(Tasks.TOPICS)
+        if conf.queries:
+            if not self.is_task_complete(conf.queries) and not retrieve_complete:
+                stage2.append(Tasks.QUERIES)
         if conf.retrieve:
             if not self.is_task_complete(conf.retrieve):
                 stage2.append(Tasks.RETRIEVE)
@@ -261,6 +283,7 @@ class PipelineBuilder:
                 raise ConfigError("Scorer can only run if either retrieve or rerank is configured")
             stage2.append(Tasks.SCORE)
 
+        # TODO not checking if the config is skipping steps
         if not stage1 and not stage2:
             raise ConfigError("No tasks are configured to run")
 
@@ -268,6 +291,8 @@ class PipelineBuilder:
 
     @staticmethod
     def is_task_complete(task_conf):
+        if task_conf is None:
+            return False
         return task_conf.output and is_complete(task_conf.output.path)
 
     @staticmethod
@@ -285,7 +310,7 @@ class Runner:
 
     def run(self):
         if self.conf.run.name:
-            LOGGER.info("Starting run %s", self.conf.run.name)
+            LOGGER.info("Starting run: %s", self.conf.run.name)
         if self.stage1:
             LOGGER.info("Stage 1 pipeline: %s", self.stage1)
         if self.stage2:
