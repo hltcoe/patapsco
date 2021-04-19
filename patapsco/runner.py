@@ -246,7 +246,7 @@ class PipelineBuilder:
             if Tasks.DOCUMENTS not in plan:
                 # documents already processed so locate them to set the iterator
                 iterable = self._setup_input(DocReader, 'index.input.documents.path',
-                                            'documents.output.path', 'index not configured with documents')
+                                             'documents.output.path', 'index not configured with documents')
             tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
         return Pipeline(tasks, iterable)
 
