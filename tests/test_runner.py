@@ -109,9 +109,9 @@ def test_partial_config_preparer():
     directory = pathlib.Path('.') / 'tests' / 'config_files'
     path = directory / 'full_config.yml'
     conf = ConfigPreprocessor.process(path, {})
-    pcp = PartialConfigPreparer()
-    partial_conf = pcp.get_partial_config(conf, Tasks.DOCUMENTS)
-    assert hasattr(partial_conf, 'documents')
-    assert not hasattr(partial_conf, 'topics')
-    assert not hasattr(partial_conf, 'index')
-    assert not hasattr(partial_conf, 'score')
+    acp = ArtifactConfigPreparer()
+    artifact_conf = acp.get_config(conf, Tasks.DOCUMENTS)
+    assert hasattr(artifact_conf, 'documents')
+    assert not hasattr(artifact_conf, 'topics')
+    assert not hasattr(artifact_conf, 'index')
+    assert not hasattr(artifact_conf, 'score')
