@@ -6,7 +6,7 @@ import pathlib
 from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
 from .error import ConfigError, ParseError
 from .pipeline import Task
-from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
+from .text import Splitter, TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
 from .util.file import GlobFileGenerator, touch_complete
 
@@ -58,6 +58,7 @@ class ProcessorConfig(BaseConfig):
     lowercase: bool = True
     stopwords: Union[bool, str] = "lucene"
     stem: Union[StemConfig, TruncStemConfig]
+    splits: Optional[list]
 
 
 class QueriesConfig(BaseConfig):
@@ -265,6 +266,7 @@ class QueryProcessor(Task, TextProcessor):
         """
         Task.__init__(self)
         TextProcessor.__init__(self, config)
+        self.splitter = Splitter(config.splits)
 
     def process(self, query):
         """
@@ -277,16 +279,23 @@ class QueryProcessor(Task, TextProcessor):
         if not self.initialized:
             self.initialize(query.lang)
 
+        self.splitter.reset()
         text = query.text
         if self.config.char_normalize:
             text = self.normalize(text)
         tokens = self.tokenize(text)
+        self.splitter.add('tokenize', Query(query.id, query.lang, ' '.join(tokens)))
         if self.config.lowercase:
             tokens = self.lowercase(tokens)
+        self.splitter.add('lowercase', Query(query.id, query.lang, ' '.join(tokens)))
         if self.config.stopwords:
             tokens = self.remove_stop_words(tokens, not self.config.lowercase)
+        self.splitter.add('stopwords', Query(query.id, query.lang, ' '.join(tokens)))
         if self.config.stem:
             tokens = self.stem(tokens)
-        text = ' '.join(tokens)
+        self.splitter.add('stem', Query(query.id, query.lang, ' '.join(tokens)))
 
-        return Query(query.id, query.lang, text)
+        if self.splitter:
+            return self.splitter.get()
+        else:
+            return Query(query.id, query.lang, ' '.join(tokens))

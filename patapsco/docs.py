@@ -6,10 +6,10 @@ import pathlib
 
 import sqlitedict
 
-from .config import BaseConfig, ConfigService, PathConfig, Union
+from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
 from .error import ParseError
-from .pipeline import Task
-from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
+from .pipeline import MultiplexItem, Task
+from .text import Splitter, TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
 from .util.file import GlobFileGenerator, is_complete, touch_complete
 
@@ -37,6 +37,7 @@ class ProcessorConfig(BaseConfig):
     lowercase: bool = True
     stopwords: Union[bool, str] = "lucene"
     stem: Union[StemConfig, TruncStemConfig]
+    splits: Optional[list]
 
 
 class DocumentsConfig(BaseConfig):
@@ -247,6 +248,7 @@ class DocumentProcessor(Task, TextProcessor):
         """
         Task.__init__(self)
         TextProcessor.__init__(self, config)
+        self.splitter = Splitter(config.splits)
         self.db = db
 
     def process(self, doc):
@@ -260,19 +262,27 @@ class DocumentProcessor(Task, TextProcessor):
         if not self.initialized:
             self.initialize(doc.lang)
 
+        self.splitter.reset()
         text = doc.text
         if self.config.char_normalize:
             text = self.normalize(text)
         tokens = self.tokenize(text)
+        self.splitter.add('tokenize', Doc(doc.id, doc.lang, ' '.join(tokens)))
         if self.config.lowercase:
             tokens = self.lowercase(tokens)
-        self.db[doc.id] = doc.text
+        self.splitter.add('lowercase', Doc(doc.id, doc.lang, ' '.join(tokens)))
+        self.db[doc.id] = ' '.join(tokens)
         if self.config.stopwords:
             tokens = self.remove_stop_words(tokens, not self.config.lowercase)
+        self.splitter.add('stopwords', Doc(doc.id, doc.lang, ' '.join(tokens)))
         if self.config.stem:
             tokens = self.stem(tokens)
-        text = ' '.join(tokens)
-        return Doc(doc.id, doc.lang, text)
+        self.splitter.add('stem', Doc(doc.id, doc.lang, ' '.join(tokens)))
+
+        if self.splitter:
+            return self.splitter.get()
+        else:
+            return Doc(doc.id, doc.lang, ' '.join(tokens))
 
     def end(self):
         self.db.end()

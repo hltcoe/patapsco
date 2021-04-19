@@ -61,6 +61,15 @@ class Task(abc.ABC):
             self.downstream._end()
 
 
+class MultiplexItem:
+    """Supports passing multiple items from Task.process"""
+    def __init__(self):
+        self.items = {}
+
+    def add(self, name, item):
+        self.items[name] = item
+
+
 class Pipeline:
     def __init__(self, tasks, iterable):
         self.task = self._connect(tasks)

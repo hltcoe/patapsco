@@ -1,6 +1,7 @@
 import pathlib
 
 from .config import BaseConfig
+from .pipeline import MultiplexItem
 from .util import ComponentFactory
 
 
@@ -110,6 +111,29 @@ class TruncatingStemmer(Stemmer):
     def stem(self, tokens):
         length = self.config.length
         return [x[:length] for x in tokens]
+
+
+class Splitter:
+    def __init__(self, splits):
+        # no validation yet
+        if splits:
+            self.splits = {split.split('+')[-1]: split for split in splits}
+        else:
+            self.splits = {}
+        self.items = MultiplexItem()
+
+    def add(self, key, item):
+        if key in self.splits:
+            self.items.add(self.splits[key], item)
+
+    def get(self):
+        return self.items
+
+    def reset(self):
+        self.items = MultiplexItem()
+
+    def __bool__(self):
+        return len(self.splits) > 1
 
 
 class TextProcessor:
