@@ -58,7 +58,8 @@ class MockReranker(Reranker):
 
     def process(self, results):
         new_results = copy.copy(results.results)
-        for result in new_results:
-            doc = self.db[result.doc_id]
+        # retrieve documents and pop one to exercise db
+        docs = [self.db[result.doc_id] for result in new_results]
+        docs.pop()
         random.shuffle(new_results)
         return Results(results.query, 'MockReranker', new_results)
