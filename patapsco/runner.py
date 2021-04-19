@@ -51,20 +51,35 @@ class Tasks(enum.Enum):
     SCORE = enum.auto()
 
 
-class ArtifactConfigPreparer:
-    """Prepares the configuration that resulted in an artifact
+class ArtifactHelper:
+    """Utilities for working with artifacts"""
 
-    This excludes the parts of the configuration that were not used to create the artifact.
-    """
+    TASKS = ['documents', 'index', 'topics', 'queries', 'retrieve', 'rerank', 'score']
+
     def __init__(self):
         self.contributors = {}
-        contributors = ['documents', 'index', 'topics', 'queries', 'retrieve', 'rerank', 'score']
+        contributors = list(self.TASKS)
         for task in Tasks:
             contributors.pop(0)
             self.contributors[task] = copy.copy(contributors)
 
     def get_config(self, config, task):
+        """This excludes the parts of the configuration that were not used to create the artifact."""
         return config.copy(exclude=set(self.contributors[task]), deep=True)
+
+    def combine(self, config, path):
+        """Loads an artifact configuration and combines it with the base config"""
+        path = pathlib.Path(path)
+        path = path / 'config.yml'
+        try:
+            artifact_config_dict = ConfigService().read_config_file(path)
+        except FileNotFoundError:
+            LOGGER.warning(f"Unable to load artifact config {path}")
+            return
+        artifact_config = RunnerConfig(**artifact_config_dict)
+        for task in self.TASKS:
+            if getattr(artifact_config, task):
+                setattr(config, task, getattr(artifact_config, task))
 
 
 class ConfigPreprocessor:
@@ -172,7 +187,7 @@ class PipelineBuilder:
     """
     def __init__(self, conf):
         self.conf = conf
-        self.artifact_tool = ArtifactConfigPreparer()
+        self.artifact_helper = ArtifactHelper()
 
     def build(self):
         stage1_plan, stage2_plan = self.create_plan(self.conf)
@@ -231,7 +246,7 @@ class PipelineBuilder:
         if Tasks.DOCUMENTS in plan:
             # doc reader -> doc processor with doc db -> optional doc writer
             self.clear_output(self.conf.documents)
-            artifact_conf = self.artifact_tool.get_config(self.conf, Tasks.DOCUMENTS)
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
             if not is_complete(self.conf.documents.db.path) and pathlib.Path(self.conf.documents.db.path).exists():
                 delete_dir(self.conf.documents.db.path)
             iterable = DocumentReaderFactory.create(self.conf.documents.input)
@@ -242,11 +257,11 @@ class PipelineBuilder:
 
         if Tasks.INDEX in plan:
             self.clear_output(self.conf.index)
-            artifact_conf = self.artifact_tool.get_config(self.conf, Tasks.INDEX)
             if Tasks.DOCUMENTS not in plan:
                 # documents already processed so locate them to set the iterator
                 iterable = self._setup_input(DocReader, 'index.input.documents.path',
                                              'documents.output.path', 'index not configured with documents')
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.INDEX)
             tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
         return Pipeline(tasks, iterable)
 
@@ -261,7 +276,7 @@ class PipelineBuilder:
         if Tasks.TOPICS in plan:
             # topic reader -> topic processor -> optional query writer
             self.clear_output(self.conf.topics)
-            artifact_conf = self.artifact_tool.get_config(self.conf, Tasks.TOPICS)
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.TOPICS)
             iterable = TopicReaderFactory.create(self.conf.topics.input)
             tasks.append(TopicProcessor(self.conf.topics))
             if self.conf.topics.output:
@@ -270,32 +285,35 @@ class PipelineBuilder:
         if Tasks.QUERIES in plan:
             # optional query reader -> query processor -> optional query writer
             self.clear_output(self.conf.queries)
-            artifact_conf = self.artifact_tool.get_config(self.conf, Tasks.QUERIES)
             if Tasks.TOPICS not in plan:
                 iterable = self._setup_input(QueryReader, 'queries.input.path', 'topics.output.path',
                                              'query processor not configured with input')
             tasks.append(QueryProcessor(self.conf.queries.process))
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.QUERIES)
             if self.conf.queries.output:
                 tasks.append(QueryWriter(self.conf.queries.output.path, artifact_conf))
 
         if Tasks.RETRIEVE in plan:
             self.clear_output(self.conf.retrieve)
-            artifact_conf = self.artifact_tool.get_config(self.conf, Tasks.RETRIEVE)
             if Tasks.QUERIES not in plan:
                 # queries already processed so locate them to set the iterator
                 iterable = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output.path',
                                              'retrieve not configured with queries')
             tasks.append(RetrieverFactory.create(self.conf.retrieve))
+            if not self.conf.index:
+                # copy in the configuration that created the index
+                self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RETRIEVE)
             if self.conf.retrieve.output:
                 tasks.append(JsonResultsWriter(self.conf.retrieve.output.path, artifact_conf))
 
         if Tasks.RERANK in plan:
             self.clear_output(self.conf.rerank)
-            artifact_conf = self.artifact_tool.get_config(self.conf, Tasks.RERANK)
             if Tasks.RETRIEVE not in plan:
                 # retrieve results already processed so locate them to set the iterator
                 iterable = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output.path',
                                              'rerank not configured with retrieve results')
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
             db = DocumentDatabaseFactory.create(self.conf.rerank.input.db.path)
             tasks.append(RerankFactory.create(self.conf.rerank, db))
             tasks.append(TrecResultsWriter(self.conf.rerank.output.path, artifact_conf))
@@ -313,6 +331,7 @@ class PipelineBuilder:
             while fields:
                 field = fields.pop(0)
                 obj = getattr(obj, field)
+            self.artifact_helper.combine(self.conf, obj)
             return cls(obj)
         except AttributeError:
             obj = self.conf
@@ -321,6 +340,7 @@ class PipelineBuilder:
                 while fields:
                     field = fields.pop(0)
                     obj = getattr(obj, field)
+                self.artifact_helper.combine(self.conf, obj)
                 return cls(obj)
             except AttributeError:
                 raise ConfigError(error_msg)
