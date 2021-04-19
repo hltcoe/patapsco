@@ -5,7 +5,7 @@ import pytest
 from patapsco.topics import *
 
 
-def test_select_text():
+def test_topic_process():
     class Mock:
         def __init__(self, fields):
             self.fields = fields
@@ -14,6 +14,18 @@ def test_select_text():
     topic = Topic('1', 'en', 'title', 'desc', 'narr')
     query = TopicProcessor.process(mock, topic)
     assert query.text == "title desc"
+
+
+def test_extract_fields_with_case():
+    fields_str = 'title+DESC'
+    fields = TopicProcessor._extract_fields(fields_str)
+    assert fields == ['title', 'desc']
+
+
+def test_extract_fields_with_bad_field():
+    fields_str = 'title+report'
+    with pytest.raises(ConfigError):
+        TopicProcessor._extract_fields(fields_str)
 
 
 def test_parse_msmarco_topics():

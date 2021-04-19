@@ -4,7 +4,7 @@ import json
 import pathlib
 
 from .config import BaseConfig, PathConfig, Optional, Union
-from .error import ParseError
+from .error import ConfigError, ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
@@ -79,13 +79,22 @@ class TopicReaderFactory(ComponentFactory):
 class TopicProcessor(Task):
     """Topic Preprocessing"""
 
+    FIELD_MAP = {
+        'title': 'title',
+        'name': 'title',
+        'desc': 'desc',
+        'description': 'desc',
+        'narr': 'narr',
+        'narrative': 'narr'
+    }
+
     def __init__(self, config):
         """
         Args:
             config (TopicsConfig)
         """
-        Task.__init__(self)
-        self.fields = config.fields.split('+')
+        super().__init__()
+        self.fields = self._extract_fields(config.fields)
 
     def process(self, topic):
         """
@@ -97,6 +106,14 @@ class TopicProcessor(Task):
         """
         text = ' '.join([getattr(topic, f).strip() for f in self.fields])
         return Query(topic.id, topic.lang, text)
+
+    @classmethod
+    def _extract_fields(cls, fields_str):
+        fields = fields_str.split('+')
+        try:
+            return [cls.FIELD_MAP[f.lower()] for f in fields]
+        except KeyError as e:
+            raise ConfigError(f"Unrecognized topic field: {e}")
 
 
 class SgmlTopicReader:
