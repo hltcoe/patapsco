@@ -80,7 +80,7 @@ class ConfigService:
         """Read the configuration detecting file type
 
         Args:
-            filename (str): path to the configuration file
+            filename (str or Path): path to the configuration file
 
         Returns:
             dict
@@ -104,7 +104,7 @@ class ConfigService:
         """Write the configuration file detecting file type
 
         Args:
-            filename (str): path to the configuration file to write
+            filename (str or Path): path to the configuration file to write
             config (BaseConfig): configuration object
         """
         ftype = cls._detect_filetype(filename)

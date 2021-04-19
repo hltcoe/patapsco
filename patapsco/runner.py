@@ -1,3 +1,4 @@
+import copy
 import enum
 import json
 import logging
@@ -48,6 +49,22 @@ class Tasks(enum.Enum):
     RETRIEVE = enum.auto()
     RERANK = enum.auto()
     SCORE = enum.auto()
+
+
+class PartialConfigPreparer:
+    """Prepares the configuration that resulted in an artifact
+
+    This excludes the parts of the configuration that were not used to create the artifact.
+    """
+    def __init__(self):
+        self.contributors = {}
+        contributors = ['documents', 'index', 'topics', 'queries', 'retrieve', 'rerank', 'score']
+        for task in Tasks:
+            contributors.pop(0)
+            self.contributors[task] = copy.copy(contributors)
+
+    def get_partial_config(self, config, task):
+        return config.copy(exclude=set(self.contributors[task]), deep=True)
 
 
 class ConfigPreprocessor:
@@ -148,6 +165,7 @@ class ConfigPreprocessor:
 class PipelineBuilder:
     def __init__(self, conf):
         self.conf = conf
+        self.conf_segmenter = PartialConfigPreparer()
 
     def build(self):
         stage1_plan, stage2_plan = self.create_plan(self.conf)
@@ -166,15 +184,17 @@ class PipelineBuilder:
         if Tasks.DOCUMENTS in plan:
             # doc reader -> doc processor with doc db -> optional doc writer
             self.clear_output(conf.documents)
+            partial_conf = self.conf_segmenter.get_partial_config(conf, Tasks.DOCUMENTS)
             if not is_complete(conf.documents.db.path) and pathlib.Path(conf.documents.db.path).exists():
                 delete_dir(conf.documents.db.path)
             iterable = DocumentReaderFactory.create(conf.documents.input)
-            db = DocumentDatabaseFactory.create(conf.documents.db.path)
+            db = DocumentDatabaseFactory.create(conf.documents.db.path, partial_conf)
             tasks.append(DocumentProcessorFactory.create(conf.documents.process, db))
             if conf.documents.output and conf.documents.output.path:
-                tasks.append(DocWriter(conf.documents.output.path))
+                tasks.append(DocWriter(conf.documents.output.path, partial_conf))
         if Tasks.INDEX in plan:
             self.clear_output(conf.index)
+            partial_conf = self.conf_segmenter.get_partial_config(conf, Tasks.INDEX)
             if Tasks.DOCUMENTS not in plan:
                 # documents already processed so locate them to set the iterator
                 try:
@@ -184,7 +204,7 @@ class PipelineBuilder:
                         iterable = DocReader(conf.documents.output.path)
                     except AttributeError:
                         raise ConfigError('index not configured with documents')
-            tasks.append(IndexerFactory.create(conf.index))
+            tasks.append(IndexerFactory.create(conf.index, partial_conf))
         return Pipeline(tasks, iterable)
 
     def build_stage2(self, conf, plan):
@@ -198,13 +218,15 @@ class PipelineBuilder:
         if Tasks.TOPICS in plan:
             # topic reader -> topic processor -> optional query writer
             self.clear_output(conf.topics)
+            partial_conf = self.conf_segmenter.get_partial_config(conf, Tasks.TOPICS)
             iterable = TopicReaderFactory.create(conf.topics.input)
             tasks.append(TopicProcessor(conf.topics))
             if conf.topics.output:
-                tasks.append(QueryWriter(conf.topics.output.path))
+                tasks.append(QueryWriter(conf.topics.output.path, partial_conf))
         if Tasks.QUERIES in plan:
             # optional query reader -> query processor -> optional query writer
             self.clear_output(conf.queries)
+            partial_conf = self.conf_segmenter.get_partial_config(conf, Tasks.QUERIES)
             if Tasks.TOPICS not in plan:
                 try:
                     iterable = QueryReader(conf.queries.input.path)
@@ -215,9 +237,10 @@ class PipelineBuilder:
                         raise ConfigError('query processor not configured with input')
             tasks.append(QueryProcessor(conf.queries.process))
             if conf.queries.output:
-                tasks.append(QueryWriter(conf.queries.output.path))
+                tasks.append(QueryWriter(conf.queries.output.path, partial_conf))
         if Tasks.RETRIEVE in plan:
             self.clear_output(conf.retrieve)
+            partial_conf = self.conf_segmenter.get_partial_config(conf, Tasks.RETRIEVE)
             if Tasks.QUERIES not in plan:
                 # queries already processed so locate them to set the iterator
                 try:
@@ -229,9 +252,10 @@ class PipelineBuilder:
                         raise ConfigError('retrieve not configured with queries')
             tasks.append(RetrieverFactory.create(conf.retrieve))
             if conf.retrieve.output:
-                tasks.append(JsonResultsWriter(conf.retrieve.output.path))
+                tasks.append(JsonResultsWriter(conf.retrieve.output.path, partial_conf))
         if Tasks.RERANK in plan:
             self.clear_output(conf.rerank)
+            partial_conf = self.conf_segmenter.get_partial_config(conf, Tasks.RERANK)
             if Tasks.RETRIEVE not in plan:
                 # retrieve results already processed so locate them to set the iterator
                 try:
@@ -241,8 +265,9 @@ class PipelineBuilder:
                         iterable = JsonResultsReader(conf.retrieve.output.path)
                     except AttributeError:
                         raise ConfigError('rerank not configured with retrieve results')
-            tasks.append(RerankFactory.create(conf.rerank))
-            tasks.append(TrecResultsWriter(conf.rerank.output.path))
+            db = DocumentDatabaseFactory.create(conf.rerank.input.db.path)
+            tasks.append(RerankFactory.create(conf.rerank, db))
+            tasks.append(TrecResultsWriter(conf.rerank.output.path, partial_conf))
         if Tasks.SCORE in plan:
             qrels = QrelsReaderFactory.create(conf.score.input).read()
             tasks.append(Scorer(conf.score, qrels))

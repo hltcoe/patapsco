@@ -1,6 +1,6 @@
 import pathlib
 
-from .config import BaseConfig, PathConfig, Optional
+from .config import BaseConfig, ConfigService, PathConfig, Optional
 from .pipeline import Task
 from .util import ComponentFactory
 from .util.file import touch_complete
@@ -31,16 +31,19 @@ class MockIndexer(Task):
     It writes the doc IDs to a file for later use.
     """
 
-    def __init__(self, config):
+    def __init__(self, index_config, runner_config):
         """
         Args:
-            config (IndexerConfig)
+            index_config (IndexerConfig)
+            runner_config (RunnerConfig)
         """
         super().__init__()
-        self.dir = pathlib.Path(config.output.path)
+        self.dir = pathlib.Path(index_config.output.path)
         self.dir.mkdir(parents=True)
         self.path = self.dir / 'index.txt'
         self.file = open(self.path, 'w')
+        self.runner_config = runner_config
+        self.config_path = self.dir / 'config.yml'
 
     def process(self, doc):
         """
@@ -55,4 +58,5 @@ class MockIndexer(Task):
 
     def end(self):
         self.file.close()
+        ConfigService.write_config_file(self.config_path, self.runner_config)
         touch_complete(self.dir)

@@ -103,3 +103,15 @@ def test_config_preprocessor_set_rerank_db_path_with_index():
     }
     ConfigPreprocessor._set_rerank_db_path(conf)
     assert conf['rerank']['input']['db']['path'] == 'path_to_db'
+
+
+def test_partial_config_preparer():
+    directory = pathlib.Path('.') / 'tests' / 'config_files'
+    path = directory / 'full_config.yml'
+    conf = ConfigPreprocessor.process(path, {})
+    pcp = PartialConfigPreparer()
+    partial_conf = pcp.get_partial_config(conf, Tasks.DOCUMENTS)
+    assert hasattr(partial_conf, 'documents')
+    assert not hasattr(partial_conf, 'topics')
+    assert not hasattr(partial_conf, 'index')
+    assert not hasattr(partial_conf, 'score')

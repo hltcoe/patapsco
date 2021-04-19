@@ -3,7 +3,7 @@ import dataclasses
 import json
 import pathlib
 
-from .config import BaseConfig, PathConfig, Optional, Union
+from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
 from .error import ConfigError, ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
@@ -206,7 +206,7 @@ class TsvTopicReader:
 class QueryWriter(Task):
     """Write queries to a jsonl file"""
 
-    def __init__(self, path):
+    def __init__(self, path, config):
         """
         Args:
             path (str): Path of query file to write.
@@ -216,6 +216,8 @@ class QueryWriter(Task):
         self.dir.mkdir(parents=True)
         path = self.dir / 'queries.jsonl'
         self.file = open(path, 'w')
+        self.config = config
+        self.config_path = self.dir / 'config.yml'
 
     def process(self, query):
         """
@@ -230,6 +232,7 @@ class QueryWriter(Task):
 
     def end(self):
         self.file.close()
+        ConfigService.write_config_file(self.config_path, self.config)
         touch_complete(self.dir)
 
 
