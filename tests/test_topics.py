@@ -12,8 +12,8 @@ def test_select_text():
 
     mock = Mock(['title', 'desc'])
     topic = Topic('1', 'en', 'title', 'desc', 'narr')
-    text = TopicProcessor._select_text(mock, topic)
-    assert text == "title desc"
+    query = TopicProcessor.process(mock, topic)
+    assert query.text == "title desc"
 
 
 def test_parse_msmarco_topics():
