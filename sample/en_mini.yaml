@@ -23,9 +23,11 @@ topics:
     lang: en
     encoding: utf8
     path: sample/en_mini_dataset_topics.jsonl
+  fields: title
+
+queries:
   process:
     inherit: documents.process
-    query: title
 
 index:
   name: anserini

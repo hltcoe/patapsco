@@ -4,7 +4,7 @@ import json
 import pathlib
 
 from .config import BaseConfig, PathConfig, Optional, Union
-from .error import ParseError
+from .error import ConfigError, ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
@@ -27,7 +27,7 @@ class Query:
     text: str
 
 
-class InputConfig(BaseConfig):
+class TopicsInputConfig(BaseConfig):
     """Configuration for Topic input"""
     format: str
     lang: str
@@ -37,18 +37,31 @@ class InputConfig(BaseConfig):
     path: Union[str, list]
 
 
+class TopicsConfig(BaseConfig):
+    """Configuration for topics task"""
+    input: TopicsInputConfig
+    fields: str = "title"  # field1+field2 where field is title, desc, or narr
+    output: Union[bool, PathConfig]
+
+
+class QueriesInputConfig(BaseConfig):
+    """Configuration for reading queries"""
+    format: str = "json"
+    encoding: str = "utf8"
+    path: Union[str, list]
+
+
 class ProcessorConfig(BaseConfig):
     """Configuration of the topic processor"""
-    name: str = "default"
-    query: str = "title"  # field1+field2 where field is title, desc, narr
     char_normalize: bool = True
     lowercase: bool = True
     tokenize: TokenizeConfig
     stem: Union[StemConfig, TruncStemConfig]
 
 
-class TopicsConfig(BaseConfig):
-    input: InputConfig
+class QueriesConfig(BaseConfig):
+    """Configuration for processing queries"""
+    input: Optional[QueriesInputConfig]
     process: ProcessorConfig
     output: Union[bool, PathConfig]
 
@@ -60,14 +73,47 @@ class TopicReaderFactory(ComponentFactory):
         'json': 'JsonTopicReader',
         'msmarco': 'TsvTopicReader'
     }
-    config_class = InputConfig
+    config_class = TopicsInputConfig
 
 
-class TopicProcessorFactory(ComponentFactory):
-    classes = {
-        'default': 'TopicProcessor'
+class TopicProcessor(Task):
+    """Topic Preprocessing"""
+
+    FIELD_MAP = {
+        'title': 'title',
+        'name': 'title',
+        'desc': 'desc',
+        'description': 'desc',
+        'narr': 'narr',
+        'narrative': 'narr'
     }
-    config_class = ProcessorConfig
+
+    def __init__(self, config):
+        """
+        Args:
+            config (TopicsConfig)
+        """
+        super().__init__()
+        self.fields = self._extract_fields(config.fields)
+
+    def process(self, topic):
+        """
+        Args:
+            topic (Topic)
+
+        Returns
+            Query
+        """
+        text = ' '.join([getattr(topic, f).strip() for f in self.fields])
+        return Query(topic.id, topic.lang, text)
+
+    @classmethod
+    def _extract_fields(cls, fields_str):
+        fields = fields_str.split('+')
+        try:
+            return [cls.FIELD_MAP[f.lower()] for f in fields]
+        except KeyError as e:
+            raise ConfigError(f"Unrecognized topic field: {e}")
 
 
 class SgmlTopicReader:
@@ -179,7 +225,6 @@ class QueryWriter(Task):
         Returns
             Query
         """
-
         self.file.write(json.dumps(query, cls=DataclassJSONEncoder) + "\n")
         return query
 
@@ -206,8 +251,8 @@ class QueryReader:
             raise StopIteration()
 
 
-class TopicProcessor(Task, TextProcessor):
-    """Topic Preprocessing"""
+class QueryProcessor(Task, TextProcessor):
+    """Query Preprocessing"""
 
     def __init__(self, config):
         """
@@ -216,17 +261,16 @@ class TopicProcessor(Task, TextProcessor):
         """
         Task.__init__(self)
         TextProcessor.__init__(self, config)
-        self.fields = config.query.split('+')
 
-    def process(self, topic):
+    def process(self, query):
         """
         Args:
-            topic (Topic)
+            query (Query)
 
         Returns
             Query
         """
-        text = self._select_text(topic)
+        text = query.text
         if self.config.char_normalize:
             text = self.normalize(text)
         if self.config.lowercase:
@@ -235,7 +279,4 @@ class TopicProcessor(Task, TextProcessor):
         if self.config.stem:
             tokens = self.stem(tokens)
         text = ' '.join(tokens)
-        return Query(topic.id, topic.lang, text)
-
-    def _select_text(self, topic):
-        return ' '.join([getattr(topic, f).strip() for f in self.fields])
+        return Query(query.id, query.lang, text)
