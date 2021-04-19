@@ -215,7 +215,6 @@ class PipelineBuilder:
                 raise ConfigError("Scorer can only run if either retrieve or rerank is configured")
             stage2.append(Tasks.SCORE)
 
-        # TODO not checking if the config is skipping steps
         if not stage1 and not stage2:
             raise ConfigError("No tasks are configured to run")
 
@@ -240,18 +239,14 @@ class PipelineBuilder:
             tasks.append(DocumentProcessorFactory.create(self.conf.documents.process, db))
             if self.conf.documents.output and self.conf.documents.output.path:
                 tasks.append(DocWriter(self.conf.documents.output.path, artifact_conf))
+
         if Tasks.INDEX in plan:
             self.clear_output(self.conf.index)
             artifact_conf = self.artifact_tool.get_config(self.conf, Tasks.INDEX)
             if Tasks.DOCUMENTS not in plan:
                 # documents already processed so locate them to set the iterator
-                try:
-                    iterable = DocReader(self.conf.index.input.documents.path)
-                except AttributeError:
-                    try:
-                        iterable = DocReader(self.conf.documents.output.path)
-                    except AttributeError:
-                        raise ConfigError('index not configured with documents')
+                iterable = self._setup_input(DocReader, 'index.input.documents.path',
+                                            'documents.output.path', 'index not configured with documents')
             tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
         return Pipeline(tasks, iterable)
 
@@ -271,55 +266,64 @@ class PipelineBuilder:
             tasks.append(TopicProcessor(self.conf.topics))
             if self.conf.topics.output:
                 tasks.append(QueryWriter(self.conf.topics.output.path, artifact_conf))
+
         if Tasks.QUERIES in plan:
             # optional query reader -> query processor -> optional query writer
             self.clear_output(self.conf.queries)
             artifact_conf = self.artifact_tool.get_config(self.conf, Tasks.QUERIES)
             if Tasks.TOPICS not in plan:
-                try:
-                    iterable = QueryReader(self.conf.queries.input.path)
-                except AttributeError:
-                    try:
-                        iterable = QueryReader(self.conf.topics.output.path)
-                    except AttributeError:
-                        raise ConfigError('query processor not configured with input')
+                iterable = self._setup_input(QueryReader, 'queries.input.path', 'topics.output.path',
+                                             'query processor not configured with input')
             tasks.append(QueryProcessor(self.conf.queries.process))
             if self.conf.queries.output:
                 tasks.append(QueryWriter(self.conf.queries.output.path, artifact_conf))
+
         if Tasks.RETRIEVE in plan:
             self.clear_output(self.conf.retrieve)
             artifact_conf = self.artifact_tool.get_config(self.conf, Tasks.RETRIEVE)
             if Tasks.QUERIES not in plan:
                 # queries already processed so locate them to set the iterator
-                try:
-                    iterable = QueryReader(self.conf.retrieve.input.queries.path)
-                except AttributeError:
-                    try:
-                        iterable = QueryReader(self.conf.queries.output.path)
-                    except AttributeError:
-                        raise ConfigError('retrieve not configured with queries')
+                iterable = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output.path',
+                                             'retrieve not configured with queries')
             tasks.append(RetrieverFactory.create(self.conf.retrieve))
             if self.conf.retrieve.output:
                 tasks.append(JsonResultsWriter(self.conf.retrieve.output.path, artifact_conf))
+
         if Tasks.RERANK in plan:
             self.clear_output(self.conf.rerank)
             artifact_conf = self.artifact_tool.get_config(self.conf, Tasks.RERANK)
             if Tasks.RETRIEVE not in plan:
                 # retrieve results already processed so locate them to set the iterator
-                try:
-                    iterable = JsonResultsReader(self.conf.rerank.input.results.path)
-                except AttributeError:
-                    try:
-                        iterable = JsonResultsReader(self.conf.retrieve.output.path)
-                    except AttributeError:
-                        raise ConfigError('rerank not configured with retrieve results')
+                iterable = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output.path',
+                                             'rerank not configured with retrieve results')
             db = DocumentDatabaseFactory.create(self.conf.rerank.input.db.path)
             tasks.append(RerankFactory.create(self.conf.rerank, db))
             tasks.append(TrecResultsWriter(self.conf.rerank.output.path, artifact_conf))
+
         if Tasks.SCORE in plan:
             qrels = QrelsReaderFactory.create(self.conf.score.input).read()
             tasks.append(Scorer(self.conf.score, qrels))
         return Pipeline(tasks, iterable)
+
+    def _setup_input(self, cls, path1, path2, error_msg):
+        """Try two possible places for input path"""
+        obj = self.conf
+        fields = path1.split('.')
+        try:
+            while fields:
+                field = fields.pop(0)
+                obj = getattr(obj, field)
+            return cls(obj)
+        except AttributeError:
+            obj = self.conf
+            fields = path2.split('.')
+            try:
+                while fields:
+                    field = fields.pop(0)
+                    obj = getattr(obj, field)
+                return cls(obj)
+            except AttributeError:
+                raise ConfigError(error_msg)
 
     @staticmethod
     def is_task_complete(task_conf):
