@@ -1,5 +1,6 @@
 import abc
 import logging
+import pathlib
 
 from .util import Timer, TimedIterable
 
@@ -68,6 +69,32 @@ class MultiplexItem:
 
     def add(self, name, item):
         self.items[name] = item
+
+
+class MultiplexTask(Task):
+    def __init__(self, splits, create_fn, config, *args, **kwargs):
+        self.tasks = {}
+        for split in splits:
+            task_config = config.copy(deep=True)
+            task_config.output.path = str(pathlib.Path(task_config.output.path) / split)
+            self.tasks[split] = create_fn(task_config, *args, **kwargs)
+        super().__init__()
+
+    def process(self, item):
+        for name, value in item.items.items():
+            self.tasks[name].process(value)
+
+    def begin(self):
+        for task in self.tasks.values():
+            task.begin()
+
+    def end(self):
+        for task in self.tasks.values():
+            task.begin()
+
+    @property
+    def name(self):
+        return f"Multiplex({list(self.tasks.values())[0].name})"
 
 
 class Pipeline:

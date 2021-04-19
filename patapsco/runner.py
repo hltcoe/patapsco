@@ -9,7 +9,7 @@ from .docs import DocumentsConfig, DocumentProcessorFactory, DocumentReaderFacto
     DocumentDatabaseFactory, DocReader, DocWriter
 from .error import ConfigError
 from .index import IndexConfig, IndexerFactory
-from .pipeline import Pipeline
+from .pipeline import MultiplexTask, Pipeline
 from .rerank import RerankConfig, RerankFactory
 from .results import JsonResultsWriter, JsonResultsReader, TrecResultsWriter
 from .retrieve import RetrieveConfig, RetrieverFactory
@@ -262,7 +262,11 @@ class PipelineBuilder:
                 iterable = self._setup_input(DocReader, 'index.input.documents.path',
                                              'documents.output.path', 'index not configured with documents')
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.INDEX)
-            tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
+            if self.conf.documents.process.splits:
+                tasks.append(MultiplexTask(self.conf.documents.process.splits, IndexerFactory.create,
+                                           self.conf.index, artifact_conf))
+            else:
+                tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
         return Pipeline(tasks, iterable)
 
     def build_stage2(self, plan):

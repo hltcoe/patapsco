@@ -286,3 +286,10 @@ class DocumentProcessor(Task, TextProcessor):
 
     def end(self):
         self.db.end()
+
+    @property
+    def name(self):
+        if self.splitter:
+            return f"{super().name} -> Splitter"
+        else:
+            return super().name

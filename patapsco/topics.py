@@ -299,3 +299,10 @@ class QueryProcessor(Task, TextProcessor):
             return self.splitter.get()
         else:
             return Query(query.id, query.lang, ' '.join(tokens))
+
+    @property
+    def name(self):
+        if self.splitter:
+            return f"{super().name} -> Splitter"
+        else:
+            return super().name
