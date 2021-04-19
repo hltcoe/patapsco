@@ -52,10 +52,11 @@ class QueriesInputConfig(BaseConfig):
 
 
 class ProcessorConfig(BaseConfig):
-    """Configuration of the topic processor"""
+    """Configuration of the query text processor"""
     char_normalize: bool = True
-    lowercase: bool = True
     tokenize: TokenizeConfig
+    lowercase: bool = True
+    stopwords: Union[bool, str] = "lucene"
     stem: Union[StemConfig, TruncStemConfig]
 
 
@@ -273,13 +274,19 @@ class QueryProcessor(Task, TextProcessor):
         Returns
             Query
         """
+        if not self.initialized:
+            self.initialize(query.lang)
+
         text = query.text
         if self.config.char_normalize:
             text = self.normalize(text)
-        if self.config.lowercase:
-            text = self.lowercase_text(text)
         tokens = self.tokenize(text)
+        if self.config.lowercase:
+            tokens = self.lowercase(tokens)
+        if self.config.stopwords:
+            tokens = self.remove_stop_words(tokens, not self.config.lowercase)
         if self.config.stem:
             tokens = self.stem(tokens)
         text = ' '.join(tokens)
+
         return Query(query.id, query.lang, text)

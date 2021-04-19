@@ -33,8 +33,9 @@ class ProcessorConfig(BaseConfig):
     """Configuration for the document processor"""
     name: str = "default"
     char_normalize: bool = True
-    lowercase: bool = True
     tokenize: TokenizeConfig
+    lowercase: bool = True
+    stopwords: Union[bool, str] = "lucene"
     stem: Union[StemConfig, TruncStemConfig]
 
 
@@ -256,13 +257,18 @@ class DocumentProcessor(Task, TextProcessor):
         Returns
             Doc
         """
+        if not self.initialized:
+            self.initialize(doc.lang)
+
         text = doc.text
         if self.config.char_normalize:
             text = self.normalize(text)
-        if self.config.lowercase:
-            text = self.lowercase_text(text)
         tokens = self.tokenize(text)
+        if self.config.lowercase:
+            tokens = self.lowercase(tokens)
         self.db[doc.id] = doc.text
+        if self.config.stopwords:
+            tokens = self.remove_stop_words(tokens, not self.config.lowercase)
         if self.config.stem:
             tokens = self.stem(tokens)
         text = ' '.join(tokens)
