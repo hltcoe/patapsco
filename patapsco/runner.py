@@ -1,3 +1,4 @@
+import copy
 import enum
 import json
 import logging
@@ -48,6 +49,37 @@ class Tasks(enum.Enum):
     RETRIEVE = enum.auto()
     RERANK = enum.auto()
     SCORE = enum.auto()
+
+
+class ArtifactHelper:
+    """Utilities for working with artifacts"""
+
+    TASKS = ['documents', 'index', 'topics', 'queries', 'retrieve', 'rerank', 'score']
+
+    def __init__(self):
+        self.contributors = {}
+        contributors = list(self.TASKS)
+        for task in Tasks:
+            contributors.pop(0)
+            self.contributors[task] = copy.copy(contributors)
+
+    def get_config(self, config, task):
+        """This excludes the parts of the configuration that were not used to create the artifact."""
+        return config.copy(exclude=set(self.contributors[task]), deep=True)
+
+    def combine(self, config, path):
+        """Loads an artifact configuration and combines it with the base config"""
+        path = pathlib.Path(path)
+        path = path / 'config.yml'
+        try:
+            artifact_config_dict = ConfigService().read_config_file(path)
+        except FileNotFoundError:
+            LOGGER.warning(f"Unable to load artifact config {path}")
+            return
+        artifact_config = RunnerConfig(**artifact_config_dict)
+        for task in self.TASKS:
+            if getattr(artifact_config, task):
+                setattr(config, task, getattr(artifact_config, task))
 
 
 class ConfigPreprocessor:
@@ -146,107 +178,22 @@ class ConfigPreprocessor:
 
 
 class PipelineBuilder:
+    """Builds the stage 1 and stage 2 pipelines
+
+    Analyzes the configuration to create a plan which tasks to include.
+    Then builds the pipelines based on the plan and configuration.
+    Handles restarting a run where it left off.
+    Will create pipelines for partial runs (that end early or start from artifacts).
+    """
     def __init__(self, conf):
         self.conf = conf
+        self.artifact_helper = ArtifactHelper()
 
     def build(self):
         stage1_plan, stage2_plan = self.create_plan(self.conf)
-        stage1 = self.build_stage1(self.conf, stage1_plan)
-        stage2 = self.build_stage2(self.conf, stage2_plan)
+        stage1 = self.build_stage1(stage1_plan)
+        stage2 = self.build_stage2(stage2_plan)
         return stage1, stage2
-
-    def build_stage1(self, conf, plan):
-        # Stage 1 is generally: read docs, process them, build index.
-        # For each task, we clear previous data from a failed run if it exists.
-        # Then we build the tasks from the plan and create the iterator to drive the pipeline.
-        if not plan:
-            return None
-        tasks = []
-        iterable = None
-        if Tasks.DOCUMENTS in plan:
-            # doc reader -> doc processor with doc db -> optional doc writer
-            self.clear_output(conf.documents)
-            if not is_complete(conf.documents.db.path) and pathlib.Path(conf.documents.db.path).exists():
-                delete_dir(conf.documents.db.path)
-            iterable = DocumentReaderFactory.create(conf.documents.input)
-            db = DocumentDatabaseFactory.create(conf.documents.db.path)
-            tasks.append(DocumentProcessorFactory.create(conf.documents.process, db))
-            if conf.documents.output and conf.documents.output.path:
-                tasks.append(DocWriter(conf.documents.output.path))
-        if Tasks.INDEX in plan:
-            self.clear_output(conf.index)
-            if Tasks.DOCUMENTS not in plan:
-                # documents already processed so locate them to set the iterator
-                try:
-                    iterable = DocReader(conf.index.input.documents.path)
-                except AttributeError:
-                    try:
-                        iterable = DocReader(conf.documents.output.path)
-                    except AttributeError:
-                        raise ConfigError('index not configured with documents')
-            tasks.append(IndexerFactory.create(conf.index))
-        return Pipeline(tasks, iterable)
-
-    def build_stage2(self, conf, plan):
-        # Stage 2 is generally: read topics, extract query, process them, retrieve results, rerank them, score.
-        # For each task, we clear previous data from a failed run if it exists.
-        # Then we build the tasks from the plan and create the iterator to drive the pipeline.
-        if not plan:
-            return None
-        tasks = []
-        iterable = None
-        if Tasks.TOPICS in plan:
-            # topic reader -> topic processor -> optional query writer
-            self.clear_output(conf.topics)
-            iterable = TopicReaderFactory.create(conf.topics.input)
-            tasks.append(TopicProcessor(conf.topics))
-            if conf.topics.output:
-                tasks.append(QueryWriter(conf.topics.output.path))
-        if Tasks.QUERIES in plan:
-            # optional query reader -> query processor -> optional query writer
-            self.clear_output(conf.queries)
-            if Tasks.TOPICS not in plan:
-                try:
-                    iterable = QueryReader(conf.queries.input.path)
-                except AttributeError:
-                    try:
-                        iterable = QueryReader(conf.topics.output.path)
-                    except AttributeError:
-                        raise ConfigError('query processor not configured with input')
-            tasks.append(QueryProcessor(conf.queries.process))
-            if conf.queries.output:
-                tasks.append(QueryWriter(conf.queries.output.path))
-        if Tasks.RETRIEVE in plan:
-            self.clear_output(conf.retrieve)
-            if Tasks.QUERIES not in plan:
-                # queries already processed so locate them to set the iterator
-                try:
-                    iterable = QueryReader(conf.retrieve.input.queries.path)
-                except AttributeError:
-                    try:
-                        iterable = QueryReader(conf.queries.output.path)
-                    except AttributeError:
-                        raise ConfigError('retrieve not configured with queries')
-            tasks.append(RetrieverFactory.create(conf.retrieve))
-            if conf.retrieve.output:
-                tasks.append(JsonResultsWriter(conf.retrieve.output.path))
-        if Tasks.RERANK in plan:
-            self.clear_output(conf.rerank)
-            if Tasks.RETRIEVE not in plan:
-                # retrieve results already processed so locate them to set the iterator
-                try:
-                    iterable = JsonResultsReader(conf.rerank.input.results.path)
-                except AttributeError:
-                    try:
-                        iterable = JsonResultsReader(conf.retrieve.output.path)
-                    except AttributeError:
-                        raise ConfigError('rerank not configured with retrieve results')
-            tasks.append(RerankFactory.create(conf.rerank))
-            tasks.append(TrecResultsWriter(conf.rerank.output.path))
-        if Tasks.SCORE in plan:
-            qrels = QrelsReaderFactory.create(conf.score.input).read()
-            tasks.append(Scorer(conf.score, qrels))
-        return Pipeline(tasks, iterable)
 
     def create_plan(self, conf):
         # Analyze the config and check there are any artifacts from a previous run.
@@ -283,11 +230,120 @@ class PipelineBuilder:
                 raise ConfigError("Scorer can only run if either retrieve or rerank is configured")
             stage2.append(Tasks.SCORE)
 
-        # TODO not checking if the config is skipping steps
         if not stage1 and not stage2:
             raise ConfigError("No tasks are configured to run")
 
         return stage1, stage2
+
+    def build_stage1(self, plan):
+        # Stage 1 is generally: read docs, process them, build index.
+        # For each task, we clear previous data from a failed run if it exists.
+        # Then we build the tasks from the plan and create the iterator to drive the pipeline.
+        if not plan:
+            return None
+        tasks = []
+        iterable = None
+        if Tasks.DOCUMENTS in plan:
+            # doc reader -> doc processor with doc db -> optional doc writer
+            self.clear_output(self.conf.documents)
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
+            if not is_complete(self.conf.documents.db.path) and pathlib.Path(self.conf.documents.db.path).exists():
+                delete_dir(self.conf.documents.db.path)
+            iterable = DocumentReaderFactory.create(self.conf.documents.input)
+            db = DocumentDatabaseFactory.create(self.conf.documents.db.path, artifact_conf)
+            tasks.append(DocumentProcessorFactory.create(self.conf.documents.process, db))
+            if self.conf.documents.output and self.conf.documents.output.path:
+                tasks.append(DocWriter(self.conf.documents.output.path, artifact_conf))
+
+        if Tasks.INDEX in plan:
+            self.clear_output(self.conf.index)
+            if Tasks.DOCUMENTS not in plan:
+                # documents already processed so locate them to set the iterator
+                iterable = self._setup_input(DocReader, 'index.input.documents.path',
+                                             'documents.output.path', 'index not configured with documents')
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.INDEX)
+            tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
+        return Pipeline(tasks, iterable)
+
+    def build_stage2(self, plan):
+        # Stage 2 is generally: read topics, extract query, process them, retrieve results, rerank them, score.
+        # For each task, we clear previous data from a failed run if it exists.
+        # Then we build the tasks from the plan and create the iterator to drive the pipeline.
+        if not plan:
+            return None
+        tasks = []
+        iterable = None
+        if Tasks.TOPICS in plan:
+            # topic reader -> topic processor -> optional query writer
+            self.clear_output(self.conf.topics)
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.TOPICS)
+            iterable = TopicReaderFactory.create(self.conf.topics.input)
+            tasks.append(TopicProcessor(self.conf.topics))
+            if self.conf.topics.output:
+                tasks.append(QueryWriter(self.conf.topics.output.path, artifact_conf))
+
+        if Tasks.QUERIES in plan:
+            # optional query reader -> query processor -> optional query writer
+            self.clear_output(self.conf.queries)
+            if Tasks.TOPICS not in plan:
+                iterable = self._setup_input(QueryReader, 'queries.input.path', 'topics.output.path',
+                                             'query processor not configured with input')
+            tasks.append(QueryProcessor(self.conf.queries.process))
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.QUERIES)
+            if self.conf.queries.output:
+                tasks.append(QueryWriter(self.conf.queries.output.path, artifact_conf))
+
+        if Tasks.RETRIEVE in plan:
+            self.clear_output(self.conf.retrieve)
+            if Tasks.QUERIES not in plan:
+                # queries already processed so locate them to set the iterator
+                iterable = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output.path',
+                                             'retrieve not configured with queries')
+            tasks.append(RetrieverFactory.create(self.conf.retrieve))
+            if not self.conf.index:
+                # copy in the configuration that created the index
+                self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RETRIEVE)
+            if self.conf.retrieve.output:
+                tasks.append(JsonResultsWriter(self.conf.retrieve.output.path, artifact_conf))
+
+        if Tasks.RERANK in plan:
+            self.clear_output(self.conf.rerank)
+            if Tasks.RETRIEVE not in plan:
+                # retrieve results already processed so locate them to set the iterator
+                iterable = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output.path',
+                                             'rerank not configured with retrieve results')
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
+            db = DocumentDatabaseFactory.create(self.conf.rerank.input.db.path)
+            tasks.append(RerankFactory.create(self.conf.rerank, db))
+            tasks.append(TrecResultsWriter(self.conf.rerank.output.path, artifact_conf))
+
+        if Tasks.SCORE in plan:
+            qrels = QrelsReaderFactory.create(self.conf.score.input).read()
+            tasks.append(Scorer(self.conf.score, qrels))
+        return Pipeline(tasks, iterable)
+
+    def _setup_input(self, cls, path1, path2, error_msg):
+        """Try two possible places for input path"""
+        obj = self.conf
+        fields = path1.split('.')
+        try:
+            while fields:
+                field = fields.pop(0)
+                obj = getattr(obj, field)
+            self.artifact_helper.combine(self.conf, obj)
+            return cls(obj)
+        except AttributeError:
+            obj = self.conf
+            fields = path2.split('.')
+            try:
+                while fields:
+                    field = fields.pop(0)
+                    obj = getattr(obj, field)
+                self.artifact_helper.combine(self.conf, obj)
+                return cls(obj)
+            except AttributeError:
+                raise ConfigError(error_msg)
 
     @staticmethod
     def is_task_complete(task_conf):

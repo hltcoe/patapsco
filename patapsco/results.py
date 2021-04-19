@@ -3,6 +3,7 @@ import json
 import pathlib
 from typing import List, Union
 
+from .config import ConfigService
 from .pipeline import Task
 from .topics import Query
 from .util import DataclassJSONEncoder
@@ -28,7 +29,7 @@ class Results:
 class TrecResultsWriter(Task):
     """Write results to a file in TREC format"""
 
-    def __init__(self, path):
+    def __init__(self, path, config):
         """
         Args:
             path (str): Path of file to write to.
@@ -38,6 +39,8 @@ class TrecResultsWriter(Task):
         self.dir.mkdir(parents=True)
         self.path = self.dir / 'results.txt'
         self.file = open(self.path, 'w')
+        self.config = config
+        self.config_path = self.dir / 'config.yml'
 
     def process(self, results):
         """
@@ -50,13 +53,14 @@ class TrecResultsWriter(Task):
 
     def end(self):
         self.file.close()
+        ConfigService.write_config_file(self.config_path, self.config)
         touch_complete(self.dir)
 
 
 class JsonResultsWriter(Task):
     """Write results to a json file"""
 
-    def __init__(self, path):
+    def __init__(self, path, config):
         """
         Args:
             path (str): Path of file to write to.
@@ -66,6 +70,8 @@ class JsonResultsWriter(Task):
         self.dir.mkdir(parents=True)
         self.path = self.dir / 'results.jsonl'
         self.file = open(self.path, 'w')
+        self.config = config
+        self.config_path = self.dir / 'config.yml'
 
     def process(self, results):
         """
@@ -77,6 +83,7 @@ class JsonResultsWriter(Task):
 
     def end(self):
         self.file.close()
+        ConfigService.write_config_file(self.config_path, self.config)
         touch_complete(self.dir)
 
 

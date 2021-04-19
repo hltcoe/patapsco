@@ -2,7 +2,6 @@ import copy
 import random
 
 from .config import BaseConfig, Optional, PathConfig
-from .docs import DocumentDatabaseFactory
 from .pipeline import Task
 from .retrieve import Results
 from .util import ComponentFactory
@@ -32,14 +31,15 @@ class RerankFactory(ComponentFactory):
 class Reranker(Task):
     """Rerank interface"""
 
-    def __init__(self, config):
+    def __init__(self, config, db):
         """
         Args:
             config (RerankConfig): Configuration parameters
+            db (DocumentDatabase): Document database
         """
         super().__init__()
         self.config = config
-        self.db = DocumentDatabaseFactory.create(config.input.db.path)
+        self.db = db
 
     def process(self, results):
         """Rerank query results
@@ -58,5 +58,8 @@ class MockReranker(Reranker):
 
     def process(self, results):
         new_results = copy.copy(results.results)
+        # retrieve documents and pop one to exercise db
+        docs = [self.db[result.doc_id] for result in new_results]
+        docs.pop()
         random.shuffle(new_results)
         return Results(results.query, 'MockReranker', new_results)

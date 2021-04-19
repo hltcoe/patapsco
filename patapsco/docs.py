@@ -6,7 +6,7 @@ import pathlib
 
 import sqlitedict
 
-from .config import BaseConfig, PathConfig, Union
+from .config import BaseConfig, ConfigService, PathConfig, Union
 from .error import ParseError
 from .pipeline import Task
 from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
@@ -149,12 +149,14 @@ class HamshahriDocumentReader:
 class DocWriter(Task):
     """Write documents to a json file"""
 
-    def __init__(self, path):
+    def __init__(self, path, config):
         super().__init__()
         self.dir = pathlib.Path(path)
         self.dir.mkdir(parents=True)
         path = self.dir / 'documents.jsonl'
         self.file = open(path, 'w')
+        self.config = config
+        self.config_path = self.dir / 'config.yml'
 
     def process(self, doc):
         """
@@ -169,6 +171,7 @@ class DocWriter(Task):
 
     def end(self):
         self.file.close()
+        ConfigService.write_config_file(self.config_path, self.config)
         touch_complete(self.dir)
 
 
@@ -201,13 +204,15 @@ class DocumentDatabase(sqlitedict.SqliteDict):
         print(store['doc_77'])
     """
 
-    def __init__(self, path, readonly=False, *args, **kwargs):
+    def __init__(self, path, config, readonly=False, *args, **kwargs):
         kwargs['autocommit'] = True
         self.readonly = readonly
         self.dir = pathlib.Path(path)
         if not self.dir.exists():
             self.dir.mkdir(parents=True)
         path = str(pathlib.Path(path) / "docs.db")
+        self.config = config
+        self.config_path = self.dir / 'config.yml'
         super().__init__(path, *args, **kwargs)
 
     def __setitem__(self, key, value):
@@ -216,14 +221,18 @@ class DocumentDatabase(sqlitedict.SqliteDict):
         super().__setitem__(key, value)
 
     def end(self):
-        touch_complete(self.dir)
+        if not self.readonly:
+            ConfigService.write_config_file(self.config_path, self.config)
+            touch_complete(self.dir)
 
 
 class DocumentDatabaseFactory:
     @staticmethod
-    def create(path):
-        readonly = True if is_complete(path) else False
-        return DocumentDatabase(path, readonly)
+    def create(path, config=None, readonly=False):
+        if is_complete(path):
+            readonly = True
+            config = ConfigService().read_config_file(pathlib.Path(path) / 'config.yml')
+        return DocumentDatabase(path, config, readonly)
 
 
 class DocumentProcessor(Task, TextProcessor):
