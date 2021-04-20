@@ -1,4 +1,5 @@
 import itertools
+import json
 import logging
 import pathlib
 import random
@@ -37,9 +38,28 @@ class RetrieverFactory(ComponentFactory):
 
     @classmethod
     def create(cls, config, *args, **kwargs):
+        # config.input.index.path can point to:
+        #  1. a single path of a single run
+        #  2. a single path of a multiplex run
+        #  3. multiple paths
         if isinstance(config.input.index.path, str):
-            return super().create(config, *args, **kwargs)
+            multiplex_path = pathlib.Path(config.input.index.path) / '.multiplex'
+            if not multiplex_path.exists():
+                # single index
+                return super().create(config, *args, **kwargs)
+            else:
+                # multiplex index
+                with open(multiplex_path, 'r') as fp:
+                    splits = json.load(fp)
+                    base_path = pathlib.Path(config.input.index.path)
+                    retrievers = {}
+                    for split in splits:
+                        copied_config = config.copy(deep=True)
+                        copied_config.input.index.path = str(base_path / split)
+                        retrievers[split] = super().create(copied_config, *args, **kwargs)
+                    return MultiplexTask(retrievers, None, None, None)
         else:
+            # multiple index paths
             paths = config.input.index.path
             retrievers = {}
             for key, path in paths.items():

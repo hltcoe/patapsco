@@ -104,7 +104,9 @@ class MultiplexTask(Task):
                 self.tasks[split] = create_fn(task_config, artifact_config, *args, **kwargs)
             self.artifact_config = artifact_config
             self.config_path = self.dir / 'config.yml'
-            self.multiplex_path = self.dir / '.multiplex'
+            # we save the splits for components downstream to access
+            with open(self.dir / '.multiplex', 'w') as fp:
+                json.dump(splits, fp)
 
     def process(self, item):
         new_item = MultiplexItem()
@@ -122,8 +124,6 @@ class MultiplexTask(Task):
         if hasattr(self, 'dir'):
             if self.artifact_config:
                 ConfigService.write_config_file(self.config_path, self.artifact_config)
-            with open(self.multiplex_path, 'w') as fp:
-                json.dump(list(self.tasks.keys()), fp)
             touch_complete(self.dir)
 
     @property
