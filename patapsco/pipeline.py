@@ -1,4 +1,5 @@
 import abc
+import json
 import logging
 import pathlib
 
@@ -73,11 +74,23 @@ class MultiplexItem:
         self._items[name] = item
 
     def items(self):
+        """
+        Returns an iterable over key-value pairs
+        """
         return self._items.items()
 
 
 class MultiplexTask(Task):
+    """Accepts a MultiplexItem and wraps the tasks for each item in it"""
+
     def __init__(self, splits, create_fn, config, artifact_config, *args, **kwargs):
+        """
+        Args:
+            splits (list): List of split identifiers.
+            create_fn (callable): Function to create a task per split.
+            config (BaseConfig): Config for the tasks.
+            artifact_config (BaseConfig): Config that resulted in this artifact.
+        """
         self.tasks = {}
         for split in splits:
             task_config = config.copy(deep=True)
@@ -88,6 +101,7 @@ class MultiplexTask(Task):
         super().__init__()
         self.artifact_config = artifact_config
         self.config_path = self.dir / 'config.yml'
+        self.multiplex_path = self.dir / '.multiplex'
 
     def process(self, item):
         new_item = MultiplexItem()
@@ -103,6 +117,8 @@ class MultiplexTask(Task):
         for task in self.tasks.values():
             task.end()
         ConfigService.write_config_file(self.config_path, self.artifact_config)
+        with open(self.multiplex_path, 'w') as fp:
+            json.dump(list(self.tasks.keys()), fp)
         touch_complete(self.dir)
 
     @property
