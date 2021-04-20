@@ -1,4 +1,3 @@
-import copy
 import enum
 import json
 import logging
@@ -61,7 +60,7 @@ class ArtifactHelper:
         contributors = list(self.TASKS)
         for task in Tasks:
             contributors.pop(0)
-            self.contributors[task] = copy.copy(contributors)
+            self.contributors[task] = list(contributors)
 
     def get_config(self, config, task):
         """This excludes the parts of the configuration that were not used to create the artifact."""
