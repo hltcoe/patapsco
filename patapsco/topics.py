@@ -6,7 +6,7 @@ import pathlib
 from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
 from .error import ConfigError, ParseError
 from .pipeline import Task
-from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
+from .text import Splitter, TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
 from .util.file import GlobFileGenerator, touch_complete
 
@@ -58,6 +58,7 @@ class ProcessorConfig(BaseConfig):
     lowercase: bool = True
     stopwords: Union[bool, str] = "lucene"
     stem: Union[StemConfig, TruncStemConfig]
+    splits: Optional[list]
 
 
 class QueriesConfig(BaseConfig):
@@ -207,17 +208,18 @@ class TsvTopicReader:
 class QueryWriter(Task):
     """Write queries to a jsonl file"""
 
-    def __init__(self, path, config):
+    def __init__(self, config, artifact_config):
         """
         Args:
-            path (str): Path of query file to write.
+            config (BaseConfig): Config that includes output.path.
+            artifact_config (BaseConfig or None): Config that resulted in this artifact
         """
         super().__init__()
-        self.dir = pathlib.Path(path)
+        self.dir = pathlib.Path(config.output.path)
         self.dir.mkdir(parents=True)
         path = self.dir / 'queries.jsonl'
         self.file = open(path, 'w')
-        self.config = config
+        self.config = artifact_config
         self.config_path = self.dir / 'config.yml'
 
     def process(self, query):
@@ -233,7 +235,8 @@ class QueryWriter(Task):
 
     def end(self):
         self.file.close()
-        ConfigService.write_config_file(self.config_path, self.config)
+        if self.config:
+            ConfigService.write_config_file(self.config_path, self.config)
         touch_complete(self.dir)
 
 
@@ -265,6 +268,7 @@ class QueryProcessor(Task, TextProcessor):
         """
         Task.__init__(self)
         TextProcessor.__init__(self, config)
+        self.splitter = Splitter(config.splits)
 
     def process(self, query):
         """
@@ -277,16 +281,30 @@ class QueryProcessor(Task, TextProcessor):
         if not self.initialized:
             self.initialize(query.lang)
 
+        self.splitter.reset()
         text = query.text
         if self.config.char_normalize:
             text = self.normalize(text)
         tokens = self.tokenize(text)
+        self.splitter.add('tokenize', Query(query.id, query.lang, ' '.join(tokens)))
         if self.config.lowercase:
             tokens = self.lowercase(tokens)
+        self.splitter.add('lowercase', Query(query.id, query.lang, ' '.join(tokens)))
         if self.config.stopwords:
             tokens = self.remove_stop_words(tokens, not self.config.lowercase)
+        self.splitter.add('stopwords', Query(query.id, query.lang, ' '.join(tokens)))
         if self.config.stem:
             tokens = self.stem(tokens)
-        text = ' '.join(tokens)
+        self.splitter.add('stem', Query(query.id, query.lang, ' '.join(tokens)))
 
-        return Query(query.id, query.lang, text)
+        if self.splitter:
+            return self.splitter.get()
+        else:
+            return Query(query.id, query.lang, ' '.join(tokens))
+
+    @property
+    def name(self):
+        if self.splitter:
+            return f"{super().name} | Splitter"
+        else:
+            return super().name

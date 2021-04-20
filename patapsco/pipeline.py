@@ -1,7 +1,11 @@
 import abc
+import json
 import logging
+import pathlib
 
+from .config import ConfigService
 from .util import Timer, TimedIterable
+from .util.file import touch_complete
 
 LOGGER = logging.getLogger(__name__)
 
@@ -59,6 +63,72 @@ class Task(abc.ABC):
         self.end()
         if self.downstream:
             self.downstream._end()
+
+
+class MultiplexItem:
+    """Supports passing multiple items from Task.process"""
+    def __init__(self):
+        self._items = {}
+
+    def add(self, name, item):
+        self._items[name] = item
+
+    def items(self):
+        """
+        Returns an iterable over key-value pairs
+        """
+        return self._items.items()
+
+
+class MultiplexTask(Task):
+    """Accepts a MultiplexItem and wraps the tasks for each item in it"""
+
+    def __init__(self, splits, create_fn, config, artifact_config, *args, **kwargs):
+        """
+        Args:
+            splits (list of str or dict of tasks): List of split identifiers or list of Tasks to be multiplexed.
+            create_fn (callable): Function to create a task per split.
+            config (BaseConfig): Config for the tasks.
+            artifact_config (BaseConfig): Config that resulted in this artifact.
+        """
+        super().__init__()
+        if isinstance(splits, dict):
+            self.tasks = splits
+        else:
+            self.tasks = {}
+            for split in splits:
+                task_config = config.copy(deep=True)
+                if task_config.output:
+                    self.dir = pathlib.Path(config.output.path)
+                    task_config.output.path = str(pathlib.Path(task_config.output.path) / split)
+                self.tasks[split] = create_fn(task_config, artifact_config, *args, **kwargs)
+            self.artifact_config = artifact_config
+            self.config_path = self.dir / 'config.yml'
+            # we save the splits for components downstream to access
+            with open(self.dir / '.multiplex', 'w') as fp:
+                json.dump(splits, fp)
+
+    def process(self, item):
+        new_item = MultiplexItem()
+        for name, value in item.items():
+            new_item.add(name, self.tasks[name].process(value))
+        return new_item
+
+    def begin(self):
+        for task in self.tasks.values():
+            task.begin()
+
+    def end(self):
+        for task in self.tasks.values():
+            task.end()
+        if hasattr(self, 'dir'):
+            if self.artifact_config:
+                ConfigService.write_config_file(self.config_path, self.artifact_config)
+            touch_complete(self.dir)
+
+    @property
+    def name(self):
+        return f"Multiplex({list(self.tasks.values())[0].name})"
 
 
 class Pipeline:

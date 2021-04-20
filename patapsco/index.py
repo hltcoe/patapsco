@@ -39,7 +39,7 @@ class MockIndexer(Task):
         """
         super().__init__()
         self.dir = pathlib.Path(index_config.output.path)
-        self.dir.mkdir(parents=True)
+        self.dir.mkdir(parents=True, exist_ok=True)
         self.path = self.dir / 'index.txt'
         self.file = open(self.path, 'w')
         self.runner_config = runner_config

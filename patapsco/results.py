@@ -29,17 +29,18 @@ class Results:
 class TrecResultsWriter(Task):
     """Write results to a file in TREC format"""
 
-    def __init__(self, path, config):
+    def __init__(self, config, artifact_config):
         """
         Args:
-            path (str): Path of file to write to.
+            config (BaseConfig): Config object with output.path.
+            artifact_config (BaseConfig): Config used to create this artifact.
         """
         super().__init__()
-        self.dir = pathlib.Path(path)
+        self.dir = pathlib.Path(config.output.path)
         self.dir.mkdir(parents=True)
         self.path = self.dir / 'results.txt'
         self.file = open(self.path, 'w')
-        self.config = config
+        self.config = artifact_config
         self.config_path = self.dir / 'config.yml'
 
     def process(self, results):
@@ -60,17 +61,18 @@ class TrecResultsWriter(Task):
 class JsonResultsWriter(Task):
     """Write results to a json file"""
 
-    def __init__(self, path, config):
+    def __init__(self, config, artifact_config):
         """
         Args:
-            path (str): Path of file to write to.
+            config (BaseConfig): Config object with output.path.
+            artifact_config (BaseConfig): Config used to generate this artifact.
         """
         super().__init__()
-        self.dir = pathlib.Path(path)
+        self.dir = pathlib.Path(config.output.path)
         self.dir.mkdir(parents=True)
         self.path = self.dir / 'results.jsonl'
         self.file = open(self.path, 'w')
-        self.config = config
+        self.config = artifact_config
         self.config_path = self.dir / 'config.yml'
 
     def process(self, results):

@@ -6,10 +6,10 @@ import pathlib
 
 import sqlitedict
 
-from .config import BaseConfig, ConfigService, PathConfig, Union
-from .error import ParseError
+from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
+from .error import ConfigError, ParseError
 from .pipeline import Task
-from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
+from .text import Splitter, TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
 from .util.file import GlobFileGenerator, is_complete, touch_complete
 
@@ -37,6 +37,7 @@ class ProcessorConfig(BaseConfig):
     lowercase: bool = True
     stopwords: Union[bool, str] = "lucene"
     stem: Union[StemConfig, TruncStemConfig]
+    splits: Optional[list]
 
 
 class DocumentsConfig(BaseConfig):
@@ -150,13 +151,13 @@ class HamshahriDocumentReader:
 class DocWriter(Task):
     """Write documents to a json file"""
 
-    def __init__(self, path, config):
+    def __init__(self, config, artifact_config):
         super().__init__()
-        self.dir = pathlib.Path(path)
+        self.dir = pathlib.Path(config.output.path)
         self.dir.mkdir(parents=True)
         path = self.dir / 'documents.jsonl'
         self.file = open(path, 'w')
-        self.config = config
+        self.config = artifact_config
         self.config_path = self.dir / 'config.yml'
 
     def process(self, doc):
@@ -172,7 +173,8 @@ class DocWriter(Task):
 
     def end(self):
         self.file.close()
-        ConfigService.write_config_file(self.config_path, self.config)
+        if self.config:
+            ConfigService.write_config_file(self.config_path, self.config)
         touch_complete(self.dir)
 
 
@@ -209,12 +211,14 @@ class DocumentDatabase(sqlitedict.SqliteDict):
         kwargs['autocommit'] = True
         self.readonly = readonly
         self.dir = pathlib.Path(path)
+        path = self.dir / "docs.db"
+        if readonly and not path.exists():
+            raise ConfigError(f"Document database does not exist: {path}")
         if not self.dir.exists():
             self.dir.mkdir(parents=True)
-        path = str(pathlib.Path(path) / "docs.db")
         self.config = config
         self.config_path = self.dir / 'config.yml'
-        super().__init__(path, *args, **kwargs)
+        super().__init__(str(path), *args, **kwargs)
 
     def __setitem__(self, key, value):
         if self.readonly:
@@ -247,6 +251,7 @@ class DocumentProcessor(Task, TextProcessor):
         """
         Task.__init__(self)
         TextProcessor.__init__(self, config)
+        self.splitter = Splitter(config.splits)
         self.db = db
 
     def process(self, doc):
@@ -260,19 +265,34 @@ class DocumentProcessor(Task, TextProcessor):
         if not self.initialized:
             self.initialize(doc.lang)
 
+        self.splitter.reset()
         text = doc.text
         if self.config.char_normalize:
             text = self.normalize(text)
         tokens = self.tokenize(text)
+        self.splitter.add('tokenize', Doc(doc.id, doc.lang, ' '.join(tokens)))
         if self.config.lowercase:
             tokens = self.lowercase(tokens)
-        self.db[doc.id] = doc.text
+        self.splitter.add('lowercase', Doc(doc.id, doc.lang, ' '.join(tokens)))
+        self.db[doc.id] = ' '.join(tokens)
         if self.config.stopwords:
             tokens = self.remove_stop_words(tokens, not self.config.lowercase)
+        self.splitter.add('stopwords', Doc(doc.id, doc.lang, ' '.join(tokens)))
         if self.config.stem:
             tokens = self.stem(tokens)
-        text = ' '.join(tokens)
-        return Doc(doc.id, doc.lang, text)
+        self.splitter.add('stem', Doc(doc.id, doc.lang, ' '.join(tokens)))
+
+        if self.splitter:
+            return self.splitter.get()
+        else:
+            return Doc(doc.id, doc.lang, ' '.join(tokens))
 
     def end(self):
         self.db.end()
+
+    @property
+    def name(self):
+        if self.splitter:
+            return f"{super().name} | Splitter"
+        else:
+            return super().name
