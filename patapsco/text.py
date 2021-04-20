@@ -133,7 +133,7 @@ class Splitter:
         self.items = MultiplexItem()
 
     def __bool__(self):
-        return len(self.splits) > 1
+        return len(self.splits) > 0
 
 
 class TextProcessor:

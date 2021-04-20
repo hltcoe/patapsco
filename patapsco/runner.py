@@ -311,11 +311,11 @@ class PipelineBuilder:
                 # queries already processed so locate them to set the iterator
                 iterable = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output.path',
                                              'retrieve not configured with queries')
-            tasks.append(RetrieverFactory.create(self.conf.retrieve))
             if not self.conf.index:
                 # copy in the configuration that created the index
                 self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RETRIEVE)
+            tasks.append(RetrieverFactory.create(self.conf.retrieve))
             if self.conf.queries.process.splits:
                 tasks.append(Joiner())
             if self.conf.retrieve.output:
