@@ -4,6 +4,8 @@ import json
 import sys
 import timeit
 
+import more_itertools
+
 from ..config import BaseConfig
 from ..error import ConfigError
 
@@ -75,3 +77,27 @@ class TimedIterable(collections.Iterable):
     def __next__(self):
         with self.timer:
             return next(self.iterable)
+
+
+class ChunkedIterable(collections.Iterable):
+    def __init__(self, iterable, n):
+        self.iterable = iterable
+        self.chunked = more_itertools.chunked(iterable, n)
+        self.n = n
+        self.done = False
+
+    def __str__(self):
+        return self.iterable.__class__.__name__
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.n == 0:
+            if not self.done:
+                self.done = True
+                return [x for x in self.iterable]
+            else:
+                raise StopIteration()
+        else:
+            return next(self.chunked)

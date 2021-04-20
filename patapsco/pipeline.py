@@ -4,7 +4,7 @@ import logging
 import pathlib
 
 from .config import ConfigService
-from .util import Timer, TimedIterable
+from .util import Timer, TimedIterable, ChunkedIterable
 from .util.file import touch_complete
 
 LOGGER = logging.getLogger(__name__)
@@ -182,10 +182,19 @@ class StreamingPipeline(Pipeline):
 class BatchPipeline(Pipeline):
     """Pipeline that pushes chunks of input through the tasks"""
 
+    def __init__(self, iterable, tasks, n):
+        """
+        Args:
+            iterable (iterable): Iterator that generates input for the pipeline.
+            tasks (list): List of tasks.
+            n (int): Batch size.
+        """
+        super().__init__(ChunkedIterable(iterable, n), tasks)
+
     def run(self):
         self.begin()
-        items = [item for item in self.iterable]
-        for task in self.tasks:
-            items = [task.process(item) for item in items]
-        self.count = len(items)
+        for chunk in self.iterable:
+            self.count += len(chunk)
+            for task in self.tasks:
+                chunk = [task.process(item) for item in chunk]
         self.end()

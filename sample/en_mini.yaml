@@ -1,6 +1,7 @@
 run:
   name: English test run
   path: runs/en_mini
+  mode: batch
 
 documents:
   input:

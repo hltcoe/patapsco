@@ -1,4 +1,5 @@
 import enum
+import functools
 import json
 import logging
 import pathlib
@@ -8,7 +9,7 @@ from .docs import DocumentsConfig, DocumentProcessorFactory, DocumentReaderFacto
     DocumentDatabaseFactory, DocReader, DocWriter
 from .error import ConfigError
 from .index import IndexConfig, IndexerFactory
-from .pipeline import MultiplexTask, StreamingPipeline
+from .pipeline import BatchPipeline, MultiplexTask, StreamingPipeline
 from .rerank import RerankConfig, RerankFactory
 from .results import JsonResultsWriter, JsonResultsReader, TrecResultsWriter
 from .retrieve import Joiner, RetrieveConfig, RetrieverFactory
@@ -21,10 +22,17 @@ from .util.file import delete_dir, is_complete
 LOGGER = logging.getLogger(__name__)
 
 
+class PipelineMode(str, enum.Enum):
+    STREAMING = 'streaming'
+    BATCH = 'batch'
+
+
 class RunConfig(BaseConfig):
     """Configuration for a run of the system"""
     path: str  # base path for run output
     name: Optional[str]
+    mode: PipelineMode = PipelineMode.STREAMING
+    batch_size: int = 0  # the default is a single batch
 
 
 class RunnerConfig(BaseConfig):
@@ -185,7 +193,18 @@ class PipelineBuilder:
     Will create pipelines for partial runs (that end early or start from artifacts).
     """
     def __init__(self, conf):
+        """
+        Args:
+            conf (RunnerConfig): Configuration for the runner.
+        """
         self.conf = conf
+        if conf.run.mode == PipelineMode.STREAMING:
+            LOGGER.info("Streaming pipeline selected")
+            self.pipeline_class = StreamingPipeline
+        else:
+            batch_size_char = str(conf.run.batch_size) if conf.run.batch_size else '∞'
+            LOGGER.info("Batch pipeline selected with batch size of %s", batch_size_char)
+            self.pipeline_class = functools.partial(BatchPipeline, n=conf.run.batch_size)
         self.artifact_helper = ArtifactHelper()
 
     def build(self):
@@ -270,7 +289,7 @@ class PipelineBuilder:
                                            self.conf.index, artifact_conf))
             else:
                 tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
-        return StreamingPipeline(iterable, tasks)
+        return self.pipeline_class(iterable, tasks)
 
     def build_stage2(self, plan):
         # Stage 2 is generally: read topics, extract query, process them, retrieve results, rerank them, score.
@@ -334,7 +353,7 @@ class PipelineBuilder:
         if Tasks.SCORE in plan:
             qrels = QrelsReaderFactory.create(self.conf.score.input).read()
             tasks.append(Scorer(self.conf.score, qrels))
-        return StreamingPipeline(iterable, tasks)
+        return self.pipeline_class(iterable, tasks)
 
     def _setup_input(self, cls, path1, path2, error_msg):
         """Try two possible places for input path"""
