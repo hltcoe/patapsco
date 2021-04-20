@@ -27,6 +27,17 @@ class Task(abc.ABC):
         """
         pass
 
+    def batch_process(self, items):
+        """Process a batch of items
+
+        Args:
+            items (list): A list of items
+
+        Returns:
+            list of items
+        """
+        return [self.process(item) for item in items]
+
     def begin(self):
         """Optional begin method for initialization"""
         pass
@@ -48,6 +59,9 @@ class TimedTask(Task):
     def process(self, item):
         with self.timer:
             return self.task.process(item)
+
+    def batch_process(self, items):
+        return self.task.batch_process(items)
 
     def begin(self):
         self.task.begin()
@@ -196,5 +210,5 @@ class BatchPipeline(Pipeline):
         for chunk in self.iterable:
             self.count += len(chunk)
             for task in self.tasks:
-                chunk = [task.process(item) for item in chunk]
+                chunk = task.batch_process(chunk)
         self.end()

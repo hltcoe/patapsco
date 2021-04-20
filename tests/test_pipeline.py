@@ -10,6 +10,9 @@ class MultiplyTask(Task):
     def process(self, item):
         return 2 * item
 
+    def batch_process(self, items):
+        return [3 * item for item in items]
+
 
 class CollectorTask(Task):
     def __init__(self):
@@ -52,4 +55,5 @@ def test_batch_pipeline():
     pipeline = BatchPipeline(NumberGenerator(), [AddTask(), MultiplyTask(), collector], 2)
     pipeline.run()
     assert pipeline.count == 5
-    assert collector.items == [2, 4, 6, 8, 10]
+    # the batch_process() method for multiply uses a factor of 3
+    assert collector.items == [3, 6, 9, 12, 15]
