@@ -129,8 +129,8 @@ class MultiplexTask(Task):
         return f"Multiplex({list(self.tasks.values())[0].name})"
 
 
-class StreamingPipeline:
-    """Pipeline that streams one item at a time through the tasks"""
+class Pipeline(abc.ABC):
+    """Interface for a pipeline of tasks"""
 
     def __init__(self, iterable, tasks):
         """
@@ -142,13 +142,9 @@ class StreamingPipeline:
         self.tasks = [TimedTask(task) for task in tasks]
         self.count = 0
 
+    @abc.abstractmethod
     def run(self):
-        self.begin()
-        for item in self.iterable:
-            for task in self.tasks:
-                item = task.process(item)
-            self.count += 1
-        self.end()
+        pass
 
     def begin(self):
         self.count = 0
@@ -169,3 +165,27 @@ class StreamingPipeline:
         task_names = [str(self.iterable)]
         task_names.extend(str(task) for task in self.tasks)
         return ' | '.join(task_names)
+
+
+class StreamingPipeline(Pipeline):
+    """Pipeline that streams one item at a time through the tasks"""
+
+    def run(self):
+        self.begin()
+        for item in self.iterable:
+            for task in self.tasks:
+                item = task.process(item)
+            self.count += 1
+        self.end()
+
+
+class BatchPipeline(Pipeline):
+    """Pipeline that pushes chunks of input through the tasks"""
+
+    def run(self):
+        self.begin()
+        items = [item for item in self.iterable]
+        for task in self.tasks:
+            items = [task.process(item) for item in items]
+        self.count = len(items)
+        self.end()
