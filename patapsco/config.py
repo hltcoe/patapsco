@@ -22,6 +22,12 @@ class BaseConfig(pydantic.BaseModel):
         extra = pydantic.Extra.forbid
 
 
+class BaseUncheckedConfig(BaseConfig):
+    """Case config class that supports arbitrary parameters"""
+    class Config:
+        extra = pydantic.Extra.allow
+
+
 class PathConfig(BaseConfig):
     """Simple config with only a path variable"""
     path: str

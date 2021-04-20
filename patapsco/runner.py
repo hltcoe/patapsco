@@ -253,7 +253,11 @@ class PipelineBuilder:
             db = DocumentDatabaseFactory.create(self.conf.documents.db.path, artifact_conf)
             tasks.append(DocumentProcessorFactory.create(self.conf.documents.process, db))
             if self.conf.documents.output and self.conf.documents.output.path:
-                tasks.append(DocWriter(self.conf.documents.output.path, artifact_conf))
+                if self.conf.documents.process.splits:
+                    tasks.append(MultiplexTask(self.conf.documents.process.splits, DocWriter,
+                                               self.conf.documents, artifact_conf))
+                else:
+                    tasks.append(DocWriter(self.conf.documents, artifact_conf))
 
         if Tasks.INDEX in plan:
             self.clear_output(self.conf.index)
@@ -284,7 +288,7 @@ class PipelineBuilder:
             iterable = TopicReaderFactory.create(self.conf.topics.input)
             tasks.append(TopicProcessor(self.conf.topics))
             if self.conf.topics.output:
-                tasks.append(QueryWriter(self.conf.topics.output.path, artifact_conf))
+                tasks.append(QueryWriter(self.conf.topics, artifact_conf))
 
         if Tasks.QUERIES in plan:
             # optional query reader -> query processor -> optional query writer
@@ -295,7 +299,11 @@ class PipelineBuilder:
             tasks.append(QueryProcessor(self.conf.queries.process))
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.QUERIES)
             if self.conf.queries.output:
-                tasks.append(QueryWriter(self.conf.queries.output.path, artifact_conf))
+                if self.conf.queries.process.splits:
+                    tasks.append(MultiplexTask(self.conf.queries.process.splits, QueryWriter,
+                                               self.conf.queries, artifact_conf))
+                else:
+                    tasks.append(QueryWriter(self.conf.queries, artifact_conf))
 
         if Tasks.RETRIEVE in plan:
             self.clear_output(self.conf.retrieve)
@@ -309,7 +317,7 @@ class PipelineBuilder:
                 self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RETRIEVE)
             if self.conf.retrieve.output:
-                tasks.append(JsonResultsWriter(self.conf.retrieve.output.path, artifact_conf))
+                tasks.append(JsonResultsWriter(self.conf.retrieve, artifact_conf))
 
         if Tasks.RERANK in plan:
             self.clear_output(self.conf.rerank)
@@ -320,7 +328,7 @@ class PipelineBuilder:
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
             db = DocumentDatabaseFactory.create(self.conf.rerank.input.db.path)
             tasks.append(RerankFactory.create(self.conf.rerank, db))
-            tasks.append(TrecResultsWriter(self.conf.rerank.output.path, artifact_conf))
+            tasks.append(TrecResultsWriter(self.conf.rerank, artifact_conf))
 
         if Tasks.SCORE in plan:
             qrels = QrelsReaderFactory.create(self.conf.score.input).read()

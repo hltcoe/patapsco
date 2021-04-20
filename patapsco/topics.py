@@ -208,17 +208,18 @@ class TsvTopicReader:
 class QueryWriter(Task):
     """Write queries to a jsonl file"""
 
-    def __init__(self, path, config):
+    def __init__(self, config, artifact_config):
         """
         Args:
-            path (str): Path of query file to write.
+            config (BaseConfig): Config that includes output.path.
+            artifact_config (BaseConfig or None): Config that resulted in this artifact
         """
         super().__init__()
-        self.dir = pathlib.Path(path)
+        self.dir = pathlib.Path(config.output.path)
         self.dir.mkdir(parents=True)
         path = self.dir / 'queries.jsonl'
         self.file = open(path, 'w')
-        self.config = config
+        self.config = artifact_config
         self.config_path = self.dir / 'config.yml'
 
     def process(self, query):
@@ -234,7 +235,8 @@ class QueryWriter(Task):
 
     def end(self):
         self.file.close()
-        ConfigService.write_config_file(self.config_path, self.config)
+        if self.config:
+            ConfigService.write_config_file(self.config_path, self.config)
         touch_complete(self.dir)
 
 

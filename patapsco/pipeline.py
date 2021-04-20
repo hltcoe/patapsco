@@ -2,7 +2,9 @@ import abc
 import logging
 import pathlib
 
+from .config import ConfigService
 from .util import Timer, TimedIterable
+from .util.file import touch_complete
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,24 +67,33 @@ class Task(abc.ABC):
 class MultiplexItem:
     """Supports passing multiple items from Task.process"""
     def __init__(self):
-        self.items = {}
+        self._items = {}
 
     def add(self, name, item):
-        self.items[name] = item
+        self._items[name] = item
+
+    def items(self):
+        return self._items.items()
 
 
 class MultiplexTask(Task):
-    def __init__(self, splits, create_fn, config, *args, **kwargs):
+    def __init__(self, splits, create_fn, config, artifact_config, *args, **kwargs):
         self.tasks = {}
         for split in splits:
             task_config = config.copy(deep=True)
-            task_config.output.path = str(pathlib.Path(task_config.output.path) / split)
-            self.tasks[split] = create_fn(task_config, *args, **kwargs)
+            if task_config.output:
+                self.dir = pathlib.Path(config.output.path)
+                task_config.output.path = str(pathlib.Path(task_config.output.path) / split)
+            self.tasks[split] = create_fn(task_config, artifact_config, *args, **kwargs)
         super().__init__()
+        self.artifact_config = artifact_config
+        self.config_path = self.dir / 'config.yml'
 
     def process(self, item):
-        for name, value in item.items.items():
-            self.tasks[name].process(value)
+        new_item = MultiplexItem()
+        for name, value in item.items():
+            new_item.add(name, self.tasks[name].process(value))
+        return new_item
 
     def begin(self):
         for task in self.tasks.values():
@@ -90,7 +101,9 @@ class MultiplexTask(Task):
 
     def end(self):
         for task in self.tasks.values():
-            task.begin()
+            task.end()
+        ConfigService.write_config_file(self.config_path, self.artifact_config)
+        touch_complete(self.dir)
 
     @property
     def name(self):

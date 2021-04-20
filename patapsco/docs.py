@@ -151,13 +151,13 @@ class HamshahriDocumentReader:
 class DocWriter(Task):
     """Write documents to a json file"""
 
-    def __init__(self, path, config):
+    def __init__(self, config, artifact_config):
         super().__init__()
-        self.dir = pathlib.Path(path)
+        self.dir = pathlib.Path(config.output.path)
         self.dir.mkdir(parents=True)
         path = self.dir / 'documents.jsonl'
         self.file = open(path, 'w')
-        self.config = config
+        self.config = artifact_config
         self.config_path = self.dir / 'config.yml'
 
     def process(self, doc):
@@ -173,7 +173,8 @@ class DocWriter(Task):
 
     def end(self):
         self.file.close()
-        ConfigService.write_config_file(self.config_path, self.config)
+        if self.config:
+            ConfigService.write_config_file(self.config_path, self.config)
         touch_complete(self.dir)
 
 
