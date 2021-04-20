@@ -9,7 +9,7 @@ from .docs import DocumentsConfig, DocumentProcessorFactory, DocumentReaderFacto
     DocumentDatabaseFactory, DocReader, DocWriter
 from .error import ConfigError
 from .index import IndexConfig, IndexerFactory
-from .pipeline import MultiplexTask, Pipeline
+from .pipeline import MultiplexTask, StreamingPipeline
 from .rerank import RerankConfig, RerankFactory
 from .results import JsonResultsWriter, JsonResultsReader, TrecResultsWriter
 from .retrieve import Joiner, RetrieveConfig, RetrieverFactory
@@ -271,7 +271,7 @@ class PipelineBuilder:
                                            self.conf.index, artifact_conf))
             else:
                 tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
-        return Pipeline(tasks, iterable)
+        return StreamingPipeline(iterable, tasks)
 
     def build_stage2(self, plan):
         # Stage 2 is generally: read topics, extract query, process them, retrieve results, rerank them, score.
@@ -335,7 +335,7 @@ class PipelineBuilder:
         if Tasks.SCORE in plan:
             qrels = QrelsReaderFactory.create(self.conf.score.input).read()
             tasks.append(Scorer(self.conf.score, qrels))
-        return Pipeline(tasks, iterable)
+        return StreamingPipeline(iterable, tasks)
 
     def _setup_input(self, cls, path1, path2, error_msg):
         """Try two possible places for input path"""

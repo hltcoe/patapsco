@@ -117,7 +117,7 @@ class MockRetriever(Task):
             self._load()
         ids = random.sample(self.doc_ids, self.number)
         results = [Result(doc_id, rank, rank) for rank, doc_id in enumerate(ids)]
-        return Results(query, self.name, results)
+        return Results(query, str(self), results)
 
     def _load(self):
         with open(self.path, 'r') as fp:

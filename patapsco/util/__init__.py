@@ -66,8 +66,7 @@ class TimedIterable(collections.Iterable):
     def time(self):
         return self.timer.time
 
-    @property
-    def name(self):
+    def __str__(self):
         return self.iterable.__class__.__name__
 
     def __iter__(self):
