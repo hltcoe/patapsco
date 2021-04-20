@@ -328,7 +328,7 @@ class PipelineBuilder:
                 iterable = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output.path',
                                              'rerank not configured with retrieve results')
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
-            db = DocumentDatabaseFactory.create(self.conf.rerank.input.db.path)
+            db = DocumentDatabaseFactory.create(self.conf.rerank.input.db.path, readonly=True)
             tasks.append(RerankFactory.create(self.conf.rerank, db))
             tasks.append(TrecResultsWriter(self.conf.rerank, artifact_conf))
 
