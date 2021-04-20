@@ -291,6 +291,6 @@ class DocumentProcessor(Task, TextProcessor):
     @property
     def name(self):
         if self.splitter:
-            return f"{super().name} -> Splitter"
+            return f"{super().name} | Splitter"
         else:
             return super().name

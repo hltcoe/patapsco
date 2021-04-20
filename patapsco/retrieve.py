@@ -4,7 +4,7 @@ import pathlib
 import random
 
 from .config import BaseConfig, Optional, PathConfig, Union
-from .pipeline import Task
+from .pipeline import Task, MultiplexTask
 from .results import Result, Results
 from .util import ComponentFactory
 
@@ -46,35 +46,33 @@ class RetrieverFactory(ComponentFactory):
                 copied_config = config.copy(deep=True)
                 copied_config.input.index.path = path
                 retrievers[key] = super().create(copied_config, *args, **kwargs)
-            return JoinedRetriever(retrievers)
+            return MultiplexTask(retrievers, None, None, None)
 
 
-class JoinedRetriever(Task):
-    """Join results from more then one retriever"""
+class Joiner(Task):
+    """Join results from multiplexed retrievers"""
 
-    def __init__(self, retrievers):
+    def __init__(self):
         super().__init__()
-        self.retrievers = retrievers
 
-    def process(self, queries):
-        """Retrieve a ranked list of documents
+    def process(self, results):
+        """Join multiplexed results
 
         Args:
-            queries (dict of Query)
+            results (MultiplexItem)
 
         Returns:
             Results
         """
         # TODO how to combine - probably union - but how to treat scores and ranks?
         # TODO which query to pass
-        query = list(queries.items())[0][0]
-        results = [self.retrievers[key].process(query).results for key, query in queries.items()]
+        # get the first key/value pair and get the value
+        first_results = next(iter(results.items()))[1]
+        query = first_results.query
+        system = first_results.system
+        results = [res.results for key, res in results.items()]
         results = list(itertools.chain(*results))
-        return Results(query, 'JoinedRetriever', results)
-
-    @property
-    def name(self):
-        return f"{list(self.retrievers.values())[0].name} -> Joiner"
+        return Results(query, system, results)
 
 
 class MockRetriever(Task):

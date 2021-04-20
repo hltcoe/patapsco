@@ -12,7 +12,7 @@ from .index import IndexConfig, IndexerFactory
 from .pipeline import MultiplexTask, Pipeline
 from .rerank import RerankConfig, RerankFactory
 from .results import JsonResultsWriter, JsonResultsReader, TrecResultsWriter
-from .retrieve import RetrieveConfig, RetrieverFactory
+from .retrieve import Joiner, RetrieveConfig, RetrieverFactory
 from .score import QrelsReaderFactory, ScoreConfig, Scorer
 from .topics import TopicProcessor, TopicReaderFactory, TopicsConfig, QueriesConfig, QueryProcessor, \
     QueryReader, QueryWriter
@@ -316,6 +316,8 @@ class PipelineBuilder:
                 # copy in the configuration that created the index
                 self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RETRIEVE)
+            if self.conf.queries.process.splits:
+                tasks.append(Joiner())
             if self.conf.retrieve.output:
                 tasks.append(JsonResultsWriter(self.conf.retrieve, artifact_conf))
 

@@ -86,22 +86,25 @@ class MultiplexTask(Task):
     def __init__(self, splits, create_fn, config, artifact_config, *args, **kwargs):
         """
         Args:
-            splits (list): List of split identifiers.
+            splits (list of str or dict of tasks): List of split identifiers or list of Tasks to be multiplexed.
             create_fn (callable): Function to create a task per split.
             config (BaseConfig): Config for the tasks.
             artifact_config (BaseConfig): Config that resulted in this artifact.
         """
-        self.tasks = {}
-        for split in splits:
-            task_config = config.copy(deep=True)
-            if task_config.output:
-                self.dir = pathlib.Path(config.output.path)
-                task_config.output.path = str(pathlib.Path(task_config.output.path) / split)
-            self.tasks[split] = create_fn(task_config, artifact_config, *args, **kwargs)
         super().__init__()
-        self.artifact_config = artifact_config
-        self.config_path = self.dir / 'config.yml'
-        self.multiplex_path = self.dir / '.multiplex'
+        if isinstance(splits, dict):
+            self.tasks = splits
+        else:
+            self.tasks = {}
+            for split in splits:
+                task_config = config.copy(deep=True)
+                if task_config.output:
+                    self.dir = pathlib.Path(config.output.path)
+                    task_config.output.path = str(pathlib.Path(task_config.output.path) / split)
+                self.tasks[split] = create_fn(task_config, artifact_config, *args, **kwargs)
+            self.artifact_config = artifact_config
+            self.config_path = self.dir / 'config.yml'
+            self.multiplex_path = self.dir / '.multiplex'
 
     def process(self, item):
         new_item = MultiplexItem()
@@ -116,10 +119,12 @@ class MultiplexTask(Task):
     def end(self):
         for task in self.tasks.values():
             task.end()
-        ConfigService.write_config_file(self.config_path, self.artifact_config)
-        with open(self.multiplex_path, 'w') as fp:
-            json.dump(list(self.tasks.keys()), fp)
-        touch_complete(self.dir)
+        if hasattr(self, 'dir'):
+            if self.artifact_config:
+                ConfigService.write_config_file(self.config_path, self.artifact_config)
+            with open(self.multiplex_path, 'w') as fp:
+                json.dump(list(self.tasks.keys()), fp)
+            touch_complete(self.dir)
 
     @property
     def name(self):
