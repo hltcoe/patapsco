@@ -83,6 +83,10 @@ class Scorer(Task):
         for metric in self.config.metrics:
             LOGGER.info(f"{metric} = {random.random()}")
         measures = {s for s in self.config.metrics}
+        # TODO working on using process
+        print(measures)
+        print(self.qrels)
         evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, measures)
         res = evaluator.evaluate(self.run)
+        print(res)
         return res
