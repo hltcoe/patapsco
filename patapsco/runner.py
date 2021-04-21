@@ -27,12 +27,18 @@ class PipelineMode(str, enum.Enum):
     BATCH = 'batch'
 
 
+class StageConfig(BaseConfig):
+    """Configuration for one of the stages"""
+    mode: PipelineMode = PipelineMode.STREAMING
+    batch_size: int = 0  # the default is a single batch
+
+
 class RunConfig(BaseConfig):
     """Configuration for a run of the system"""
     path: str  # base path for run output
     name: Optional[str]
-    mode: PipelineMode = PipelineMode.STREAMING
-    batch_size: int = 0  # the default is a single batch
+    stage1: StageConfig = StageConfig()
+    stage2: StageConfig = StageConfig()
 
 
 class RunnerConfig(BaseConfig):
@@ -198,13 +204,6 @@ class PipelineBuilder:
             conf (RunnerConfig): Configuration for the runner.
         """
         self.conf = conf
-        if conf.run.mode == PipelineMode.STREAMING:
-            LOGGER.info("Streaming pipeline selected")
-            self.pipeline_class = StreamingPipeline
-        else:
-            batch_size_char = str(conf.run.batch_size) if conf.run.batch_size else '∞'
-            LOGGER.info("Batch pipeline selected with batch size of %s", batch_size_char)
-            self.pipeline_class = functools.partial(BatchPipeline, n=conf.run.batch_size)
         self.artifact_helper = ArtifactHelper()
 
     def build(self):
@@ -289,7 +288,17 @@ class PipelineBuilder:
                                            self.conf.index, artifact_conf))
             else:
                 tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
-        return self.pipeline_class(iterable, tasks)
+
+        if self.conf.run.stage1.mode == PipelineMode.STREAMING:
+            LOGGER.info("Stage 1 is a streaming pipeline")
+            pipeline_class = StreamingPipeline
+        else:
+            batch_size_char = str(self.conf.run.stage1.batch_size) if self.conf.run.stage1.batch_size else '∞'
+            LOGGER.info("Stage 1 is a batch pipeline selected with batch size of %s", batch_size_char)
+            pipeline_class = functools.partial(BatchPipeline, n=self.conf.run.stage1.batch_size)
+        pipeline = pipeline_class(iterable, tasks)
+        LOGGER.info("Stage 1 pipeline: %s", pipeline)
+        return pipeline
 
     def build_stage2(self, plan):
         # Stage 2 is generally: read topics, extract query, process them, retrieve results, rerank them, score.
@@ -353,7 +362,17 @@ class PipelineBuilder:
         if Tasks.SCORE in plan:
             qrels = QrelsReaderFactory.create(self.conf.score.input).read()
             tasks.append(Scorer(self.conf.score, qrels))
-        return self.pipeline_class(iterable, tasks)
+
+        if self.conf.run.stage2.mode == PipelineMode.STREAMING:
+            LOGGER.info("Stage 2 is a streaming pipeline")
+            pipeline_class = StreamingPipeline
+        else:
+            batch_size_char = str(self.conf.run.stage2.batch_size) if self.conf.run.stage1.batch_size else '∞'
+            LOGGER.info("Stage 2 is a batch pipeline selected with batch size of %s", batch_size_char)
+            pipeline_class = functools.partial(BatchPipeline, n=self.conf.run.stage1.batch_size)
+        pipeline = pipeline_class(iterable, tasks)
+        LOGGER.info("Stage 2 pipeline: %s", pipeline)
+        return pipeline
 
     def _setup_input(self, cls, path1, path2, error_msg):
         """Try two possible places for input path"""
@@ -399,10 +418,6 @@ class Runner:
     def run(self):
         if self.conf.run.name:
             LOGGER.info("Starting run: %s", self.conf.run.name)
-        if self.stage1:
-            LOGGER.info("Stage 1 pipeline: %s", self.stage1)
-        if self.stage2:
-            LOGGER.info("Stage 2 pipeline: %s", self.stage2)
 
         if self.stage1:
             timer1 = Timer()
