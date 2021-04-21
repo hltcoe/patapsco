@@ -63,11 +63,17 @@ class TrecResultsWriter(Task):
 class TrecResultsReader:
     """Iterator over results from a trec format output file """
 
-    def __init__(self, path, lang=None):
+    def __init__(self, path, sep=' ', lang=None):
+        """
+        Args:
+            path (str): Path to the results file.
+            sep (str): Optional separator of columns.
+            lang (str): Optional language of the queries.
+        """
         system = None
         data = collections.defaultdict(list)
         with open(path, 'r') as fp:
-            reader = csv.reader(fp, delimiter=' ')
+            reader = csv.reader(fp, delimiter=sep)
             for row in reader:
                 system = row[5]
                 data[row[0]].append(Result(row[2], int(row[3]), float(row[4])))
