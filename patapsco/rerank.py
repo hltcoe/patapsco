@@ -119,7 +119,10 @@ class ShellReranker(Reranker):
             raise PatapscoError(e)
 
         self.batch += 1
-        return self._read_output(output_path, query_lang)
+        new_items = self._read_output(output_path, query_lang)
+        if len(items) != len(new_items):
+            raise PatapscoError(f"Mismatch between queries in input and output for {self.config.script}")
+        return new_items
 
     @staticmethod
     def _write_input(items, input_path):

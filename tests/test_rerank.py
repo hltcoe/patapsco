@@ -51,6 +51,17 @@ class TestShellReranker:
         assert new_items[0].results[1].doc_id == 'aaa'
         assert reranker.batch == 2
 
+    def test_shell_reranker_with_fewer_queries_in_output(self):
+        script = str(self.directory / 'success.sh')
+        config = self.create_config(script)
+        reranker = ShellReranker(config=config, db=MockDB())
+        items = [
+            Results(Query('1', 'en', 'text'), 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
+            Results(Query('2', 'en', 'text2'), 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
+        ]
+        with pytest.raises(PatapscoError):
+            reranker.batch_process(items)
+
     def test_shell_reranker_with_error(self):
         script = str(self.directory / 'error.sh')
         config = self.create_config(script)
