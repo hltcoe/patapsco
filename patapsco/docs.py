@@ -211,14 +211,14 @@ class DocumentDatabase(sqlitedict.SqliteDict):
         kwargs['autocommit'] = True
         self.readonly = readonly
         self.dir = pathlib.Path(path)
-        path = self.dir / "docs.db"
-        if readonly and not path.exists():
-            raise ConfigError(f"Document database does not exist: {path}")
+        self.path = self.dir / "docs.db"
+        if readonly and not self.path.exists():
+            raise ConfigError(f"Document database does not exist: {self.path}")
         if not self.dir.exists():
             self.dir.mkdir(parents=True)
         self.config = config
         self.config_path = self.dir / 'config.yml'
-        super().__init__(str(path), *args, **kwargs)
+        super().__init__(str(self.path), *args, **kwargs)
 
     def __setitem__(self, key, value):
         if self.readonly:
