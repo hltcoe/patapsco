@@ -305,6 +305,6 @@ class QueryProcessor(Task, TextProcessor):
     @property
     def name(self):
         if self.splitter:
-            return f"{super().name} | Splitter"
+            return f"{super()} | Splitter"
         else:
-            return super().name
+            return str(super())

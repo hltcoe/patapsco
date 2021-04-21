@@ -4,7 +4,7 @@ import logging
 import pathlib
 
 from .config import ConfigService
-from .util import Timer, TimedIterable
+from .util import Timer, TimedIterable, ChunkedIterable
 from .util.file import touch_complete
 
 LOGGER = logging.getLogger(__name__)
@@ -18,10 +18,6 @@ class Task(abc.ABC):
     See Pipeline for how to construct a pipeline of tasks.
     """
 
-    def __init__(self):
-        self.downstream = None
-        self.timer = Timer()
-
     @abc.abstractmethod
     def process(self, item):
         """Process an item
@@ -31,6 +27,17 @@ class Task(abc.ABC):
         """
         pass
 
+    def batch_process(self, items):
+        """Process a batch of items
+
+        Args:
+            items (list): A list of items
+
+        Returns:
+            list of items
+        """
+        return [self.process(item) for item in items]
+
     def begin(self):
         """Optional begin method for initialization"""
         pass
@@ -39,30 +46,35 @@ class Task(abc.ABC):
         """Optional end method for cleaning up"""
         pass
 
-    @property
-    def name(self):
+    def __str__(self):
         return self.__class__.__name__
+
+
+class TimedTask(Task):
+    """Task with a built in timer that wraps another task"""
+    def __init__(self, task):
+        self.task = task
+        self.timer = Timer()
+
+    def process(self, item):
+        with self.timer:
+            return self.task.process(item)
+
+    def batch_process(self, items):
+        return self.task.batch_process(items)
+
+    def begin(self):
+        self.task.begin()
+
+    def end(self):
+        self.task.end()
 
     @property
     def time(self):
         return self.timer.time
 
-    def _process(self, item):
-        """Push the output of process() to the next task"""
-        with self.timer:
-            item = self.process(item)
-        if self.downstream:
-            self.downstream._process(item)
-
-    def _begin(self):
-        self.begin()
-        if self.downstream:
-            self.downstream._begin()
-
-    def _end(self):
-        self.end()
-        if self.downstream:
-            self.downstream._end()
+    def __str__(self):
+        return str(self.task)
 
 
 class MultiplexItem:
@@ -131,47 +143,72 @@ class MultiplexTask(Task):
         return f"Multiplex({list(self.tasks.values())[0].name})"
 
 
-class Pipeline:
-    def __init__(self, tasks, iterable):
-        self.task = self._connect(tasks)
+class Pipeline(abc.ABC):
+    """Interface for a pipeline of tasks"""
+
+    def __init__(self, iterable, tasks):
+        """
+        Args:
+            iterable (iterable): Iterable of input for pipeline.
+            tasks (list): List of tasks run in sequence.
+        """
         self.iterable = TimedIterable(iterable)
+        self.tasks = [TimedTask(task) for task in tasks]
         self.count = 0
+
+    @abc.abstractmethod
+    def run(self):
+        pass
+
+    def begin(self):
+        self.count = 0
+        for task in self.tasks:
+            task.begin()
+
+    def end(self):
+        for task in self.tasks:
+            task.end()
+
+    @property
+    def report(self):
+        report = [(str(self.iterable), self.iterable.time)]
+        report.extend((str(task), task.time) for task in self.tasks)
+        return report
+
+    def __str__(self):
+        task_names = [str(self.iterable)]
+        task_names.extend(str(task) for task in self.tasks)
+        return ' | '.join(task_names)
+
+
+class StreamingPipeline(Pipeline):
+    """Pipeline that streams one item at a time through the tasks"""
 
     def run(self):
         self.begin()
         for item in self.iterable:
-            self.task._process(item)
+            for task in self.tasks:
+                item = task.process(item)
             self.count += 1
         self.end()
 
-    def begin(self):
-        self.count = 0
-        self.task._begin()
 
-    def end(self):
-        self.task._end()
+class BatchPipeline(Pipeline):
+    """Pipeline that pushes chunks of input through the tasks"""
 
-    @property
-    def report(self):
-        task = self.task
-        report = [(self.iterable.name, self.iterable.time), (task.name, task.time)]
-        while task.downstream:
-            task = task.downstream
-            report.append((task.name, task.time))
-        return report
+    def __init__(self, iterable, tasks, n):
+        """
+        Args:
+            iterable (iterable): Iterator that generates input for the pipeline.
+            tasks (list): List of tasks.
+            n (int): Batch size.
+        """
+        super().__init__(ChunkedIterable(iterable, n), tasks)
 
-    def _connect(self, tasks):
-        head_task = prev_task = tasks.pop(0)
-        while tasks:
-            cur_task = tasks.pop(0)
-            prev_task.downstream = cur_task
-            prev_task = cur_task
-        return head_task
-
-    def __str__(self):
-        task_names = [self.iterable.name]
-        task = self.task
-        while task:
-            task_names.append(task.name)
-            task = task.downstream
-        return ' | '.join(task_names)
+    def run(self):
+        self.begin()
+        for chunk in self.iterable:
+            self.count += len(chunk)
+            for task in self.tasks:
+                chunk = task.batch_process(chunk)
+        self.end()
