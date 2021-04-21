@@ -26,3 +26,22 @@ def test_json_results_reader():
     assert results.results[0].rank == 1
     with pytest.raises(StopIteration):
         next(results_iter)
+
+
+def test_trec_results_reader():
+    path = pathlib.Path('.') / 'tests' / 'trec_files' / 'results.txt'
+    results_iter = TrecResultsReader(str(path))
+    results = next(results_iter)
+    assert results.query.id == '1'
+    assert results.system == 'MockReranker'
+    assert len(results.results) == 2
+    assert results.results[0].doc_id == 'aaa'
+    assert results.results[0].rank == 1
+    results = next(results_iter)
+    assert results.query.id == '2'
+    assert results.system == 'MockReranker'
+    assert len(results.results) == 2
+    assert results.results[0].doc_id == 'bbb'
+    assert results.results[0].rank == 1
+    with pytest.raises(StopIteration):
+        next(results_iter)
