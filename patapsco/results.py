@@ -1,3 +1,5 @@
+import collections
+import csv
 import dataclasses
 import json
 import pathlib
@@ -56,6 +58,28 @@ class TrecResultsWriter(Task):
         self.file.close()
         ConfigService.write_config_file(self.config_path, self.config)
         touch_complete(self.dir)
+
+
+class TrecResultsReader:
+    """Iterator over results from a trec format output file """
+
+    def __init__(self, path, lang=None):
+        system = None
+        data = collections.defaultdict(list)
+        with open(path, 'r') as fp:
+            reader = csv.reader(fp, delimiter=' ')
+            for row in reader:
+                system = row[5]
+                data[row[0]].append(Result(row[2], int(row[3]), float(row[4])))
+        # the trec results file does not contain language or the query text
+        self.results = iter([Results(Query(query_id, lang, None), system, results)
+                             for query_id, results in data.items()])
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self.results)
 
 
 class JsonResultsWriter(Task):
