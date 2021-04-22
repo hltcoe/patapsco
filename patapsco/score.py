@@ -1,5 +1,6 @@
 import collections
 import logging
+import pytrec_eval
 import random
 
 from .config import BaseConfig
@@ -59,6 +60,9 @@ class Scorer(Task):
         """
         super().__init__()
         self.config = config
+        self.config.metrics = [m.replace('@', '_').capitalize()
+                               if m[:2] == 'p@' else m.replace('@', '_')
+                               for m in self.config.metrics]
         self.qrels = qrels
         self.run = collections.defaultdict(dict)
 
@@ -76,5 +80,8 @@ class Scorer(Task):
         return results
 
     def end(self):
-        for metric in self.config.metrics:
-            LOGGER.info(f"{metric} = {random.random()}")
+        measures = {s for s in self.config.metrics}
+        evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, measures)
+        res = evaluator.evaluate(self.run)
+        for q, results_dict in res.items():
+            LOGGER.info(f"{q} = {results_dict}")
