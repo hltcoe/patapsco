@@ -29,7 +29,7 @@ def test_extract_fields_with_bad_field():
 
 
 def test_parse_msmarco_topics():
-    directory = pathlib.Path('.') / 'tests' / 'msmarco_files'
+    directory = pathlib.Path(__file__).parent / 'msmarco_files'
     path = directory / 'queries.tsv'
     topic_iter = TsvTopicReader.parse(str(path.absolute()))
     topic = next(topic_iter)
@@ -43,7 +43,7 @@ def test_parse_msmarco_topics():
 
 
 def test_parse_json_topics():
-    directory = pathlib.Path('.') / 'tests' / 'json_files'
+    directory = pathlib.Path(__file__).parent / 'json_files'
     path = directory / 'topics.jsonl'
     topic_iter = JsonTopicReader.parse(str(path.absolute()))
     topic = next(topic_iter)
@@ -59,7 +59,7 @@ def test_parse_json_topics():
 
 
 def test_query_reader():
-    directory = pathlib.Path('.') / 'tests' / 'json_files'
+    directory = pathlib.Path(__file__).parent / 'json_files'
     query_iter = QueryReader(str(directory))
     query = next(query_iter)
     assert query.id == '001'
