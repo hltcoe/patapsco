@@ -1,4 +1,5 @@
 import copy
+import itertools
 import json
 import pathlib
 import random
@@ -84,7 +85,8 @@ class ShellReranker(Reranker):
 
     The script is called like so:
       /path/to/script doc_lang query_lang doc_db input_file output_file
-    TODO add support for arbitrary arguments
+
+    Arbitrary options can be added to the rerank config and will be passed as --key value.
     """
 
     def __init__(self, config, db):
@@ -110,7 +112,7 @@ class ShellReranker(Reranker):
         output_path = str(self.dir / f"output_{self.batch}.txt")
         log_path = str(self.dir / f"log_{self.batch}.log")
         self._write_input(items, input_path)
-        args = [self.config.script, doc_lang, query_lang, self.db.path, input_path, output_path]
+        args = self._create_args(doc_lang, query_lang, input_path, output_path)
         try:
             record = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
             self._write_log(log_path, record.args, record.stdout)
@@ -123,6 +125,17 @@ class ShellReranker(Reranker):
         if len(items) != len(new_items):
             raise PatapscoError(f"Mismatch between queries in input and output for {self.config.script}")
         return new_items
+
+    def _create_args(self, doc_lang, query_lang, input_path, output_path):
+        # get fields not included in the config definition and add them after the script path
+        fields = set(RerankConfig.__fields__.keys())
+        attributes = [attribute for attribute in self.config.__fields_set__ if attribute not in fields]
+        pairs = [['--' + attribute, getattr(self.config, attribute)] for attribute in attributes]
+        pairs = itertools.chain(*pairs)
+        args = [self.config.script]
+        args.extend(pairs)
+        args.extend([doc_lang, query_lang, self.db.path, input_path, output_path])
+        return args
 
     @staticmethod
     def _write_input(items, input_path):

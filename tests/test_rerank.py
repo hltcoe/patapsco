@@ -19,7 +19,7 @@ class MockDB:
 
 
 class TestShellReranker:
-    directory = pathlib.Path('.') / 'tests' / 'rerank_files'
+    directory = (pathlib.Path(__file__).parent / 'rerank_files').absolute()
 
     def setup_method(self):
         self.temp_dir = tempfile.mkdtemp()
@@ -28,12 +28,13 @@ class TestShellReranker:
     def teardown_method(self):
         delete_dir(self.temp_dir)
 
-    def create_config(self, script):
+    def create_config(self, script, **kwargs):
         return RerankConfig(
             input=RerankInputConfig(db=self.path_config, results=None),
             name='shell',
             script=script,
-            output=self.path_config
+            output=self.path_config,
+            **kwargs
         )
 
     def test_shell_reranker_with_success(self):
@@ -88,3 +89,18 @@ class TestShellReranker:
         ])
         with pytest.raises(ConfigError):
             reranker.process(item)
+
+    def test_shell_reranker_with_args(self):
+        script = str(self.directory / 'args.sh')
+        config = self.create_config(script, embedding="mbert")
+        reranker = ShellReranker(config=config, db=MockDB())
+        items = [Results(Query('1', 'en', 'text'), 'test', [
+            Result('aaa', 1, 0.5),
+            Result('bbb', 2, 0.4)
+        ])]
+        new_items = reranker.batch_process(items)
+        assert new_items[0].query.id == '1'
+        assert new_items[0].query.lang == 'en'
+        assert new_items[0].results[0].doc_id == 'bbb'
+        assert new_items[0].results[1].doc_id == 'aaa'
+        assert reranker.batch == 2
