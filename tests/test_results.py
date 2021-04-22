@@ -6,7 +6,7 @@ from patapsco.results import *
 
 
 def test_json_results_reader():
-    directory = pathlib.Path('.') / 'tests' / 'json_files'
+    directory = pathlib.Path(__file__).parent / 'json_files'
     results_iter = JsonResultsReader(str(directory))
     results = next(results_iter)
     assert results.query.id == '001'
@@ -29,7 +29,7 @@ def test_json_results_reader():
 
 
 def test_trec_results_reader():
-    path = pathlib.Path('.') / 'tests' / 'trec_files' / 'results.txt'
+    path = pathlib.Path(__file__).parent / 'trec_files' / 'results.txt'
     results_iter = TrecResultsReader(str(path))
     results = next(results_iter)
     assert results.query.id == '1'

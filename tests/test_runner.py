@@ -106,7 +106,7 @@ def test_config_preprocessor_set_rerank_db_path_with_index():
 
 
 def test_partial_config_preparer():
-    directory = pathlib.Path('.') / 'tests' / 'config_files'
+    directory = pathlib.Path(__file__).parent / 'config_files'
     path = directory / 'full_config.yml'
     conf = ConfigPreprocessor.process(path, {})
     helper = ArtifactHelper()
