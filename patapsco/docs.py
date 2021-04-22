@@ -6,10 +6,10 @@ import pathlib
 
 import sqlitedict
 
-from .config import BaseConfig, PathConfig, Union
-from .error import ParseError
+from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
+from .error import ConfigError, ParseError
 from .pipeline import Task
-from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
+from .text import Splitter, TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
 from .util.file import GlobFileGenerator, is_complete, touch_complete
 
@@ -33,9 +33,11 @@ class ProcessorConfig(BaseConfig):
     """Configuration for the document processor"""
     name: str = "default"
     char_normalize: bool = True
-    lowercase: bool = True
     tokenize: TokenizeConfig
+    lowercase: bool = True
+    stopwords: Union[bool, str] = "lucene"
     stem: Union[StemConfig, TruncStemConfig]
+    splits: Optional[list]
 
 
 class DocumentsConfig(BaseConfig):
@@ -149,12 +151,14 @@ class HamshahriDocumentReader:
 class DocWriter(Task):
     """Write documents to a json file"""
 
-    def __init__(self, path):
+    def __init__(self, config, artifact_config):
         super().__init__()
-        self.dir = pathlib.Path(path)
+        self.dir = pathlib.Path(config.output.path)
         self.dir.mkdir(parents=True)
         path = self.dir / 'documents.jsonl'
         self.file = open(path, 'w')
+        self.config = artifact_config
+        self.config_path = self.dir / 'config.yml'
 
     def process(self, doc):
         """
@@ -169,6 +173,8 @@ class DocWriter(Task):
 
     def end(self):
         self.file.close()
+        if self.config:
+            ConfigService.write_config_file(self.config_path, self.config)
         touch_complete(self.dir)
 
 
@@ -201,14 +207,18 @@ class DocumentDatabase(sqlitedict.SqliteDict):
         print(store['doc_77'])
     """
 
-    def __init__(self, path, readonly=False, *args, **kwargs):
+    def __init__(self, path, config, readonly=False, *args, **kwargs):
         kwargs['autocommit'] = True
         self.readonly = readonly
         self.dir = pathlib.Path(path)
+        self.path = self.dir / "docs.db"
+        if readonly and not self.path.exists():
+            raise ConfigError(f"Document database does not exist: {self.path}")
         if not self.dir.exists():
             self.dir.mkdir(parents=True)
-        path = str(pathlib.Path(path) / "docs.db")
-        super().__init__(path, *args, **kwargs)
+        self.config = config
+        self.config_path = self.dir / 'config.yml'
+        super().__init__(str(self.path), *args, **kwargs)
 
     def __setitem__(self, key, value):
         if self.readonly:
@@ -216,14 +226,18 @@ class DocumentDatabase(sqlitedict.SqliteDict):
         super().__setitem__(key, value)
 
     def end(self):
-        touch_complete(self.dir)
+        if not self.readonly:
+            ConfigService.write_config_file(self.config_path, self.config)
+            touch_complete(self.dir)
 
 
 class DocumentDatabaseFactory:
     @staticmethod
-    def create(path):
-        readonly = True if is_complete(path) else False
-        return DocumentDatabase(path, readonly)
+    def create(path, config=None, readonly=False):
+        if is_complete(path):
+            readonly = True
+            config = ConfigService().read_config_file(pathlib.Path(path) / 'config.yml')
+        return DocumentDatabase(path, config, readonly)
 
 
 class DocumentProcessor(Task, TextProcessor):
@@ -237,6 +251,7 @@ class DocumentProcessor(Task, TextProcessor):
         """
         Task.__init__(self)
         TextProcessor.__init__(self, config)
+        self.splitter = Splitter(config.splits)
         self.db = db
 
     def process(self, doc):
@@ -247,17 +262,37 @@ class DocumentProcessor(Task, TextProcessor):
         Returns
             Doc
         """
+        if not self.initialized:
+            self.initialize(doc.lang)
+
+        self.splitter.reset()
         text = doc.text
         if self.config.char_normalize:
             text = self.normalize(text)
-        if self.config.lowercase:
-            text = self.lowercase_text(text)
         tokens = self.tokenize(text)
-        self.db[doc.id] = doc.text
+        self.splitter.add('tokenize', Doc(doc.id, doc.lang, ' '.join(tokens)))
+        if self.config.lowercase:
+            tokens = self.lowercase(tokens)
+        self.splitter.add('lowercase', Doc(doc.id, doc.lang, ' '.join(tokens)))
+        self.db[doc.id] = ' '.join(tokens)
+        if self.config.stopwords:
+            tokens = self.remove_stop_words(tokens, not self.config.lowercase)
+        self.splitter.add('stopwords', Doc(doc.id, doc.lang, ' '.join(tokens)))
         if self.config.stem:
             tokens = self.stem(tokens)
-        text = ' '.join(tokens)
-        return Doc(doc.id, doc.lang, text)
+        self.splitter.add('stem', Doc(doc.id, doc.lang, ' '.join(tokens)))
+
+        if self.splitter:
+            return self.splitter.get()
+        else:
+            return Doc(doc.id, doc.lang, ' '.join(tokens))
 
     def end(self):
         self.db.end()
+
+    @property
+    def name(self):
+        if self.splitter:
+            return f"{super()} | Splitter"
+        else:
+            return str(super())

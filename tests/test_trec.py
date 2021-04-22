@@ -6,7 +6,7 @@ from patapsco.util.trec import *
 
 
 def test_parse_sgml_documents():
-    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    directory = pathlib.Path(__file__).parent / 'trec_files'
     path = directory / 'docs1.sgml'
     doc_iter = parse_sgml_documents(str(path.absolute()))
     doc = next(doc_iter)
@@ -20,7 +20,7 @@ def test_parse_sgml_documents():
 
 
 def test_parse_sgml_documents_with_bad_encoding():
-    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    directory = pathlib.Path(__file__).parent / 'trec_files'
     path = directory / 'not_utf8.txt'
     doc_iter = parse_sgml_documents(str(path.absolute()), encoding='utf8')
     with pytest.raises(ParseError):
@@ -28,7 +28,7 @@ def test_parse_sgml_documents_with_bad_encoding():
 
 
 def test_parse_hamshahri_documents():
-    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    directory = pathlib.Path(__file__).parent / 'trec_files'
     path = directory / 'hamshahri_docs.txt'
     doc_iter = parse_hamshahri_documents(str(path.absolute()), encoding='utf8')
     doc = next(doc_iter)
@@ -43,7 +43,7 @@ def test_parse_hamshahri_documents():
 
 
 def test_parse_sgml_topics():
-    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    directory = pathlib.Path(__file__).parent / 'trec_files'
     path = directory / 'topics.txt'
     topic_iter = parse_sgml_topics(str(path))
     topic = next(topic_iter)
@@ -61,7 +61,7 @@ def test_parse_sgml_topics():
 
 
 def test_parse_xml_topics():
-    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    directory = pathlib.Path(__file__).parent / 'trec_files'
     path = directory / 'topics.xml'
     topic_iter = parse_xml_topics(str(path))
     topic = next(topic_iter)
@@ -81,7 +81,7 @@ def test_parse_xml_topics():
 
 
 def test_parse_qrels():
-    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    directory = pathlib.Path(__file__).parent / 'trec_files'
     path = directory / 'qrels_2020'
     qrels_iter = parse_qrels(str(path))
     qrels = next(qrels_iter)
@@ -97,7 +97,7 @@ def test_parse_qrels():
 
 
 def test_parse_qrels_tsv():
-    directory = pathlib.Path('.') / 'tests' / 'trec_files'
+    directory = pathlib.Path(__file__).parent / 'trec_files'
     path = directory / 'qrels_2020.tsv'
     qrels_iter = parse_qrels(str(path))
     qrels = next(qrels_iter)

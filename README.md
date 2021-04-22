@@ -16,22 +16,28 @@ pip install -r requirements.txt
 
 ## Submitting Results
 
-## Unit Tests
-To run the unit tests, install pytest and run:
+## Development
+To install the development dependencies, run:
+```
+pip install -r dev_requirements.txt
+```
+
+### Unit Tests
+To run the unit tests, run:
 ```
 pytest
 ```
 
-## Code Style
+### Code Style
 The code should conform to the PEP8 style except for leniency on line length.
 
 To update the code, you can use autopep8.
-Install it with pipe and then run:
+To run it on a file:
 ```
-autopep8 -i -r patapsco
+autopep8 -i [path to file]
 ```
 
-To test PEP8 compliance, install flake8 and run:
+To test PEP8 compliance, run:
 ```
 flake8 patapsco
 ```

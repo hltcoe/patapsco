@@ -5,19 +5,31 @@ import pytest
 from patapsco.topics import *
 
 
-def test_select_text():
+def test_topic_process():
     class Mock:
         def __init__(self, fields):
             self.fields = fields
 
     mock = Mock(['title', 'desc'])
     topic = Topic('1', 'en', 'title', 'desc', 'narr')
-    text = TopicProcessor._select_text(mock, topic)
-    assert text == "title desc"
+    query = TopicProcessor.process(mock, topic)
+    assert query.text == "title desc"
+
+
+def test_extract_fields_with_case():
+    fields_str = 'title+DESC'
+    fields = TopicProcessor._extract_fields(fields_str)
+    assert fields == ['title', 'desc']
+
+
+def test_extract_fields_with_bad_field():
+    fields_str = 'title+report'
+    with pytest.raises(ConfigError):
+        TopicProcessor._extract_fields(fields_str)
 
 
 def test_parse_msmarco_topics():
-    directory = pathlib.Path('.') / 'tests' / 'msmarco_files'
+    directory = pathlib.Path(__file__).parent / 'msmarco_files'
     path = directory / 'queries.tsv'
     topic_iter = TsvTopicReader.parse(str(path.absolute()))
     topic = next(topic_iter)
@@ -31,7 +43,7 @@ def test_parse_msmarco_topics():
 
 
 def test_parse_json_topics():
-    directory = pathlib.Path('.') / 'tests' / 'json_files'
+    directory = pathlib.Path(__file__).parent / 'json_files'
     path = directory / 'topics.jsonl'
     topic_iter = JsonTopicReader.parse(str(path.absolute()))
     topic = next(topic_iter)
@@ -47,7 +59,7 @@ def test_parse_json_topics():
 
 
 def test_query_reader():
-    directory = pathlib.Path('.') / 'tests' / 'json_files'
+    directory = pathlib.Path(__file__).parent / 'json_files'
     query_iter = QueryReader(str(directory))
     query = next(query_iter)
     assert query.id == '001'

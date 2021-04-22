@@ -22,6 +22,12 @@ class BaseConfig(pydantic.BaseModel):
         extra = pydantic.Extra.forbid
 
 
+class BaseUncheckedConfig(BaseConfig):
+    """Case config class that supports arbitrary parameters"""
+    class Config:
+        extra = pydantic.Extra.allow
+
+
 class PathConfig(BaseConfig):
     """Simple config with only a path variable"""
     path: str
@@ -80,7 +86,7 @@ class ConfigService:
         """Read the configuration detecting file type
 
         Args:
-            filename (str): path to the configuration file
+            filename (str or Path): path to the configuration file
 
         Returns:
             dict
@@ -104,7 +110,7 @@ class ConfigService:
         """Write the configuration file detecting file type
 
         Args:
-            filename (str): path to the configuration file to write
+            filename (str or Path): path to the configuration file to write
             config (BaseConfig): configuration object
         """
         ftype = cls._detect_filetype(filename)

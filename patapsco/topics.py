@@ -3,10 +3,10 @@ import dataclasses
 import json
 import pathlib
 
-from .config import BaseConfig, PathConfig, Optional, Union
-from .error import ParseError
+from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
+from .error import ConfigError, ParseError
 from .pipeline import Task
-from .text import TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
+from .text import Splitter, TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
 from .util.file import GlobFileGenerator, touch_complete
 
@@ -27,7 +27,7 @@ class Query:
     text: str
 
 
-class InputConfig(BaseConfig):
+class TopicsInputConfig(BaseConfig):
     """Configuration for Topic input"""
     format: str
     lang: str
@@ -37,18 +37,33 @@ class InputConfig(BaseConfig):
     path: Union[str, list]
 
 
-class ProcessorConfig(BaseConfig):
-    """Configuration of the topic processor"""
-    name: str = "default"
-    query: str = "title"  # field1+field2 where field is title, desc, narr
-    char_normalize: bool = True
-    lowercase: bool = True
-    tokenize: TokenizeConfig
-    stem: Union[StemConfig, TruncStemConfig]
-
-
 class TopicsConfig(BaseConfig):
-    input: InputConfig
+    """Configuration for topics task"""
+    input: TopicsInputConfig
+    fields: str = "title"  # field1+field2 where field is title, desc, or narr
+    output: Union[bool, PathConfig]
+
+
+class QueriesInputConfig(BaseConfig):
+    """Configuration for reading queries"""
+    format: str = "json"
+    encoding: str = "utf8"
+    path: Union[str, list]
+
+
+class ProcessorConfig(BaseConfig):
+    """Configuration of the query text processor"""
+    char_normalize: bool = True
+    tokenize: TokenizeConfig
+    lowercase: bool = True
+    stopwords: Union[bool, str] = "lucene"
+    stem: Union[StemConfig, TruncStemConfig]
+    splits: Optional[list]
+
+
+class QueriesConfig(BaseConfig):
+    """Configuration for processing queries"""
+    input: Optional[QueriesInputConfig]
     process: ProcessorConfig
     output: Union[bool, PathConfig]
 
@@ -60,14 +75,47 @@ class TopicReaderFactory(ComponentFactory):
         'json': 'JsonTopicReader',
         'msmarco': 'TsvTopicReader'
     }
-    config_class = InputConfig
+    config_class = TopicsInputConfig
 
 
-class TopicProcessorFactory(ComponentFactory):
-    classes = {
-        'default': 'TopicProcessor'
+class TopicProcessor(Task):
+    """Topic Preprocessing"""
+
+    FIELD_MAP = {
+        'title': 'title',
+        'name': 'title',
+        'desc': 'desc',
+        'description': 'desc',
+        'narr': 'narr',
+        'narrative': 'narr'
     }
-    config_class = ProcessorConfig
+
+    def __init__(self, config):
+        """
+        Args:
+            config (TopicsConfig)
+        """
+        super().__init__()
+        self.fields = self._extract_fields(config.fields)
+
+    def process(self, topic):
+        """
+        Args:
+            topic (Topic)
+
+        Returns
+            Query
+        """
+        text = ' '.join([getattr(topic, f).strip() for f in self.fields])
+        return Query(topic.id, topic.lang, text)
+
+    @classmethod
+    def _extract_fields(cls, fields_str):
+        fields = fields_str.split('+')
+        try:
+            return [cls.FIELD_MAP[f.lower()] for f in fields]
+        except KeyError as e:
+            raise ConfigError(f"Unrecognized topic field: {e}")
 
 
 class SgmlTopicReader:
@@ -160,16 +208,19 @@ class TsvTopicReader:
 class QueryWriter(Task):
     """Write queries to a jsonl file"""
 
-    def __init__(self, path):
+    def __init__(self, config, artifact_config):
         """
         Args:
-            path (str): Path of query file to write.
+            config (BaseConfig): Config that includes output.path.
+            artifact_config (BaseConfig or None): Config that resulted in this artifact
         """
         super().__init__()
-        self.dir = pathlib.Path(path)
+        self.dir = pathlib.Path(config.output.path)
         self.dir.mkdir(parents=True)
         path = self.dir / 'queries.jsonl'
         self.file = open(path, 'w')
+        self.config = artifact_config
+        self.config_path = self.dir / 'config.yml'
 
     def process(self, query):
         """
@@ -179,12 +230,13 @@ class QueryWriter(Task):
         Returns
             Query
         """
-
         self.file.write(json.dumps(query, cls=DataclassJSONEncoder) + "\n")
         return query
 
     def end(self):
         self.file.close()
+        if self.config:
+            ConfigService.write_config_file(self.config_path, self.config)
         touch_complete(self.dir)
 
 
@@ -206,8 +258,8 @@ class QueryReader:
             raise StopIteration()
 
 
-class TopicProcessor(Task, TextProcessor):
-    """Topic Preprocessing"""
+class QueryProcessor(Task, TextProcessor):
+    """Query Preprocessing"""
 
     def __init__(self, config):
         """
@@ -216,26 +268,43 @@ class TopicProcessor(Task, TextProcessor):
         """
         Task.__init__(self)
         TextProcessor.__init__(self, config)
-        self.fields = config.query.split('+')
+        self.splitter = Splitter(config.splits)
 
-    def process(self, topic):
+    def process(self, query):
         """
         Args:
-            topic (Topic)
+            query (Query)
 
         Returns
             Query
         """
-        text = self._select_text(topic)
+        if not self.initialized:
+            self.initialize(query.lang)
+
+        self.splitter.reset()
+        text = query.text
         if self.config.char_normalize:
             text = self.normalize(text)
-        if self.config.lowercase:
-            text = self.lowercase_text(text)
         tokens = self.tokenize(text)
+        self.splitter.add('tokenize', Query(query.id, query.lang, ' '.join(tokens)))
+        if self.config.lowercase:
+            tokens = self.lowercase(tokens)
+        self.splitter.add('lowercase', Query(query.id, query.lang, ' '.join(tokens)))
+        if self.config.stopwords:
+            tokens = self.remove_stop_words(tokens, not self.config.lowercase)
+        self.splitter.add('stopwords', Query(query.id, query.lang, ' '.join(tokens)))
         if self.config.stem:
             tokens = self.stem(tokens)
-        text = ' '.join(tokens)
-        return Query(topic.id, topic.lang, text)
+        self.splitter.add('stem', Query(query.id, query.lang, ' '.join(tokens)))
 
-    def _select_text(self, topic):
-        return ' '.join([getattr(topic, f).strip() for f in self.fields])
+        if self.splitter:
+            return self.splitter.get()
+        else:
+            return Query(query.id, query.lang, ' '.join(tokens))
+
+    @property
+    def name(self):
+        if self.splitter:
+            return f"{super()} | Splitter"
+        else:
+            return str(super())
