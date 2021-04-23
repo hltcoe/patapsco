@@ -6,10 +6,10 @@ import pathlib
 
 import sqlitedict
 
-from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
+from .config import BaseConfig, ConfigService, PathConfig, Union
 from .error import ConfigError, ParseError
 from .pipeline import Task
-from .text import Splitter, TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
+from .text import Splitter, TextProcessor, TextProcessorConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
 from .util.file import GlobFileGenerator, is_complete, touch_complete
 
@@ -29,20 +29,10 @@ class DocumentsInputConfig(BaseConfig):
     path: Union[str, list]
 
 
-class DocumentsProcessorConfig(BaseConfig):
-    """Configuration for the document processor"""
-    normalize: bool = True
-    tokenize: TokenizeConfig
-    lowercase: bool = True
-    stopwords: Union[None, bool, str] = "lucene"
-    stem: Union[None, bool, StemConfig, TruncStemConfig]
-    splits: Optional[list]
-
-
 class DocumentsConfig(BaseConfig):
     """Document processing task configuration"""
     input: DocumentsInputConfig
-    process: DocumentsProcessorConfig
+    process: TextProcessorConfig
     output: Union[bool, PathConfig]
     db: PathConfig
 

@@ -3,13 +3,13 @@ import os
 import pytest
 
 from patapsco.config import PathConfig
-from patapsco.docs import DocumentsInputConfig, DocumentsProcessorConfig
+from patapsco.docs import DocumentsInputConfig
 from patapsco.rerank import RerankInputConfig
 from patapsco.retrieve import RetrieveInputConfig
 from patapsco.runner import *
 from patapsco.score import ScoreInputConfig
-from patapsco.text import TokenizeConfig
-from patapsco.topics import QueryProcessorConfig, TopicsInputConfig
+from patapsco.text import TextProcessorConfig, TokenizeConfig
+from patapsco.topics import TopicsInputConfig
 
 
 def test_config_preprocessor_validate():
@@ -132,7 +132,7 @@ class TestPipelineBuilder:
             run=RunConfig(path=str(self.dir / path)),
             documents=DocumentsConfig(
                 input=DocumentsInputConfig(format="trec", lang="en", path="test"),
-                process=DocumentsProcessorConfig(tokenize=TokenizeConfig(name="test"), stem=False),
+                process=TextProcessorConfig(tokenize=TokenizeConfig(name="test"), stem=False),
                 db=PathConfig(path="test"),
                 output=PathConfig(path=str(self.dir / path / "docs"))
             ),
@@ -142,7 +142,7 @@ class TestPipelineBuilder:
                 output=PathConfig(path=str(self.dir / path / "topics"))
             ),
             queries=QueriesConfig(
-                process=QueryProcessorConfig(tokenize=TokenizeConfig(name="test"), stem=False),
+                process=TextProcessorConfig(tokenize=TokenizeConfig(name="test"), stem=False),
                 output=PathConfig(path=str(self.dir / path / "queries"))
             ),
             retrieve=RetrieveConfig(

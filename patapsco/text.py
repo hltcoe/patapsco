@@ -1,6 +1,6 @@
 import pathlib
 
-from .config import BaseConfig
+from .config import BaseConfig, Optional, Union
 from .pipeline import MultiplexItem
 from .util import ComponentFactory
 
@@ -23,6 +23,16 @@ class StemConfig(BaseConfig):
 class TruncStemConfig(BaseConfig):
     name: str
     length: int
+
+
+class TextProcessorConfig(BaseConfig):
+    """Configuration for the text processing"""
+    normalize: bool = True
+    tokenize: TokenizeConfig
+    lowercase: bool = True
+    stopwords: Union[None, bool, str] = "lucene"
+    stem: Union[None, bool, StemConfig, TruncStemConfig]
+    splits: Optional[list]
 
 
 class StemmerFactory(ComponentFactory):

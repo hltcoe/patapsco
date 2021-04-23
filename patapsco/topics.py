@@ -6,7 +6,7 @@ import pathlib
 from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
 from .error import ConfigError, ParseError
 from .pipeline import Task
-from .text import Splitter, TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
+from .text import Splitter, TextProcessor, TextProcessorConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
 from .util.file import GlobFileGenerator, touch_complete
 
@@ -51,20 +51,10 @@ class QueriesInputConfig(BaseConfig):
     path: Union[str, list]
 
 
-class QueryProcessorConfig(BaseConfig):
-    """Configuration of the query text processor"""
-    normalize: bool = True
-    tokenize: TokenizeConfig
-    lowercase: bool = True
-    stopwords: Union[None, bool, str] = "lucene"
-    stem: Union[None, bool, StemConfig, TruncStemConfig]
-    splits: Optional[list]
-
-
 class QueriesConfig(BaseConfig):
     """Configuration for processing queries"""
     input: Optional[QueriesInputConfig]
-    process: QueryProcessorConfig
+    process: TextProcessorConfig
     output: Union[bool, PathConfig]
 
 
