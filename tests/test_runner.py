@@ -2,12 +2,16 @@ import os
 
 import pytest
 
+from patapsco.config import PathConfig
+from patapsco.docs import DocumentsInputConfig, DocumentsProcessorConfig
 from patapsco.runner import *
+from patapsco.text import TokenizeConfig
+from patapsco.topics import TopicsInputConfig
 
 
 def test_config_preprocessor_validate():
     conf = {}
-    with pytest.raises(ConfigError,  match='run.path is not set'):
+    with pytest.raises(ConfigError, match='run.path is not set'):
         ConfigPreprocessor._validate(conf)
 
 
@@ -115,3 +119,61 @@ def test_partial_config_preparer():
     assert not hasattr(artifact_conf, 'topics')
     assert not hasattr(artifact_conf, 'index')
     assert not hasattr(artifact_conf, 'score')
+
+
+class TestPipelineBuilder:
+    dir = pathlib.Path(__file__).parent / 'plan_files'
+
+    def create_config(self, path):
+        return RunnerConfig(
+            run=RunConfig(path=str(self.dir / path)),
+            documents=DocumentsConfig(
+                input=DocumentsInputConfig(format="trec", lang="en", path="test"),
+                process=DocumentsProcessorConfig(tokenize=TokenizeConfig(name="test"), stem=False),
+                db=PathConfig(path="test"),
+                output=PathConfig(path=str(self.dir / path / "docs"))
+            ),
+            index=IndexConfig(name="test", output=PathConfig(path=str(self.dir / path / "index"))),
+            topics=TopicsConfig(
+                input=TopicsInputConfig(format="trec", lang="en", path="test"), output=False
+            )
+        )
+
+    def test_create_plan_with_no_stages(self):
+        conf = RunnerConfig(run=RunConfig(path="test"))
+        builder = PipelineBuilder(conf)
+        with pytest.raises(ConfigError, match='No tasks are configured to run'):
+            builder.create_plan()
+
+    def test_create_plan_with_normal_stage1(self):
+        conf = self.create_config('test')
+        builder = PipelineBuilder(conf)
+        stage1_plan, stage2_plan = builder.create_plan()
+        assert Tasks.DOCUMENTS in stage1_plan
+        assert Tasks.INDEX in stage1_plan
+
+    def test_create_plan_with_completed_documents(self):
+        conf = self.create_config('completed_docs')
+        builder = PipelineBuilder(conf)
+        stage1_plan, _ = builder.create_plan()
+        assert Tasks.DOCUMENTS not in stage1_plan
+        assert Tasks.INDEX in stage1_plan
+
+    def test_create_plan_with_incomplete_documents(self):
+        conf = self.create_config('incomplete_docs')
+        builder = PipelineBuilder(conf)
+        stage1_plan, _ = builder.create_plan()
+        assert Tasks.DOCUMENTS in stage1_plan
+        assert Tasks.INDEX in stage1_plan
+
+    def test_create_plan_with_completed_documents_and_completed_index(self):
+        conf = self.create_config('stage1_completed')
+        builder = PipelineBuilder(conf)
+        stage1_plan, _ = builder.create_plan()
+        assert stage1_plan == []
+
+    def test_create_plan_with_incomplete_documents_and_completed_index(self):
+        conf = self.create_config('docs_incomplete_index_complete')
+        builder = PipelineBuilder(conf)
+        stage1_plan, _ = builder.create_plan()
+        assert stage1_plan == []

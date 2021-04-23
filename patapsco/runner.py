@@ -101,7 +101,7 @@ class ConfigPreprocessor:
     1. sets the output directory names from defaults if not already set
     2. sets the paths for output to be under the run directory
     3. sets the retriever's index path based on the index task if not already set
-    4. sets the rerankers' db path based on the document processor if not already set
+    4. sets the reranker's db path based on the document processor if not already set
     """
 
     @classmethod
@@ -193,7 +193,7 @@ class ConfigPreprocessor:
 class PipelineBuilder:
     """Builds the stage 1 and stage 2 pipelines
 
-    Analyzes the configuration to create a plan which tasks to include.
+    Analyzes the configuration to create a plan of which tasks to include.
     Then builds the pipelines based on the plan and configuration.
     Handles restarting a run where it left off.
     Will create pipelines for partial runs (that end early or start from artifacts).
@@ -207,42 +207,42 @@ class PipelineBuilder:
         self.artifact_helper = ArtifactHelper()
 
     def build(self):
-        stage1_plan, stage2_plan = self.create_plan(self.conf)
+        stage1_plan, stage2_plan = self.create_plan()
         stage1 = self.build_stage1(stage1_plan)
         stage2 = self.build_stage2(stage2_plan)
         return stage1, stage2
 
-    def create_plan(self, conf):
+    def create_plan(self):
         # Analyze the config and check there are any artifacts from a previous run.
         # A plan consists of a list of Tasks to be constructed into a pipeline.
         stage1 = []
-        if conf.documents:
-            index_complete = conf.index and self.is_task_complete(conf.index)
-            if not self.is_task_complete(conf.documents) and not index_complete:
+        index_complete = self.conf.index and self.is_task_complete(self.conf.index)
+        if self.conf.documents:
+            if not self.is_task_complete(self.conf.documents) and not index_complete:
                 stage1.append(Tasks.DOCUMENTS)
-        if conf.index:
-            if not self.is_task_complete(conf.index):
+        if self.conf.index:
+            if not index_complete:
                 stage1.append(Tasks.INDEX)
 
         stage2 = []
         # TODO need to confirm that the db is also built
-        retrieve_complete = conf.retrieve and self.is_task_complete(conf.retrieve)
-        if conf.topics:
+        retrieve_complete = self.conf.retrieve and self.is_task_complete(self.conf.retrieve)
+        if self.conf.topics:
             # add topics task if it is not complete, the queries are not available and the retrieve task is not complete
-            if not self.is_task_complete(conf.topics) and not self.is_task_complete(conf.queries) and \
+            if not self.is_task_complete(self.conf.topics) and not self.is_task_complete(self.conf.queries) and \
                     not retrieve_complete:
                 stage2.append(Tasks.TOPICS)
-        if conf.queries:
-            if not self.is_task_complete(conf.queries) and not retrieve_complete:
+        if self.conf.queries:
+            if not self.is_task_complete(self.conf.queries) and not retrieve_complete:
                 stage2.append(Tasks.QUERIES)
-        if conf.retrieve:
-            if not self.is_task_complete(conf.retrieve):
+        if self.conf.retrieve:
+            if not self.is_task_complete(self.conf.retrieve):
                 stage2.append(Tasks.RETRIEVE)
-        if conf.rerank:
-            if self.is_task_complete(conf.rerank):
+        if self.conf.rerank:
+            if self.is_task_complete(self.conf.rerank):
                 raise ConfigError('Rerank is already complete. Delete its output directory to rerun reranking.')
             stage2.append(Tasks.RERANK)
-        if conf.score:
+        if self.conf.score:
             if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:
                 raise ConfigError("Scorer can only run if either retrieve or rerank is configured")
             stage2.append(Tasks.SCORE)
@@ -260,26 +260,33 @@ class PipelineBuilder:
             return None
         tasks = []
         iterable = None
+
+        # if documents task produces multiple outputs per doc, we multiplex the rest of the pipeline
+        if self.conf.documents and self.conf.documents.process.splits:
+            multiplex = True
+        else:
+            multiplex = False
+
         if Tasks.DOCUMENTS in plan:
             # doc reader -> doc processor with doc db -> optional doc writer
-            self.clear_output(self.conf.documents)
+            self.clear_output(self.conf.documents, clear_db=True)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
-            if not is_complete(self.conf.documents.db.path) and pathlib.Path(self.conf.documents.db.path).exists():
-                delete_dir(self.conf.documents.db.path)
             iterable = DocumentReaderFactory.create(self.conf.documents.input)
             db = DocumentDatabaseFactory.create(self.conf.documents.db.path, artifact_conf)
             tasks.append(DocumentProcessorFactory.create(self.conf.documents.process, db))
+            # add doc writer if user requesting that we save processed docs
             if self.conf.documents.output and self.conf.documents.output.path:
-                if self.conf.documents.process.splits:
+                if multiplex:
                     tasks.append(MultiplexTask(self.conf.documents.process.splits, DocWriter,
                                                self.conf.documents, artifact_conf))
                 else:
                     tasks.append(DocWriter(self.conf.documents, artifact_conf))
 
         if Tasks.INDEX in plan:
+            # indexer or processed doc reader -> indexer
             self.clear_output(self.conf.index)
             if Tasks.DOCUMENTS not in plan:
-                # documents already processed so locate them to set the iterator
+                # documents already processed so locate them to create the iterator
                 iterable = self._setup_input(DocReader, 'index.input.documents.path',
                                              'documents.output.path', 'index not configured with documents')
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.INDEX)
@@ -374,10 +381,18 @@ class PipelineBuilder:
         LOGGER.info("Stage 2 pipeline: %s", pipeline)
         return pipeline
 
-    def _setup_input(self, cls, path1, path2, error_msg):
-        """Try two possible places for input path"""
+    def _setup_input(self, cls, input_path, output_path, error_msg):
+        """Try two possible places for input path
+
+        The input for this task could come from:
+          1. the configured input of this task
+          2. the configured output of the previous task
+
+        Raises:
+            ConfigError if neither path is configured
+        """
         obj = self.conf
-        fields = path1.split('.')
+        fields = input_path.split('.')
         try:
             while fields:
                 field = fields.pop(0)
@@ -386,7 +401,7 @@ class PipelineBuilder:
             return cls(obj)
         except AttributeError:
             obj = self.conf
-            fields = path2.split('.')
+            fields = output_path.split('.')
             try:
                 while fields:
                     field = fields.pop(0)
@@ -398,14 +413,23 @@ class PipelineBuilder:
 
     @staticmethod
     def is_task_complete(task_conf):
+        """Checks whether the task is already complete"""
         if task_conf is None:
             return False
         return task_conf.output and is_complete(task_conf.output.path)
 
     @staticmethod
-    def clear_output(task_conf):
+    def clear_output(task_conf, clear_db=False):
+        """Delete the output directory if previous run did not complete
+
+        Args:
+            task_conf (BaseConfig): Configuration for a task.
+            clear_db (bool): Whether to also clear the database.
+        """
         if task_conf.output and pathlib.Path(task_conf.output.path).exists():
             delete_dir(task_conf.output.path)
+        if clear_db and not is_complete(task_conf.db.path) and pathlib.Path(task_conf.db.path).exists():
+            delete_dir(task_conf.db.path)
 
 
 class Runner:

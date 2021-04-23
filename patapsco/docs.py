@@ -21,7 +21,7 @@ class Doc:
     text: str
 
 
-class InputConfig(BaseConfig):
+class DocumentsInputConfig(BaseConfig):
     """Configuration for the document corpus"""
     format: str
     lang: str
@@ -29,21 +29,21 @@ class InputConfig(BaseConfig):
     path: Union[str, list]
 
 
-class ProcessorConfig(BaseConfig):
+class DocumentsProcessorConfig(BaseConfig):
     """Configuration for the document processor"""
     name: str = "default"
     char_normalize: bool = True
     tokenize: TokenizeConfig
     lowercase: bool = True
-    stopwords: Union[bool, str] = "lucene"
-    stem: Union[StemConfig, TruncStemConfig]
+    stopwords: Union[None, bool, str] = "lucene"
+    stem: Union[None, bool, StemConfig, TruncStemConfig]
     splits: Optional[list]
 
 
 class DocumentsConfig(BaseConfig):
     """Document processing task configuration"""
-    input: InputConfig
-    process: ProcessorConfig
+    input: DocumentsInputConfig
+    process: DocumentsProcessorConfig
     output: Union[bool, PathConfig]
     db: PathConfig
 
@@ -56,14 +56,14 @@ class DocumentReaderFactory(ComponentFactory):
         'msmarco': 'TsvDocumentReader',
         'clef0809': 'HamshahriDocumentReader'
     }
-    config_class = InputConfig
+    config_class = DocumentsInputConfig
 
 
 class DocumentProcessorFactory(ComponentFactory):
     classes = {
         'default': 'DocumentProcessor'
     }
-    config_class = ProcessorConfig
+    config_class = DocumentsProcessorConfig
 
 
 class SgmlDocumentReader:
