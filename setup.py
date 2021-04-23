@@ -20,7 +20,9 @@ setuptools.setup(
     install_requires=[
         "beautifulsoup4",
         "more-itertools",
+        "numpy",
         "pydantic",
+        "pytrec_eval",
         "pyyaml",
         "sqlitedict",
     ],
