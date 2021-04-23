@@ -6,12 +6,12 @@ import pathlib
 
 import sqlitedict
 
-from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
+from .config import BaseConfig, ConfigService, PathConfig, Union
 from .error import ConfigError, ParseError
 from .pipeline import Task
-from .text import Splitter, TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
+from .text import Splitter, TextProcessor, TextProcessorConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
-from .util.file import GlobFileGenerator, is_complete, touch_complete
+from .util.file import GlobFileGenerator, is_complete, touch_complete, validate_encoding
 
 
 @dataclasses.dataclass
@@ -21,7 +21,7 @@ class Doc:
     text: str
 
 
-class InputConfig(BaseConfig):
+class DocumentsInputConfig(BaseConfig):
     """Configuration for the document corpus"""
     format: str
     lang: str
@@ -29,21 +29,10 @@ class InputConfig(BaseConfig):
     path: Union[str, list]
 
 
-class ProcessorConfig(BaseConfig):
-    """Configuration for the document processor"""
-    name: str = "default"
-    char_normalize: bool = True
-    tokenize: TokenizeConfig
-    lowercase: bool = True
-    stopwords: Union[bool, str] = "lucene"
-    stem: Union[StemConfig, TruncStemConfig]
-    splits: Optional[list]
-
-
 class DocumentsConfig(BaseConfig):
     """Document processing task configuration"""
-    input: InputConfig
-    process: ProcessorConfig
+    input: DocumentsInputConfig
+    process: TextProcessorConfig
     output: Union[bool, PathConfig]
     db: PathConfig
 
@@ -56,20 +45,15 @@ class DocumentReaderFactory(ComponentFactory):
         'msmarco': 'TsvDocumentReader',
         'clef0809': 'HamshahriDocumentReader'
     }
-    config_class = InputConfig
-
-
-class DocumentProcessorFactory(ComponentFactory):
-    classes = {
-        'default': 'DocumentProcessor'
-    }
-    config_class = ProcessorConfig
+    config_class = DocumentsInputConfig
+    name = "input document type"
 
 
 class SgmlDocumentReader:
     """Iterator that reads TREC sgml documents"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, trec.parse_sgml_documents, config.encoding)
 
@@ -85,6 +69,7 @@ class Tc4JsonDocumentReader:
     """Read JSONL documents to start a pipeline"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, self.parse, config.encoding)
 
@@ -114,6 +99,7 @@ class TsvDocumentReader:
     """Iterator that reads TSV documents like from MSMARCO"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, self.parse, config.encoding)
 
@@ -137,6 +123,7 @@ class HamshahriDocumentReader:
     """Iterator that reads CLEF Farsi documents"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, trec.parse_hamshahri_documents, config.encoding)
 
@@ -243,14 +230,15 @@ class DocumentDatabaseFactory:
 class DocumentProcessor(Task, TextProcessor):
     """Document Preprocessing"""
 
-    def __init__(self, config, db):
+    def __init__(self, config, lang, db):
         """
         Args:
-            config (ProcessorConfig)
-            db (DocumentDatabase): Document db for later retrieval
+            config (TextProcessorConfig)
+            lang (str): Language code for the documents.
+            db (DocumentDatabase): Document db for later retrieval.
         """
         Task.__init__(self)
-        TextProcessor.__init__(self, config)
+        TextProcessor.__init__(self, config, lang)
         self.splitter = Splitter(config.splits)
         self.db = db
 
@@ -262,12 +250,9 @@ class DocumentProcessor(Task, TextProcessor):
         Returns
             Doc
         """
-        if not self.initialized:
-            self.initialize(doc.lang)
-
         self.splitter.reset()
         text = doc.text
-        if self.config.char_normalize:
+        if self.config.normalize:
             text = self.normalize(text)
         tokens = self.tokenize(text)
         self.splitter.add('tokenize', Doc(doc.id, doc.lang, ' '.join(tokens)))

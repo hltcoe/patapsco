@@ -21,6 +21,7 @@ class IndexConfig(BaseConfig):
 class IndexerFactory(ComponentFactory):
     classes = {
         'anserini': 'MockIndexer',
+        'mock': 'MockIndexer',
     }
     config_class = IndexConfig
 

@@ -5,7 +5,7 @@ import logging
 import pathlib
 
 from .config import BaseConfig, ConfigService, Optional
-from .docs import DocumentsConfig, DocumentProcessorFactory, DocumentReaderFactory, \
+from .docs import DocumentsConfig, DocumentProcessor, DocumentReaderFactory, \
     DocumentDatabaseFactory, DocReader, DocWriter
 from .error import ConfigError
 from .index import IndexConfig, IndexerFactory
@@ -83,16 +83,19 @@ class ArtifactHelper:
     def combine(self, config, path):
         """Loads an artifact configuration and combines it with the base config"""
         path = pathlib.Path(path)
-        path = path / 'config.yml'
+        if path.is_dir():
+            path = path / 'config.yml'
+        else:
+            path = path.parent / 'config.yml'
         try:
             artifact_config_dict = ConfigService().read_config_file(path)
         except FileNotFoundError:
-            LOGGER.warning(f"Unable to load artifact config {path}")
-            return
+            raise ConfigError(f"Unable to load artifact config {path}")
         artifact_config = RunnerConfig(**artifact_config_dict)
         for task in self.TASKS:
             if getattr(artifact_config, task):
-                setattr(config, task, getattr(artifact_config, task))
+                if not getattr(config, task):
+                    setattr(config, task, getattr(artifact_config, task))
 
 
 class ConfigPreprocessor:
@@ -101,7 +104,7 @@ class ConfigPreprocessor:
     1. sets the output directory names from defaults if not already set
     2. sets the paths for output to be under the run directory
     3. sets the retriever's index path based on the index task if not already set
-    4. sets the rerankers' db path based on the document processor if not already set
+    4. sets the reranker's db path based on the document processor if not already set
     """
 
     @classmethod
@@ -193,7 +196,7 @@ class ConfigPreprocessor:
 class PipelineBuilder:
     """Builds the stage 1 and stage 2 pipelines
 
-    Analyzes the configuration to create a plan which tasks to include.
+    Analyzes the configuration to create a plan of which tasks to include.
     Then builds the pipelines based on the plan and configuration.
     Handles restarting a run where it left off.
     Will create pipelines for partial runs (that end early or start from artifacts).
@@ -207,44 +210,48 @@ class PipelineBuilder:
         self.artifact_helper = ArtifactHelper()
 
     def build(self):
-        stage1_plan, stage2_plan = self.create_plan(self.conf)
+        stage1_plan, stage2_plan = self.create_plan()
         stage1 = self.build_stage1(stage1_plan)
         stage2 = self.build_stage2(stage2_plan)
+        if not stage1 and stage2 and Tasks.RERANK in stage2_plan:
+            self.check_sources_of_documents()
+        if stage2 and Tasks.RETRIEVE in stage2_plan:
+            self.check_text_processing()
         return stage1, stage2
 
-    def create_plan(self, conf):
+    def create_plan(self):
         # Analyze the config and check there are any artifacts from a previous run.
         # A plan consists of a list of Tasks to be constructed into a pipeline.
         stage1 = []
-        if conf.documents:
-            index_complete = conf.index and self.is_task_complete(conf.index)
-            if not self.is_task_complete(conf.documents) and not index_complete:
+        index_complete = self.conf.index and self.is_task_complete(self.conf.index)
+        if self.conf.documents:
+            if not self.is_task_complete(self.conf.documents) and not index_complete:
                 stage1.append(Tasks.DOCUMENTS)
-        if conf.index:
-            if not self.is_task_complete(conf.index):
+        if self.conf.index:
+            if not index_complete:
                 stage1.append(Tasks.INDEX)
 
         stage2 = []
         # TODO need to confirm that the db is also built
-        retrieve_complete = conf.retrieve and self.is_task_complete(conf.retrieve)
-        if conf.topics:
+        retrieve_complete = self.conf.retrieve and self.is_task_complete(self.conf.retrieve)
+        if self.conf.topics:
             # add topics task if it is not complete, the queries are not available and the retrieve task is not complete
-            if not self.is_task_complete(conf.topics) and not self.is_task_complete(conf.queries) and \
+            if not self.is_task_complete(self.conf.topics) and not self.is_task_complete(self.conf.queries) and \
                     not retrieve_complete:
                 stage2.append(Tasks.TOPICS)
-        if conf.queries:
-            if not self.is_task_complete(conf.queries) and not retrieve_complete:
+        if self.conf.queries:
+            if not self.is_task_complete(self.conf.queries) and not retrieve_complete:
                 stage2.append(Tasks.QUERIES)
-        if conf.retrieve:
-            if not self.is_task_complete(conf.retrieve):
+        if self.conf.retrieve:
+            if not self.is_task_complete(self.conf.retrieve):
                 stage2.append(Tasks.RETRIEVE)
-        if conf.rerank:
-            if self.is_task_complete(conf.rerank):
+        if self.conf.rerank:
+            if self.is_task_complete(self.conf.rerank):
                 raise ConfigError('Rerank is already complete. Delete its output directory to rerun reranking.')
             stage2.append(Tasks.RERANK)
-        if conf.score:
+        if self.conf.score:
             if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:
-                raise ConfigError("Scorer can only run if either retrieve or rerank is configured")
+                raise ConfigError("Scorer can only run if either retrieve or rerank is configured.")
             stage2.append(Tasks.SCORE)
 
         if not stage1 and not stage2:
@@ -260,30 +267,34 @@ class PipelineBuilder:
             return None
         tasks = []
         iterable = None
+
         if Tasks.DOCUMENTS in plan:
             # doc reader -> doc processor with doc db -> optional doc writer
-            self.clear_output(self.conf.documents)
+            lang = self.standardize_language(self.conf.documents.input)
+            self.clear_output(self.conf.documents, clear_db=True)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
-            if not is_complete(self.conf.documents.db.path) and pathlib.Path(self.conf.documents.db.path).exists():
-                delete_dir(self.conf.documents.db.path)
             iterable = DocumentReaderFactory.create(self.conf.documents.input)
             db = DocumentDatabaseFactory.create(self.conf.documents.db.path, artifact_conf)
-            tasks.append(DocumentProcessorFactory.create(self.conf.documents.process, db))
+            tasks.append(DocumentProcessor(self.conf.documents.process, lang, db))
+            # add doc writer if user requesting that we save processed docs
             if self.conf.documents.output and self.conf.documents.output.path:
                 if self.conf.documents.process.splits:
+                    # if we are splitting the documents output, multiplex the doc writer
                     tasks.append(MultiplexTask(self.conf.documents.process.splits, DocWriter,
                                                self.conf.documents, artifact_conf))
                 else:
                     tasks.append(DocWriter(self.conf.documents, artifact_conf))
 
         if Tasks.INDEX in plan:
+            # indexer or processed doc reader -> indexer
             self.clear_output(self.conf.index)
             if Tasks.DOCUMENTS not in plan:
-                # documents already processed so locate them to set the iterator
+                # documents already processed so locate them to create the iterator and update self.config
                 iterable = self._setup_input(DocReader, 'index.input.documents.path',
                                              'documents.output.path', 'index not configured with documents')
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.INDEX)
             if self.conf.documents.process.splits:
+                # if we are splitting the documents output, multiplex the indexer
                 tasks.append(MultiplexTask(self.conf.documents.process.splits, IndexerFactory.create,
                                            self.conf.index, artifact_conf))
             else:
@@ -292,10 +303,12 @@ class PipelineBuilder:
         if self.conf.run.stage1.mode == PipelineMode.STREAMING:
             LOGGER.info("Stage 1 is a streaming pipeline")
             pipeline_class = StreamingPipeline
-        else:
+        elif self.conf.run.stage1.mode == PipelineMode.BATCH:
             batch_size_char = str(self.conf.run.stage1.batch_size) if self.conf.run.stage1.batch_size else '∞'
             LOGGER.info("Stage 1 is a batch pipeline selected with batch size of %s", batch_size_char)
             pipeline_class = functools.partial(BatchPipeline, n=self.conf.run.stage1.batch_size)
+        else:
+            raise ConfigError(f"Unrecognized pipeline mode: {self.conf.run.stage1.mode}")
         pipeline = pipeline_class(iterable, tasks)
         LOGGER.info("Stage 1 pipeline: %s", pipeline)
         return pipeline
@@ -308,8 +321,10 @@ class PipelineBuilder:
             return None
         tasks = []
         iterable = None
+        lang = None
         if Tasks.TOPICS in plan:
             # topic reader -> topic processor -> optional query writer
+            lang = self.standardize_language(self.conf.topics.input)
             self.clear_output(self.conf.topics)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.TOPICS)
             iterable = TopicReaderFactory.create(self.conf.topics.input)
@@ -321,9 +336,12 @@ class PipelineBuilder:
             # optional query reader -> query processor -> optional query writer
             self.clear_output(self.conf.queries)
             if Tasks.TOPICS not in plan:
+                # we don't load
                 iterable = self._setup_input(QueryReader, 'queries.input.path', 'topics.output.path',
                                              'query processor not configured with input')
-            tasks.append(QueryProcessor(self.conf.queries.process))
+                query = iterable.peek()
+                lang = query.lang
+            tasks.append(QueryProcessor(self.conf.queries.process, lang))
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.QUERIES)
             if self.conf.queries.output:
                 if self.conf.queries.process.splits:
@@ -339,7 +357,7 @@ class PipelineBuilder:
                 iterable = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output.path',
                                              'retrieve not configured with queries')
             if not self.conf.index:
-                # copy in the configuration that created the index
+                # copy in the configuration that created the index (this path is always set in the ConfigPreprocessor)
                 self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RETRIEVE)
             tasks.append(RetrieverFactory.create(self.conf.retrieve))
@@ -374,10 +392,20 @@ class PipelineBuilder:
         LOGGER.info("Stage 2 pipeline: %s", pipeline)
         return pipeline
 
-    def _setup_input(self, cls, path1, path2, error_msg):
-        """Try two possible places for input path"""
+    def _setup_input(self, cls, input_path, output_path, error_msg):
+        """Try two possible places for input path
+
+        The input for this task could come from:
+          1. the configured input of this task
+          2. the configured output of the previous task
+
+        This also loads the configuration from the input directory and puts it into the main config.
+
+        Raises:
+            ConfigError if neither path is configured
+        """
         obj = self.conf
-        fields = path1.split('.')
+        fields = input_path.split('.')
         try:
             while fields:
                 field = fields.pop(0)
@@ -386,7 +414,7 @@ class PipelineBuilder:
             return cls(obj)
         except AttributeError:
             obj = self.conf
-            fields = path2.split('.')
+            fields = output_path.split('.')
             try:
                 while fields:
                     field = fields.pop(0)
@@ -398,14 +426,82 @@ class PipelineBuilder:
 
     @staticmethod
     def is_task_complete(task_conf):
+        """Checks whether the task is already complete"""
         if task_conf is None:
             return False
         return task_conf.output and is_complete(task_conf.output.path)
 
     @staticmethod
-    def clear_output(task_conf):
+    def clear_output(task_conf, clear_db=False):
+        """Delete the output directory if previous run did not complete
+
+        Args:
+            task_conf (BaseConfig): Configuration for a task.
+            clear_db (bool): Whether to also clear the database.
+        """
         if task_conf.output and pathlib.Path(task_conf.output.path).exists():
             delete_dir(task_conf.output.path)
+        if clear_db and not is_complete(task_conf.db.path) and pathlib.Path(task_conf.db.path).exists():
+            delete_dir(task_conf.db.path)
+
+    @staticmethod
+    def standardize_language(input_config):
+        # using ISO 639
+        langs = {
+            'ar': 'ar',
+            'ara': 'ar',
+            'arb': 'ar',
+            'en': 'en',
+            'eng': 'eng',
+            'fa': 'fa',
+            'fas': 'fa',
+            'per': 'fa',
+            'ru': 'ru',
+            'rus': 'ru',
+            'zh': 'zh',
+            'chi': 'zh',
+            'zho': 'zh'
+        }
+        try:
+            lang = langs[input_config.lang.lower()]
+            input_config.lang = lang
+            return lang
+        except KeyError:
+            raise ConfigError(f"Unknown language code: {input_config.lang}")
+
+    def check_sources_of_documents(self):
+        config_path = pathlib.Path(self.conf.rerank.input.db.path) / 'config.yml'
+        try:
+            artifact_config_dict = ConfigService().read_config_file(config_path)
+        except FileNotFoundError:
+            LOGGER.warning("Unable to load config for the document database")
+            return
+        artifact_config = RunnerConfig(**artifact_config_dict)
+        if not isinstance(self.conf.documents.input.path, type(artifact_config.documents.input.path)):
+            raise ConfigError("documents in index do not match documents in database")
+        if isinstance(self.conf.documents.input.path, str):
+            name1 = pathlib.Path(self.conf.documents.input.path).name
+            name2 = pathlib.Path(artifact_config.documents.input.path).name
+            if name1 != name2:
+                raise ConfigError("documents in index do not match documents in database")
+        elif isinstance(self.conf.documents.input.path, list):
+            for p1, p2 in zip(self.conf.documents.input.path, artifact_config.documents.input.path):
+                name1 = pathlib.Path(p1).name
+                name2 = pathlib.Path(p2).name
+                if name1 != name2:
+                    raise ConfigError("documents in index do not match documents in database")
+
+    def check_text_processing(self):
+        doc = self.conf.documents.process
+        query = self.conf.queries.process
+        try:
+            assert doc.normalize == query.normalize
+            assert doc.tokenize == query.tokenize
+            assert doc.stopwords == query.stopwords
+            assert doc.lowercase == query.lowercase
+            assert doc.stem == query.stem
+        except AssertionError:
+            raise ConfigError("Text processing for documents and queries does not match")
 
 
 class Runner:

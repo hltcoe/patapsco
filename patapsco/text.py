@@ -1,6 +1,7 @@
 import pathlib
 
-from .config import BaseConfig
+from .config import BaseConfig, Optional, Union
+from .error import ConfigError
 from .pipeline import MultiplexItem
 from .util import ComponentFactory
 
@@ -23,6 +24,16 @@ class StemConfig(BaseConfig):
 class TruncStemConfig(BaseConfig):
     name: str
     length: int
+
+
+class TextProcessorConfig(BaseConfig):
+    """Configuration for the text processing"""
+    normalize: bool = True
+    tokenize: TokenizeConfig
+    lowercase: bool = True
+    stopwords: Union[None, bool, str] = "lucene"
+    stem: Union[None, bool, StemConfig, TruncStemConfig]
+    splits: Optional[list]
 
 
 class StemmerFactory(ComponentFactory):
@@ -114,10 +125,24 @@ class TruncatingStemmer(Stemmer):
 
 
 class Splitter:
+    """Incrementally accepts output from a text processor task.
+
+    Supports splitting output for multiplexing the pipeline.
+    Each output item has an associated name.
+    """
+
+    allowed_splits = {"tokenize", "lowercase", "stopwords", "stem"}
+
     def __init__(self, splits):
-        # no validation yet
+        """
+        Args:
+            splits (list): List of split strings like "tokenize+lowercase"
+        """
         if splits:
             self.splits = {split.split('+')[-1]: split for split in splits}
+            for name in self.splits.keys():
+                if name not in self.allowed_splits:
+                    raise ConfigError(f"Unrecognized split: {name}")
         else:
             self.splits = {}
         self.items = MultiplexItem()
@@ -137,16 +162,28 @@ class Splitter:
 
 
 class TextProcessor:
-    def __init__(self, config):
-        self.config = config
-        self.initialized = False
+    """Normalizes, segments, and performs other standardization on text
 
-    def initialize(self, lang):
-        self.initialized = True
+    Used on both documents and queries.
+    """
+    def __init__(self, config, lang):
+        """
+        Args:
+            config (TextProcessorConfig)
+            lang (str)
+        """
+        self.config = config
+        self.lang = lang
         self.normalizer = Normalizer(lang)
         self.tokenizer = TokenizerFactory.create(self.config.tokenize, lang)
-        self.stemmer = StemmerFactory.create(self.config.stem, lang)
-        self.stopwords = StopWordsRemoval(self.config.stopwords, lang)
+        if self.config.stem:
+            self.stemmer = StemmerFactory.create(self.config.stem, lang)
+        else:
+            self.stemmer = None
+        if self.config.stopwords:
+            self.stopwords = StopWordsRemoval(self.config.stopwords, lang)
+        else:
+            self.stopwords = None
 
     def normalize(self, text):
         return self.normalizer.normalize(text)
@@ -158,7 +195,13 @@ class TextProcessor:
         return [token.lower() for token in tokens]
 
     def remove_stop_words(self, tokens, lower=False):
-        return self.stopwords.remove(tokens, lower)
+        if self.stopwords:
+            return self.stopwords.remove(tokens, lower)
+        else:
+            return tokens
 
     def stem(self, tokens):
-        return self.stemmer.stem(tokens)
+        if self.stemmer:
+            return self.stemmer.stem(tokens)
+        else:
+            return tokens

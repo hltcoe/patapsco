@@ -10,3 +10,7 @@ class ConfigError(PatapscoError):
 
 class ParseError(PatapscoError):
     pass
+
+
+class BadDataError(PatapscoError):
+    pass

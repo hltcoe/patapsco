@@ -1,6 +1,17 @@
 import glob
 import pathlib
 
+from ..error import BadDataError, ConfigError
+
+
+def validate_encoding(encoding):
+    """Validate that this encoding is supported by python"""
+    try:
+        with open(__file__, 'r', encoding=encoding):
+            pass
+    except LookupError:
+        raise ConfigError(f"{encoding} is not a valid file encoding")
+
 
 def delete_dir(path):
     """Recursively delete a directory"""
@@ -54,7 +65,7 @@ class GlobFileGenerator:
         self.first_use_of_gen = True
         paths = self._next_glob()
         if not paths:
-            raise ValueError(f"No files match pattern {self.pattern}")
+            raise ConfigError(f"No files match pattern '{self.pattern}'")
         self.paths = iter(paths)
         self.gen = self._next_generator()
 
@@ -69,7 +80,7 @@ class GlobFileGenerator:
         except StopIteration:
             if self.first_use_of_gen:
                 # bad file so we throw an exception
-                raise ValueError(f"{self.pattern} did not result in any items")
+                raise BadDataError(f"{self.pattern} did not result in any items")
             try:
                 self.gen = self._next_generator()
             except StopIteration:

@@ -1,0 +1,18 @@
+run:
+  name: Testing
+  path: tests/build_files/output/topics_complete/
+  stage2:
+    batch_size: 0
+    mode: streaming
+
+topics:
+  fields: title
+  input:
+    encoding: utf8
+    format: json
+    lang: en
+    path: tests/build_files/input/topics.jsonl
+    prefix: EN-
+    strip_non_digits: false
+  output:
+    path: tests/build_files/output/topics_complete/topics

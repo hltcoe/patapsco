@@ -6,9 +6,9 @@ import pathlib
 from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
 from .error import ConfigError, ParseError
 from .pipeline import Task
-from .text import Splitter, TextProcessor, StemConfig, TokenizeConfig, TruncStemConfig
+from .text import Splitter, TextProcessor, TextProcessorConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
-from .util.file import GlobFileGenerator, touch_complete
+from .util.file import GlobFileGenerator, touch_complete, validate_encoding
 
 
 @dataclasses.dataclass
@@ -51,20 +51,10 @@ class QueriesInputConfig(BaseConfig):
     path: Union[str, list]
 
 
-class ProcessorConfig(BaseConfig):
-    """Configuration of the query text processor"""
-    char_normalize: bool = True
-    tokenize: TokenizeConfig
-    lowercase: bool = True
-    stopwords: Union[bool, str] = "lucene"
-    stem: Union[StemConfig, TruncStemConfig]
-    splits: Optional[list]
-
-
 class QueriesConfig(BaseConfig):
     """Configuration for processing queries"""
     input: Optional[QueriesInputConfig]
-    process: ProcessorConfig
+    process: TextProcessorConfig
     output: Union[bool, PathConfig]
 
 
@@ -73,9 +63,11 @@ class TopicReaderFactory(ComponentFactory):
         'sgml': 'SgmlTopicReader',
         'xml': 'XmlTopicReader',
         'json': 'JsonTopicReader',
+        'jsonl': 'JsonTopicReader',
         'msmarco': 'TsvTopicReader'
     }
     config_class = TopicsInputConfig
+    name = 'topic type'
 
 
 class TopicProcessor(Task):
@@ -122,6 +114,7 @@ class SgmlTopicReader:
     """Iterator over topics from trec sgml"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.strip_non_digits = config.strip_non_digits
         prefix = config.prefix
@@ -140,6 +133,7 @@ class XmlTopicReader:
     """Iterator over topics from trec xml"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.strip_non_digits = config.strip_non_digits
         self.topics = GlobFileGenerator(config.path, trec.parse_xml_topics, config.encoding)
@@ -157,6 +151,7 @@ class JsonTopicReader:
     """Iterator over topics from jsonl file """
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.topics = GlobFileGenerator(config.path, self.parse, config.encoding)
 
@@ -187,6 +182,7 @@ class TsvTopicReader:
     """Iterator over topics from tsv file """
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.topics = GlobFileGenerator(config.path, self.parse, config.encoding)
 
@@ -244,7 +240,9 @@ class QueryReader:
     """Iterator over queries from jsonl file """
 
     def __init__(self, path):
-        path = pathlib.Path(path) / 'queries.jsonl'
+        path = pathlib.Path(path)
+        if path.is_dir():
+            path = path / 'queries.jsonl'
         with open(path) as fp:
             self.data = fp.readlines()
 
@@ -257,17 +255,21 @@ class QueryReader:
         except IndexError:
             raise StopIteration()
 
+    def peek(self):
+        return Query(**json.loads(self.data[0]))
+
 
 class QueryProcessor(Task, TextProcessor):
     """Query Preprocessing"""
 
-    def __init__(self, config):
+    def __init__(self, config, lang):
         """
         Args:
-            config (ProcessorConfig)
+            config (TextProcessorConfig)
+            lang (str)
         """
         Task.__init__(self)
-        TextProcessor.__init__(self, config)
+        TextProcessor.__init__(self, config, lang)
         self.splitter = Splitter(config.splits)
 
     def process(self, query):
@@ -278,12 +280,9 @@ class QueryProcessor(Task, TextProcessor):
         Returns
             Query
         """
-        if not self.initialized:
-            self.initialize(query.lang)
-
         self.splitter.reset()
         text = query.text
-        if self.config.char_normalize:
+        if self.config.normalize:
             text = self.normalize(text)
         tokens = self.tokenize(text)
         self.splitter.add('tokenize', Query(query.id, query.lang, ' '.join(tokens)))

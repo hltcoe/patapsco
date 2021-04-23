@@ -13,6 +13,7 @@ from ..error import ConfigError
 class ComponentFactory:
     classes = {}
     config_class = None
+    name = "component"
 
     @classmethod
     def create(cls, config, *args, **kwargs):
@@ -24,15 +25,15 @@ class ComponentFactory:
             config = cls.config_class(**config)
         namespace = vars(sys.modules[cls.__module__])
         if hasattr(config, 'name'):
-            name = config.name
+            component_type = config.name
         elif hasattr(config, 'format'):
-            name = config.format
+            component_type = config.format
         else:
             raise RuntimeError("Component has no name or format")
         try:
-            class_name = cls.classes[name]
+            class_name = cls.classes[component_type]
         except KeyError:
-            raise ConfigError(f"Unknown component: {name}")
+            raise ConfigError(f"Unknown {cls.name}: {component_type}")
         try:
             class_ = namespace[class_name]
         except KeyError:
