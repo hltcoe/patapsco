@@ -11,7 +11,7 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .text import Splitter, TextProcessor, TextProcessorConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
-from .util.file import GlobFileGenerator, is_complete, touch_complete
+from .util.file import GlobFileGenerator, is_complete, touch_complete, validate_encoding
 
 
 @dataclasses.dataclass
@@ -53,6 +53,7 @@ class SgmlDocumentReader:
     """Iterator that reads TREC sgml documents"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, trec.parse_sgml_documents, config.encoding)
 
@@ -68,6 +69,7 @@ class Tc4JsonDocumentReader:
     """Read JSONL documents to start a pipeline"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, self.parse, config.encoding)
 
@@ -97,6 +99,7 @@ class TsvDocumentReader:
     """Iterator that reads TSV documents like from MSMARCO"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, self.parse, config.encoding)
 
@@ -120,6 +123,7 @@ class HamshahriDocumentReader:
     """Iterator that reads CLEF Farsi documents"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.docs = GlobFileGenerator(config.path, trec.parse_hamshahri_documents, config.encoding)
 
@@ -226,14 +230,15 @@ class DocumentDatabaseFactory:
 class DocumentProcessor(Task, TextProcessor):
     """Document Preprocessing"""
 
-    def __init__(self, config, db):
+    def __init__(self, config, lang, db):
         """
         Args:
-            config (ProcessorConfig)
-            db (DocumentDatabase): Document db for later retrieval
+            config (TextProcessorConfig)
+            lang (str): Language code for the documents.
+            db (DocumentDatabase): Document db for later retrieval.
         """
         Task.__init__(self)
-        TextProcessor.__init__(self, config)
+        TextProcessor.__init__(self, config, lang)
         self.splitter = Splitter(config.splits)
         self.db = db
 
@@ -245,9 +250,6 @@ class DocumentProcessor(Task, TextProcessor):
         Returns
             Doc
         """
-        if not self.initialized:
-            self.initialize(doc.lang)
-
         self.splitter.reset()
         text = doc.text
         if self.config.normalize:

@@ -4,6 +4,15 @@ import pathlib
 from ..error import BadDataError, ConfigError
 
 
+def validate_encoding(encoding):
+    """Validate that this encoding is supported by python"""
+    try:
+        with open(__file__, 'r', encoding=encoding):
+            pass
+    except LookupError:
+        raise ConfigError(f"{encoding} is not a valid file encoding")
+
+
 def delete_dir(path):
     """Recursively delete a directory"""
     path = pathlib.Path(path)

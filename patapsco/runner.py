@@ -87,8 +87,7 @@ class ArtifactHelper:
         try:
             artifact_config_dict = ConfigService().read_config_file(path)
         except FileNotFoundError:
-            LOGGER.warning(f"Unable to load artifact config {path}")
-            return
+            raise ConfigError(f"Unable to load artifact config {path}")
         artifact_config = RunnerConfig(**artifact_config_dict)
         for task in self.TASKS:
             if getattr(artifact_config, task):
@@ -261,22 +260,18 @@ class PipelineBuilder:
         tasks = []
         iterable = None
 
-        # if documents task produces multiple outputs per doc, we multiplex the rest of the pipeline
-        if self.conf.documents and self.conf.documents.process.splits:
-            multiplex = True
-        else:
-            multiplex = False
-
         if Tasks.DOCUMENTS in plan:
             # doc reader -> doc processor with doc db -> optional doc writer
+            lang = self.standardize_language(self.conf.documents.input)
             self.clear_output(self.conf.documents, clear_db=True)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
             iterable = DocumentReaderFactory.create(self.conf.documents.input)
             db = DocumentDatabaseFactory.create(self.conf.documents.db.path, artifact_conf)
-            tasks.append(DocumentProcessor(self.conf.documents.process, db))
+            tasks.append(DocumentProcessor(self.conf.documents.process, lang, db))
             # add doc writer if user requesting that we save processed docs
             if self.conf.documents.output and self.conf.documents.output.path:
-                if multiplex:
+                if self.conf.documents.process.splits:
+                    # if we are splitting the documents output, multiplex the doc writer
                     tasks.append(MultiplexTask(self.conf.documents.process.splits, DocWriter,
                                                self.conf.documents, artifact_conf))
                 else:
@@ -286,11 +281,12 @@ class PipelineBuilder:
             # indexer or processed doc reader -> indexer
             self.clear_output(self.conf.index)
             if Tasks.DOCUMENTS not in plan:
-                # documents already processed so locate them to create the iterator
+                # documents already processed so locate them to create the iterator and update self.config
                 iterable = self._setup_input(DocReader, 'index.input.documents.path',
                                              'documents.output.path', 'index not configured with documents')
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.INDEX)
             if self.conf.documents.process.splits:
+                # if we are splitting the documents output, multiplex the indexer
                 tasks.append(MultiplexTask(self.conf.documents.process.splits, IndexerFactory.create,
                                            self.conf.index, artifact_conf))
             else:
@@ -299,10 +295,12 @@ class PipelineBuilder:
         if self.conf.run.stage1.mode == PipelineMode.STREAMING:
             LOGGER.info("Stage 1 is a streaming pipeline")
             pipeline_class = StreamingPipeline
-        else:
+        elif self.conf.run.stage1.mode == PipelineMode.BATCH:
             batch_size_char = str(self.conf.run.stage1.batch_size) if self.conf.run.stage1.batch_size else '∞'
             LOGGER.info("Stage 1 is a batch pipeline selected with batch size of %s", batch_size_char)
             pipeline_class = functools.partial(BatchPipeline, n=self.conf.run.stage1.batch_size)
+        else:
+            raise ConfigError(f"Unrecognized pipeline mode: {self.conf.run.stage1.mode}")
         pipeline = pipeline_class(iterable, tasks)
         LOGGER.info("Stage 1 pipeline: %s", pipeline)
         return pipeline
@@ -315,8 +313,10 @@ class PipelineBuilder:
             return None
         tasks = []
         iterable = None
+        lang = None
         if Tasks.TOPICS in plan:
             # topic reader -> topic processor -> optional query writer
+            lang = self.standardize_language(self.conf.topics.input)
             self.clear_output(self.conf.topics)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.TOPICS)
             iterable = TopicReaderFactory.create(self.conf.topics.input)
@@ -330,7 +330,9 @@ class PipelineBuilder:
             if Tasks.TOPICS not in plan:
                 iterable = self._setup_input(QueryReader, 'queries.input.path', 'topics.output.path',
                                              'query processor not configured with input')
-            tasks.append(QueryProcessor(self.conf.queries.process))
+                query = iterable.peek()
+                lang = query.lang
+            tasks.append(QueryProcessor(self.conf.queries.process, lang))
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.QUERIES)
             if self.conf.queries.output:
                 if self.conf.queries.process.splits:
@@ -388,6 +390,8 @@ class PipelineBuilder:
           1. the configured input of this task
           2. the configured output of the previous task
 
+        This also loads the configuration from the input directory and puts it into the main config.
+
         Raises:
             ConfigError if neither path is configured
         """
@@ -430,6 +434,31 @@ class PipelineBuilder:
             delete_dir(task_conf.output.path)
         if clear_db and not is_complete(task_conf.db.path) and pathlib.Path(task_conf.db.path).exists():
             delete_dir(task_conf.db.path)
+
+    @staticmethod
+    def standardize_language(input_config):
+        # using ISO 639
+        langs = {
+            'ar': 'ar',
+            'ara': 'ar',
+            'arb': 'ar',
+            'en': 'en',
+            'eng': 'eng',
+            'fa': 'fa',
+            'fas': 'fa',
+            'per': 'fa',
+            'ru': 'ru',
+            'rus': 'ru',
+            'zh': 'zh',
+            'chi': 'zh',
+            'zho': 'zh'
+        }
+        try:
+            lang = langs[input_config.lang.lower()]
+            input_config.lang = lang
+            return lang
+        except KeyError:
+            raise ConfigError(f"Unknown language code: {input_config.lang}")
 
 
 class Runner:

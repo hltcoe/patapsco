@@ -61,3 +61,11 @@ def test_GlobFileGenerator_with_bad_input_file():
     iterator = file.GlobFileGenerator(str(glob.absolute()), bad_input)
     with pytest.raises(BadDataError):
         next(iterator)
+
+
+def test_validate_encoding():
+    file.validate_encoding('utf-8')
+    file.validate_encoding('utf8')
+    file.validate_encoding('ISO-8859-1')
+    with pytest.raises(ConfigError):
+        file.validate_encoding('abc')

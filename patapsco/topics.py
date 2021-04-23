@@ -8,7 +8,7 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .text import Splitter, TextProcessor, TextProcessorConfig
 from .util import trec, ComponentFactory, DataclassJSONEncoder
-from .util.file import GlobFileGenerator, touch_complete
+from .util.file import GlobFileGenerator, touch_complete, validate_encoding
 
 
 @dataclasses.dataclass
@@ -63,9 +63,11 @@ class TopicReaderFactory(ComponentFactory):
         'sgml': 'SgmlTopicReader',
         'xml': 'XmlTopicReader',
         'json': 'JsonTopicReader',
+        'jsonl': 'JsonTopicReader',
         'msmarco': 'TsvTopicReader'
     }
     config_class = TopicsInputConfig
+    name = 'topic type'
 
 
 class TopicProcessor(Task):
@@ -112,6 +114,7 @@ class SgmlTopicReader:
     """Iterator over topics from trec sgml"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.strip_non_digits = config.strip_non_digits
         prefix = config.prefix
@@ -130,6 +133,7 @@ class XmlTopicReader:
     """Iterator over topics from trec xml"""
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.strip_non_digits = config.strip_non_digits
         self.topics = GlobFileGenerator(config.path, trec.parse_xml_topics, config.encoding)
@@ -147,6 +151,7 @@ class JsonTopicReader:
     """Iterator over topics from jsonl file """
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.topics = GlobFileGenerator(config.path, self.parse, config.encoding)
 
@@ -177,6 +182,7 @@ class TsvTopicReader:
     """Iterator over topics from tsv file """
 
     def __init__(self, config):
+        validate_encoding(config.encoding)
         self.lang = config.lang
         self.topics = GlobFileGenerator(config.path, self.parse, config.encoding)
 
@@ -247,17 +253,21 @@ class QueryReader:
         except IndexError:
             raise StopIteration()
 
+    def peek(self):
+        return Query(**json.loads(self.data[0]))
+
 
 class QueryProcessor(Task, TextProcessor):
     """Query Preprocessing"""
 
-    def __init__(self, config):
+    def __init__(self, config, lang):
         """
         Args:
-            config (ProcessorConfig)
+            config (TextProcessorConfig)
+            lang (str)
         """
         Task.__init__(self)
-        TextProcessor.__init__(self, config)
+        TextProcessor.__init__(self, config, lang)
         self.splitter = Splitter(config.splits)
 
     def process(self, query):
@@ -268,9 +278,6 @@ class QueryProcessor(Task, TextProcessor):
         Returns
             Query
         """
-        if not self.initialized:
-            self.initialize(query.lang)
-
         self.splitter.reset()
         text = query.text
         if self.config.normalize:
