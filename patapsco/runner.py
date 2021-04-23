@@ -5,7 +5,7 @@ import logging
 import pathlib
 
 from .config import BaseConfig, ConfigService, Optional
-from .docs import DocumentsConfig, DocumentProcessorFactory, DocumentReaderFactory, \
+from .docs import DocumentsConfig, DocumentProcessor, DocumentReaderFactory, \
     DocumentDatabaseFactory, DocReader, DocWriter
 from .error import ConfigError
 from .index import IndexConfig, IndexerFactory
@@ -273,7 +273,7 @@ class PipelineBuilder:
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
             iterable = DocumentReaderFactory.create(self.conf.documents.input)
             db = DocumentDatabaseFactory.create(self.conf.documents.db.path, artifact_conf)
-            tasks.append(DocumentProcessorFactory.create(self.conf.documents.process, db))
+            tasks.append(DocumentProcessor(self.conf.documents.process, db))
             # add doc writer if user requesting that we save processed docs
             if self.conf.documents.output and self.conf.documents.output.path:
                 if multiplex:

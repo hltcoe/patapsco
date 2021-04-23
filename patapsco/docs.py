@@ -31,8 +31,7 @@ class DocumentsInputConfig(BaseConfig):
 
 class DocumentsProcessorConfig(BaseConfig):
     """Configuration for the document processor"""
-    name: str = "default"
-    char_normalize: bool = True
+    normalize: bool = True
     tokenize: TokenizeConfig
     lowercase: bool = True
     stopwords: Union[None, bool, str] = "lucene"
@@ -57,13 +56,6 @@ class DocumentReaderFactory(ComponentFactory):
         'clef0809': 'HamshahriDocumentReader'
     }
     config_class = DocumentsInputConfig
-
-
-class DocumentProcessorFactory(ComponentFactory):
-    classes = {
-        'default': 'DocumentProcessor'
-    }
-    config_class = DocumentsProcessorConfig
 
 
 class SgmlDocumentReader:
@@ -267,7 +259,7 @@ class DocumentProcessor(Task, TextProcessor):
 
         self.splitter.reset()
         text = doc.text
-        if self.config.char_normalize:
+        if self.config.normalize:
             text = self.normalize(text)
         tokens = self.tokenize(text)
         self.splitter.add('tokenize', Doc(doc.id, doc.lang, ' '.join(tokens)))

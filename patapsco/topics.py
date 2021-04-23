@@ -53,7 +53,7 @@ class QueriesInputConfig(BaseConfig):
 
 class QueryProcessorConfig(BaseConfig):
     """Configuration of the query text processor"""
-    char_normalize: bool = True
+    normalize: bool = True
     tokenize: TokenizeConfig
     lowercase: bool = True
     stopwords: Union[None, bool, str] = "lucene"
@@ -283,7 +283,7 @@ class QueryProcessor(Task, TextProcessor):
 
         self.splitter.reset()
         text = query.text
-        if self.config.char_normalize:
+        if self.config.normalize:
             text = self.normalize(text)
         tokens = self.tokenize(text)
         self.splitter.add('tokenize', Query(query.id, query.lang, ' '.join(tokens)))
