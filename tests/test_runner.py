@@ -135,7 +135,7 @@ class TestPipelineBuilder:
 
     def teardown_method(self):
         delete_dir(self.temp_dir)
-        path = self.dir / "build_files" / "output" / "complete_docs" / "index"
+        path = self.dir / "build_files" / "output" / "docs_complete" / "index"
         if path.exists():
             delete_dir(path)
 
@@ -193,14 +193,14 @@ class TestPipelineBuilder:
         assert Tasks.SCORE in stage2_plan
 
     def test_create_plan_with_complete_documents(self):
-        conf = self.create_config('complete_docs')
+        conf = self.create_config('docs_complete')
         builder = PipelineBuilder(conf)
         stage1_plan, _ = builder.create_plan()
         assert Tasks.DOCUMENTS not in stage1_plan
         assert Tasks.INDEX in stage1_plan
 
     def test_create_plan_with_incomplete_documents(self):
-        conf = self.create_config('incomplete_docs')
+        conf = self.create_config('docs_incomplete')
         builder = PipelineBuilder(conf)
         stage1_plan, _ = builder.create_plan()
         assert Tasks.DOCUMENTS in stage1_plan
@@ -342,16 +342,16 @@ class TestPipelineBuilder:
             builder.build_stage1(plan)
 
     def test_build_stage1_with_indexer_gets_docs_from_documents(self):
-        conf = self.create_config('complete_docs')
+        conf = self.create_config('docs_complete')
         builder = PipelineBuilder(conf)
         plan = [Tasks.INDEX]
         pipeline = builder.build_stage1(plan)
         assert isinstance(pipeline.tasks[0].task, MockIndexer)
 
     def test_build_stage1_with_indexer_gets_docs_from_input(self):
-        conf = self.create_config('complete_docs')
+        conf = self.create_config('docs_complete')
         conf.documents = None
-        conf.index.input = IndexInputConfig(documents=PathConfig(path=str(self.dir / "build_files" / "output" / "complete_docs" / "docs")))
+        conf.index.input = IndexInputConfig(documents=PathConfig(path=str(self.dir / "build_files" / "output" / "docs_complete" / "docs")))
         builder = PipelineBuilder(conf)
         plan = [Tasks.INDEX]
         pipeline = builder.build_stage1(plan)
@@ -360,7 +360,7 @@ class TestPipelineBuilder:
     def test_build_stage1_with_indexer_gets_bad_docs_from_input(self):
         conf = self.create_config('test')
         conf.documents = None
-        conf.index.input = IndexInputConfig(documents=PathConfig(path=str(self.dir / "build_files" / "output" / "incomplete_docs" / "docs")))
+        conf.index.input = IndexInputConfig(documents=PathConfig(path=str(self.dir / "build_files" / "output" / "docs_incomplete" / "docs")))
         builder = PipelineBuilder(conf)
         plan = [Tasks.INDEX]
         with pytest.raises(ConfigError, match="Unable to load artifact config"):
