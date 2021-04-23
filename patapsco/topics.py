@@ -51,20 +51,20 @@ class QueriesInputConfig(BaseConfig):
     path: Union[str, list]
 
 
-class ProcessorConfig(BaseConfig):
+class QueryProcessorConfig(BaseConfig):
     """Configuration of the query text processor"""
     char_normalize: bool = True
     tokenize: TokenizeConfig
     lowercase: bool = True
-    stopwords: Union[bool, str] = "lucene"
-    stem: Union[StemConfig, TruncStemConfig]
+    stopwords: Union[None, bool, str] = "lucene"
+    stem: Union[None, bool, StemConfig, TruncStemConfig]
     splits: Optional[list]
 
 
 class QueriesConfig(BaseConfig):
     """Configuration for processing queries"""
     input: Optional[QueriesInputConfig]
-    process: ProcessorConfig
+    process: QueryProcessorConfig
     output: Union[bool, PathConfig]
 
 

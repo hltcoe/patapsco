@@ -244,7 +244,7 @@ class PipelineBuilder:
             stage2.append(Tasks.RERANK)
         if self.conf.score:
             if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:
-                raise ConfigError("Scorer can only run if either retrieve or rerank is configured")
+                raise ConfigError("Scorer can only run if either retrieve or rerank is configured.")
             stage2.append(Tasks.SCORE)
 
         if not stage1 and not stage2:

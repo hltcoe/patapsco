@@ -11,7 +11,7 @@ from .util.file import GlobFileGenerator
 LOGGER = logging.getLogger(__name__)
 
 
-class InputConfig(BaseConfig):
+class ScoreInputConfig(BaseConfig):
     """Qrels downstream configuration"""
     format: str = "trec"
     path: str
@@ -20,7 +20,7 @@ class InputConfig(BaseConfig):
 class ScoreConfig(BaseConfig):
     """Configuration for the scorer module"""
     metrics: list = ['map']
-    input: InputConfig
+    input: ScoreInputConfig
 
 
 class QrelsReaderFactory(ComponentFactory):
@@ -28,7 +28,7 @@ class QrelsReaderFactory(ComponentFactory):
         'trec': 'TrecQrelsReader',
         'msmarco': 'TrecQrelsReader',
     }
-    config_class = InputConfig
+    config_class = ScoreInputConfig
 
 
 class TrecQrelsReader:

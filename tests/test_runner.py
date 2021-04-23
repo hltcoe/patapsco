@@ -4,9 +4,12 @@ import pytest
 
 from patapsco.config import PathConfig
 from patapsco.docs import DocumentsInputConfig, DocumentsProcessorConfig
+from patapsco.rerank import RerankInputConfig
+from patapsco.retrieve import RetrieveInputConfig
 from patapsco.runner import *
+from patapsco.score import ScoreInputConfig
 from patapsco.text import TokenizeConfig
-from patapsco.topics import TopicsInputConfig
+from patapsco.topics import QueryProcessorConfig, TopicsInputConfig
 
 
 def test_config_preprocessor_validate():
@@ -135,8 +138,24 @@ class TestPipelineBuilder:
             ),
             index=IndexConfig(name="test", output=PathConfig(path=str(self.dir / path / "index"))),
             topics=TopicsConfig(
-                input=TopicsInputConfig(format="trec", lang="en", path="test"), output=False
-            )
+                input=TopicsInputConfig(format="trec", lang="en", path="test"),
+                output=PathConfig(path=str(self.dir / path / "topics"))
+            ),
+            queries=QueriesConfig(
+                process=QueryProcessorConfig(tokenize=TokenizeConfig(name="test"), stem=False),
+                output=PathConfig(path=str(self.dir / path / "queries"))
+            ),
+            retrieve=RetrieveConfig(
+                input=RetrieveInputConfig(index=PathConfig(path="index")),
+                name="test",
+                output=PathConfig(path=str(self.dir / path / "retrieve"))
+            ),
+            rerank=RerankConfig(
+                input=RerankInputConfig(db=PathConfig(path="test")),
+                name="test",
+                output=PathConfig(path=str(self.dir / path / "rerank"))
+            ),
+            score=ScoreConfig(input=ScoreInputConfig(format='trec', path='test'))
         )
 
     def test_create_plan_with_no_stages(self):
@@ -145,15 +164,20 @@ class TestPipelineBuilder:
         with pytest.raises(ConfigError, match='No tasks are configured to run'):
             builder.create_plan()
 
-    def test_create_plan_with_normal_stage1(self):
+    def test_create_plan_with_normal_config(self):
         conf = self.create_config('test')
         builder = PipelineBuilder(conf)
         stage1_plan, stage2_plan = builder.create_plan()
         assert Tasks.DOCUMENTS in stage1_plan
         assert Tasks.INDEX in stage1_plan
+        assert Tasks.TOPICS in stage2_plan
+        assert Tasks.QUERIES in stage2_plan
+        assert Tasks.RETRIEVE in stage2_plan
+        assert Tasks.RERANK in stage2_plan
+        assert Tasks.SCORE in stage2_plan
 
-    def test_create_plan_with_completed_documents(self):
-        conf = self.create_config('completed_docs')
+    def test_create_plan_with_complete_documents(self):
+        conf = self.create_config('complete_docs')
         builder = PipelineBuilder(conf)
         stage1_plan, _ = builder.create_plan()
         assert Tasks.DOCUMENTS not in stage1_plan
@@ -166,14 +190,52 @@ class TestPipelineBuilder:
         assert Tasks.DOCUMENTS in stage1_plan
         assert Tasks.INDEX in stage1_plan
 
-    def test_create_plan_with_completed_documents_and_completed_index(self):
-        conf = self.create_config('stage1_completed')
+    def test_create_plan_with_complete_documents_and_complete_index(self):
+        conf = self.create_config('stage1_complete')
         builder = PipelineBuilder(conf)
         stage1_plan, _ = builder.create_plan()
         assert stage1_plan == []
 
-    def test_create_plan_with_incomplete_documents_and_completed_index(self):
+    def test_create_plan_with_incomplete_documents_and_complete_index(self):
         conf = self.create_config('docs_incomplete_index_complete')
         builder = PipelineBuilder(conf)
         stage1_plan, _ = builder.create_plan()
         assert stage1_plan == []
+
+    def test_create_plan_with_complete_topics(self):
+        conf = self.create_config('topics_complete')
+        builder = PipelineBuilder(conf)
+        _, stage2_plan = builder.create_plan()
+        assert Tasks.TOPICS not in stage2_plan
+        assert Tasks.QUERIES in stage2_plan
+
+    def test_create_plan_with_complete_queries(self):
+        conf = self.create_config('queries_complete')
+        builder = PipelineBuilder(conf)
+        _, stage2_plan = builder.create_plan()
+        assert Tasks.TOPICS not in stage2_plan
+        assert Tasks.QUERIES not in stage2_plan
+        assert Tasks.RETRIEVE in stage2_plan
+
+    def test_create_plan_with_complete_retrieval(self):
+        conf = self.create_config('retrieval_complete')
+        builder = PipelineBuilder(conf)
+        _, stage2_plan = builder.create_plan()
+        assert Tasks.TOPICS not in stage2_plan
+        assert Tasks.QUERIES not in stage2_plan
+        assert Tasks.RETRIEVE not in stage2_plan
+        assert Tasks.RERANK in stage2_plan
+
+    def test_create_plan_with_complete_rerank(self):
+        conf = self.create_config('rerank_complete')
+        builder = PipelineBuilder(conf)
+        with pytest.raises(ConfigError, match="Rerank is already complete. Delete its output directory to rerun reranking."):
+            builder.create_plan()
+
+    def test_create_plan_with_no_rerank_retrieval(self):
+        conf = self.create_config('test')
+        conf.rerank = None
+        conf.retrieve = None
+        builder = PipelineBuilder(conf)
+        with pytest.raises(ConfigError, match="Scorer can only run if either retrieve or rerank is configured."):
+            builder.create_plan()
