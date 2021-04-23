@@ -11,7 +11,7 @@ from patapsco.retrieve import RetrieveInputConfig, MockRetriever
 from patapsco.runner import *
 from patapsco.score import ScoreInputConfig
 from patapsco.text import TextProcessorConfig, TokenizeConfig
-from patapsco.topics import TopicsInputConfig
+from patapsco.topics import TopicsInputConfig, QueriesInputConfig
 
 
 def test_config_preprocessor_validate():
@@ -138,6 +138,9 @@ class TestPipelineBuilder:
         path = self.dir / "build_files" / "output" / "docs_complete" / "index"
         if path.exists():
             delete_dir(path)
+        path = self.dir / "build_files" / "output" / "topics_complete" / "queries"
+        if path.exists():
+            delete_dir(path)
 
     def create_config(self, path):
         output_directory = self.dir / "build_files" / "output" / path
@@ -158,7 +161,7 @@ class TestPipelineBuilder:
                 output=PathConfig(path=str(output_directory / "topics"))
             ),
             queries=QueriesConfig(
-                process=TextProcessorConfig(tokenize=TokenizeConfig(name="test"), stem=False),
+                process=TextProcessorConfig(tokenize=TokenizeConfig(name="whitespace"), stem=False),
                 output=PathConfig(path=str(output_directory / "queries"))
             ),
             retrieve=RetrieveConfig(
@@ -433,3 +436,37 @@ class TestPipelineBuilder:
         plan = [Tasks.TOPICS]
         with pytest.raises(ConfigError, match="Unknown language code: da"):
             builder.build_stage2(plan)
+
+    def test_build_stage2_queries_with_no_topics(self):
+        conf = self.create_config('test')
+        conf.topics = None
+        builder = PipelineBuilder(conf)
+        plan = [Tasks.QUERIES]
+        with pytest.raises(ConfigError, match="query processor not configured with input"):
+            builder.build_stage2(plan)
+
+    def test_build_stage2_queries_with_topic_output(self):
+        conf = self.create_config('topics_complete')
+        builder = PipelineBuilder(conf)
+        plan = [Tasks.QUERIES]
+        pipeline = builder.build_stage2(plan)
+        assert isinstance(pipeline.tasks[0].task, QueryProcessor)
+
+    def test_build_stage2_queries_with_query_input(self):
+        conf = self.create_config('topics_complete')
+        conf.topics = None
+        conf.queries.input = QueriesInputConfig(path=str(self.dir / "build_files" / "output" / "topics_complete" / "topics"))
+        builder = PipelineBuilder(conf)
+        plan = [Tasks.QUERIES]
+        pipeline = builder.build_stage2(plan)
+        assert isinstance(pipeline.tasks[0].task, QueryProcessor)
+
+    def test_build_stage2_queries_with_query_input_to_file(self):
+        conf = self.create_config('topics_complete')
+        conf.topics = None
+        conf.queries.input = QueriesInputConfig(path=str(self.dir / "build_files" / "output" / "topics_complete" / "topics" / "queries.jsonl"))
+        builder = PipelineBuilder(conf)
+        plan = [Tasks.QUERIES]
+        pipeline = builder.build_stage2(plan)
+        assert isinstance(pipeline.tasks[0].task, QueryProcessor)
+        assert pipeline.tasks[0].task.lang == "en"

@@ -240,7 +240,9 @@ class QueryReader:
     """Iterator over queries from jsonl file """
 
     def __init__(self, path):
-        path = pathlib.Path(path) / 'queries.jsonl'
+        path = pathlib.Path(path)
+        if path.is_dir():
+            path = path / 'queries.jsonl'
         with open(path) as fp:
             self.data = fp.readlines()
 

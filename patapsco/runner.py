@@ -83,7 +83,10 @@ class ArtifactHelper:
     def combine(self, config, path):
         """Loads an artifact configuration and combines it with the base config"""
         path = pathlib.Path(path)
-        path = path / 'config.yml'
+        if path.is_dir():
+            path = path / 'config.yml'
+        else:
+            path = path.parent / 'config.yml'
         try:
             artifact_config_dict = ConfigService().read_config_file(path)
         except FileNotFoundError:
@@ -328,6 +331,7 @@ class PipelineBuilder:
             # optional query reader -> query processor -> optional query writer
             self.clear_output(self.conf.queries)
             if Tasks.TOPICS not in plan:
+                # we don't load
                 iterable = self._setup_input(QueryReader, 'queries.input.path', 'topics.output.path',
                                              'query processor not configured with input')
                 query = iterable.peek()
@@ -348,7 +352,7 @@ class PipelineBuilder:
                 iterable = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output.path',
                                              'retrieve not configured with queries')
             if not self.conf.index:
-                # copy in the configuration that created the index
+                # copy in the configuration that created the index (this path is always set in the ConfigPreprocessor)
                 self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RETRIEVE)
             tasks.append(RetrieverFactory.create(self.conf.retrieve))
