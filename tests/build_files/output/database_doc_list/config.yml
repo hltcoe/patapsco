@@ -1,0 +1,24 @@
+run:
+  name: Testing
+  path: tests/build_files/output/docs_complete/
+
+documents:
+  input:
+    format: json
+    lang: en
+    encoding: utf8
+    path:
+     - tests/build_files/input/docs.jsonl
+     - tests/build_files/input/docs2.jsonl
+  db:
+    path: tests/build_files/output/docs_complete/db/
+  process:
+    normalize: true
+    lowercase: true
+    tokenize:
+      name: whitespace
+    stem:
+      name: trunc
+      length: 4
+  output:
+    path: tests/build_files/output/docs_complete/docs/

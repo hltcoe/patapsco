@@ -94,7 +94,8 @@ class ArtifactHelper:
         artifact_config = RunnerConfig(**artifact_config_dict)
         for task in self.TASKS:
             if getattr(artifact_config, task):
-                setattr(config, task, getattr(artifact_config, task))
+                if not getattr(config, task):
+                    setattr(config, task, getattr(artifact_config, task))
 
 
 class ConfigPreprocessor:
@@ -212,6 +213,8 @@ class PipelineBuilder:
         stage1_plan, stage2_plan = self.create_plan()
         stage1 = self.build_stage1(stage1_plan)
         stage2 = self.build_stage2(stage2_plan)
+        if not stage1 and stage2:
+            self.check_sources_of_documents()
         return stage1, stage2
 
     def create_plan(self):
@@ -463,6 +466,28 @@ class PipelineBuilder:
             return lang
         except KeyError:
             raise ConfigError(f"Unknown language code: {input_config.lang}")
+
+    def check_sources_of_documents(self):
+        config_path = pathlib.Path(self.conf.rerank.input.db.path) / 'config.yml'
+        try:
+            artifact_config_dict = ConfigService().read_config_file(config_path)
+        except FileNotFoundError:
+            LOGGER.warning("Unable to load config for the document database")
+            return
+        artifact_config = RunnerConfig(**artifact_config_dict)
+        if not isinstance(self.conf.documents.input.path, type(artifact_config.documents.input.path)):
+            raise ConfigError("documents in index do not match documents in database")
+        if isinstance(self.conf.documents.input.path, str):
+            name1 = pathlib.Path(self.conf.documents.input.path).name
+            name2 = pathlib.Path(artifact_config.documents.input.path).name
+            if name1 != name2:
+                raise ConfigError("documents in index do not match documents in database")
+        elif isinstance(self.conf.documents.input.path, list):
+            for p1, p2 in zip(self.conf.documents.input.path, artifact_config.documents.input.path):
+                name1 = pathlib.Path(p1).name
+                name2 = pathlib.Path(p2).name
+                if name1 != name2:
+                    raise ConfigError("documents in index do not match documents in database")
 
 
 class Runner:

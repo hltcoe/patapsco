@@ -470,3 +470,51 @@ class TestPipelineBuilder:
         pipeline = builder.build_stage2(plan)
         assert isinstance(pipeline.tasks[0].task, QueryProcessor)
         assert pipeline.tasks[0].task.lang == "en"
+
+    def test_check_sources_of_documents_standard_config(self):
+        conf = self.create_config('test')
+        builder = PipelineBuilder(conf)
+        builder.check_sources_of_documents()
+
+    def test_check_sources_of_documents_str_same(self):
+        db_dir = pathlib.Path(__file__).parent / "build_files" / "output" / "database"
+        conf = self.create_config('test')
+        conf.documents.input.path = "docs.jsonl"
+        conf.rerank.input.db.path = str(db_dir)
+        builder = PipelineBuilder(conf)
+        builder.check_sources_of_documents()
+
+    def test_check_sources_of_documents_str_diff(self):
+        db_dir = pathlib.Path(__file__).parent / "build_files" / "output" / "database"
+        conf = self.create_config('test')
+        conf.documents.input.path = "docs_other_data.jsonl"
+        conf.rerank.input.db.path = str(db_dir)
+        builder = PipelineBuilder(conf)
+        with pytest.raises(ConfigError):
+            builder.check_sources_of_documents()
+
+    def test_check_sources_of_documents_type_diff(self):
+        db_dir = pathlib.Path(__file__).parent / "build_files" / "output" / "database"
+        conf = self.create_config('test')
+        conf.documents.input.path = ["docs_other_data.jsonl", "more_docs.jsonl"]
+        conf.rerank.input.db.path = str(db_dir)
+        builder = PipelineBuilder(conf)
+        with pytest.raises(ConfigError):
+            builder.check_sources_of_documents()
+
+    def test_check_sources_of_documents_list_same(self):
+        db_dir = pathlib.Path(__file__).parent / "build_files" / "output" / "database_doc_list"
+        conf = self.create_config('test')
+        conf.documents.input.path = ["docs.jsonl", "docs2.jsonl"]
+        conf.rerank.input.db.path = str(db_dir)
+        builder = PipelineBuilder(conf)
+        builder.check_sources_of_documents()
+
+    def test_check_sources_of_documents_list_diff(self):
+        db_dir = pathlib.Path(__file__).parent / "build_files" / "output" / "database_doc_list"
+        conf = self.create_config('test')
+        conf.documents.input.path = ["docs.jsonl", "docs3.jsonl"]
+        conf.rerank.input.db.path = str(db_dir)
+        builder = PipelineBuilder(conf)
+        with pytest.raises(ConfigError):
+            builder.check_sources_of_documents()
