@@ -501,7 +501,7 @@ class PipelineBuilder:
             assert doc.lowercase == query.lowercase
             assert doc.stem == query.stem
         except AssertionError:
-            raise ConfigError(f"Text processing for documents and queries does not match")
+            raise ConfigError("Text processing for documents and queries does not match")
 
 
 class Runner:
