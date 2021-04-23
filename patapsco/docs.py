@@ -46,6 +46,7 @@ class DocumentReaderFactory(ComponentFactory):
         'clef0809': 'HamshahriDocumentReader'
     }
     config_class = DocumentsInputConfig
+    name = "input document type"
 
 
 class SgmlDocumentReader:

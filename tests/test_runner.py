@@ -125,37 +125,39 @@ def test_partial_config_preparer():
 
 
 class TestPipelineBuilder:
-    dir = pathlib.Path(__file__).parent / 'plan_files'
+    dir = pathlib.Path(__file__).parent
 
     def create_config(self, path):
+        output_directory = self.dir / "build_files" / "output" / path
+        input_directory = self.dir / "build_files" / "input"
         return RunnerConfig(
-            run=RunConfig(path=str(self.dir / path)),
+            run=RunConfig(path=str(output_directory)),
             documents=DocumentsConfig(
-                input=DocumentsInputConfig(format="trec", lang="en", path="test"),
+                input=DocumentsInputConfig(format="jsonl", lang="en", path=str(input_directory / "docs.jsonl")),
                 process=TextProcessorConfig(tokenize=TokenizeConfig(name="test"), stem=False),
                 db=PathConfig(path="test"),
-                output=PathConfig(path=str(self.dir / path / "docs"))
+                output=PathConfig(path=str(output_directory / "docs"))
             ),
-            index=IndexConfig(name="test", output=PathConfig(path=str(self.dir / path / "index"))),
+            index=IndexConfig(name="test", output=PathConfig(path=str(output_directory / "index"))),
             topics=TopicsConfig(
-                input=TopicsInputConfig(format="trec", lang="en", path="test"),
-                output=PathConfig(path=str(self.dir / path / "topics"))
+                input=TopicsInputConfig(format="jsonl", lang="en", path=str(input_directory / "topics.jsonl")),
+                output=PathConfig(path=str(output_directory / "topics"))
             ),
             queries=QueriesConfig(
                 process=TextProcessorConfig(tokenize=TokenizeConfig(name="test"), stem=False),
-                output=PathConfig(path=str(self.dir / path / "queries"))
+                output=PathConfig(path=str(output_directory / "queries"))
             ),
             retrieve=RetrieveConfig(
                 input=RetrieveInputConfig(index=PathConfig(path="index")),
                 name="test",
-                output=PathConfig(path=str(self.dir / path / "retrieve"))
+                output=PathConfig(path=str(output_directory / "retrieve"))
             ),
             rerank=RerankConfig(
                 input=RerankInputConfig(db=PathConfig(path="test")),
                 name="test",
-                output=PathConfig(path=str(self.dir / path / "rerank"))
+                output=PathConfig(path=str(output_directory / "rerank"))
             ),
-            score=ScoreConfig(input=ScoreInputConfig(format='trec', path='test'))
+            score=ScoreConfig(input=ScoreInputConfig(format='trec', path=str(input_directory / 'qrels')))
         )
 
     def test_create_plan_with_no_stages(self):
@@ -239,3 +241,26 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         with pytest.raises(ConfigError, match="Scorer can only run if either retrieve or rerank is configured."):
             builder.create_plan()
+
+    def test_build_stage1_with_standard_docs(self):
+        conf = self.create_config('test')
+        builder = PipelineBuilder(conf)
+        plan = [Tasks.DOCUMENTS]
+        pipeline = builder.build_stage1(plan)
+        assert isinstance(pipeline.tasks[0].task, DocumentProcessor)
+
+    def test_build_stage1_with_bad_doc_format(self):
+        conf = self.create_config('test')
+        conf.documents.input.format = "abc"
+        builder = PipelineBuilder(conf)
+        plan = [Tasks.DOCUMENTS]
+        with pytest.raises(ConfigError, match="Unknown input document type: abc"):
+            builder.build_stage1(plan)
+
+    def test_build_stage1_with_no_files(self):
+        conf = self.create_config('test')
+        conf.documents.input.path = "nothing"
+        builder = PipelineBuilder(conf)
+        plan = [Tasks.DOCUMENTS]
+        with pytest.raises(ConfigError, match="No files match pattern"):
+            builder.build_stage1(plan)
