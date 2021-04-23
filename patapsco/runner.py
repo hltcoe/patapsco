@@ -213,8 +213,10 @@ class PipelineBuilder:
         stage1_plan, stage2_plan = self.create_plan()
         stage1 = self.build_stage1(stage1_plan)
         stage2 = self.build_stage2(stage2_plan)
-        if not stage1 and stage2:
+        if not stage1 and stage2 and Tasks.RERANK in stage2_plan:
             self.check_sources_of_documents()
+        if stage2 and Tasks.RETRIEVE in stage2_plan:
+            self.check_text_processing()
         return stage1, stage2
 
     def create_plan(self):
@@ -488,6 +490,18 @@ class PipelineBuilder:
                 name2 = pathlib.Path(p2).name
                 if name1 != name2:
                     raise ConfigError("documents in index do not match documents in database")
+
+    def check_text_processing(self):
+        doc = self.conf.documents.process
+        query = self.conf.queries.process
+        try:
+            assert doc.normalize == query.normalize
+            assert doc.tokenize == query.tokenize
+            assert doc.stopwords == query.stopwords
+            assert doc.lowercase == query.lowercase
+            assert doc.stem == query.stem
+        except AssertionError:
+            raise ConfigError(f"Text processing for documents and queries does not match")
 
 
 class Runner:

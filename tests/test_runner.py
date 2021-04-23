@@ -518,3 +518,15 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         with pytest.raises(ConfigError):
             builder.check_sources_of_documents()
+
+    def test_check_text_processing(self):
+        conf = self.create_config('test')
+        builder = PipelineBuilder(conf)
+        builder.check_text_processing()
+
+    def test_check_text_processing_mistmatch(self):
+        conf = self.create_config('test')
+        conf.queries.process.lowercase = False
+        builder = PipelineBuilder(conf)
+        with pytest.raises(ConfigError):
+            builder.check_text_processing()
