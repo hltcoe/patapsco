@@ -1,4 +1,4 @@
-import collections
+import collections.abc
 import dataclasses
 import json
 import sys
@@ -59,7 +59,7 @@ class Timer:
         self.time += timeit.default_timer() - self.start
 
 
-class TimedIterable(collections.Iterable):
+class TimedIterable(collections.abc.Iterable):
     def __init__(self, iterable):
         self.iterable = iterable
         self.timer = Timer()
@@ -79,7 +79,7 @@ class TimedIterable(collections.Iterable):
             return next(self.iterable)
 
 
-class ChunkedIterable(collections.Iterable):
+class ChunkedIterable(collections.abc.Iterable):
     def __init__(self, iterable, n):
         self.iterable = iterable
         self.chunked = more_itertools.chunked(iterable, n)
