@@ -1,4 +1,5 @@
 import copy
+import enum
 import json
 import logging
 import pathlib
@@ -157,7 +158,7 @@ class ConfigService:
             fp (file): file object opened for writing
             data (dict): data to write as YAML
         """
-        yaml.dump(data, fp)
+        yaml.dump(data, fp, Dumper=EnumDumper)
 
     def _read_json_config(self, fp):
         """Read a configuration from a JSON file
@@ -324,6 +325,15 @@ class ConfigLoader(yaml.FullLoader):
         data = self.interpolator.interpolate(data)
         self.errors = self.interpolator.errors
         return data
+
+
+class EnumDumper(yaml.SafeDumper):
+    """Dump enums using their value"""
+
+    def represent_data(self, data):
+        if isinstance(data, enum.Enum):
+            data = data.value
+        return super().represent_data(data)
 
 
 class ConfigInterpolator:
