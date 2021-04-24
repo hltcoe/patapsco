@@ -4,6 +4,7 @@ import json
 import logging
 import pathlib
 
+from .__version__ import __version__
 from .config import BaseConfig, ConfigService, Optional
 from .docs import DocumentsConfig, DocumentProcessor, DocumentReaderFactory, \
     DocumentDatabaseFactory, DocReader, DocWriter
@@ -507,6 +508,7 @@ class PipelineBuilder:
 class Runner:
     def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
+        LOGGER.info(f"Patapsco version {__version__}")
         self.conf = ConfigPreprocessor.process(config_filename, overrides)
         builder = PipelineBuilder(self.conf)
         self.stage1, self.stage2 = builder.build()
