@@ -6,18 +6,17 @@ import logging.handlers
 import pathlib
 
 from .__version__ import __version__
-from .config import BaseConfig, ConfigService, Optional
-from .docs import DocumentsConfig, DocumentProcessor, DocumentReaderFactory, \
-    DocumentDatabaseFactory, DocReader, DocWriter
+from .config import ConfigService
+from .docs import DocumentProcessor, DocumentReaderFactory, DocumentDatabaseFactory, DocReader, DocWriter
 from .error import ConfigError
-from .index import IndexConfig, IndexerFactory
+from .index import IndexerFactory
 from .pipeline import BatchPipeline, MultiplexTask, StreamingPipeline
-from .rerank import RerankConfig, RerankFactory
+from .rerank import RerankFactory
 from .results import JsonResultsWriter, JsonResultsReader, TrecResultsWriter
-from .retrieve import Joiner, RetrieveConfig, RetrieverFactory
-from .score import QrelsReaderFactory, ScoreConfig, Scorer
-from .topics import TopicProcessor, TopicReaderFactory, TopicsConfig, QueriesConfig, QueryProcessor, \
-    QueryReader, QueryWriter
+from .retrieve import Joiner, RetrieverFactory
+from .schema import RunnerConfig
+from .score import QrelsReaderFactory, Scorer
+from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
 from .util import Timer
 from .util.file import delete_dir, is_complete
 
@@ -27,32 +26,6 @@ LOGGER = logging.getLogger(__name__)
 class PipelineMode(str, enum.Enum):
     STREAMING = 'streaming'
     BATCH = 'batch'
-
-
-class StageConfig(BaseConfig):
-    """Configuration for one of the stages"""
-    mode: PipelineMode = PipelineMode.STREAMING
-    batch_size: int = 0  # the default is a single batch
-
-
-class RunConfig(BaseConfig):
-    """Configuration for a run of the system"""
-    path: str  # base path for run output
-    name: Optional[str]
-    stage1: StageConfig = StageConfig()
-    stage2: StageConfig = StageConfig()
-
-
-class RunnerConfig(BaseConfig):
-    """Configuration for the patapsco runner"""
-    run: RunConfig
-    documents: Optional[DocumentsConfig]
-    index: Optional[IndexConfig]
-    topics: Optional[TopicsConfig]
-    queries: Optional[QueriesConfig]
-    retrieve: Optional[RetrieveConfig]
-    rerank: Optional[RerankConfig]
-    score: Optional[ScoreConfig]
 
 
 class Tasks(enum.Enum):

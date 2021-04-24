@@ -3,15 +3,9 @@ import tempfile
 
 import pytest
 
-from patapsco.config import PathConfig
-from patapsco.docs import DocumentsInputConfig
-from patapsco.index import IndexInputConfig, MockIndexer
-from patapsco.rerank import RerankInputConfig
-from patapsco.retrieve import RetrieveInputConfig, MockRetriever
+from patapsco.index import MockIndexer
 from patapsco.runner import *
-from patapsco.score import ScoreInputConfig
-from patapsco.text import TextProcessorConfig, TokenizeConfig
-from patapsco.topics import TopicsInputConfig, QueriesInputConfig
+from patapsco.schema import *
 
 
 def test_config_preprocessor_validate():

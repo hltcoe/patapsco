@@ -5,25 +5,11 @@ import pathlib
 import random
 import subprocess
 
-from .config import BaseConfig, BaseUncheckedConfig, Optional, PathConfig
 from .error import ConfigError, PatapscoError
 from .pipeline import Task
 from .results import Results, TrecResultsReader
+from .schema import RerankConfig
 from .util import ComponentFactory, DataclassJSONEncoder
-
-
-class RerankInputConfig(BaseConfig):
-    """Configuration of optional rerank inputs"""
-    db: PathConfig  # if running both stages, runner will copy this from documents config
-    results: Optional[PathConfig]  # set if starting stage2 at reranking
-
-
-class RerankConfig(BaseUncheckedConfig):
-    """Configuration for the rerank task"""
-    input: RerankInputConfig
-    name: str
-    script: Optional[str]  # for the shell reranker
-    output: PathConfig
 
 
 class RerankFactory(ComponentFactory):

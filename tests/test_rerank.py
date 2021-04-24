@@ -3,9 +3,11 @@ import tempfile
 
 import pytest
 
+from patapsco.config import PathConfig
 from patapsco.docs import Doc
 from patapsco.rerank import *
 from patapsco.results import Result
+from patapsco.schema import RerankInputConfig
 from patapsco.topics import Query
 from patapsco.util.file import delete_dir
 

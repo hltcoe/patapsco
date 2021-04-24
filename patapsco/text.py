@@ -1,13 +1,9 @@
 import pathlib
 
-from .config import BaseConfig, Optional, Union
 from .error import ConfigError
 from .pipeline import MultiplexItem
+from .schema import TokenizeConfig, TruncStemConfig
 from .util import ComponentFactory
-
-
-class TokenizeConfig(BaseConfig):
-    name: str
 
 
 class TokenizerFactory(ComponentFactory):
@@ -15,25 +11,6 @@ class TokenizerFactory(ComponentFactory):
         'whitespace': 'WhiteSpaceTokenizer',
     }
     config_class = TokenizeConfig
-
-
-class StemConfig(BaseConfig):
-    name: str
-
-
-class TruncStemConfig(BaseConfig):
-    name: str
-    length: int
-
-
-class TextProcessorConfig(BaseConfig):
-    """Configuration for the text processing"""
-    normalize: bool = True
-    tokenize: TokenizeConfig
-    lowercase: bool = True
-    stopwords: Union[None, bool, str] = "lucene"
-    stem: Union[None, bool, StemConfig, TruncStemConfig]
-    splits: Optional[list]
 
 
 class StemmerFactory(ComponentFactory):

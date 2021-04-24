@@ -1,26 +1,13 @@
 import collections
 import logging
 import pytrec_eval
-import random
 
-from .config import BaseConfig
 from .pipeline import Task
+from .schema import ScoreInputConfig
 from .util import ComponentFactory, trec
 from .util.file import GlobFileGenerator
 
 LOGGER = logging.getLogger(__name__)
-
-
-class ScoreInputConfig(BaseConfig):
-    """Qrels downstream configuration"""
-    format: str = "trec"
-    path: str
-
-
-class ScoreConfig(BaseConfig):
-    """Configuration for the scorer module"""
-    metrics: list = ['map']
-    input: ScoreInputConfig
 
 
 class QrelsReaderFactory(ComponentFactory):

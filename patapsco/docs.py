@@ -6,10 +6,11 @@ import pathlib
 
 import sqlitedict
 
-from .config import BaseConfig, ConfigService, PathConfig, Union
+from .config import ConfigService
 from .error import ConfigError, ParseError
 from .pipeline import Task
-from .text import Splitter, TextProcessor, TextProcessorConfig
+from .schema import DocumentsInputConfig
+from .text import Splitter, TextProcessor
 from .util import trec, ComponentFactory, DataclassJSONEncoder
 from .util.file import GlobFileGenerator, is_complete, touch_complete, validate_encoding
 
@@ -19,22 +20,6 @@ class Doc:
     id: str
     lang: str
     text: str
-
-
-class DocumentsInputConfig(BaseConfig):
-    """Configuration for the document corpus"""
-    format: str
-    lang: str
-    encoding: str = "utf8"
-    path: Union[str, list]
-
-
-class DocumentsConfig(BaseConfig):
-    """Document processing task configuration"""
-    input: DocumentsInputConfig
-    process: TextProcessorConfig
-    output: Union[bool, PathConfig]
-    db: PathConfig
 
 
 class DocumentReaderFactory(ComponentFactory):
