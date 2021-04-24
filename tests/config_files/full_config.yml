@@ -10,12 +10,11 @@ documents:
     path: sample/en_mini_dataset.jsonl
   process:
     normalize: true
-    lowercase: true
     tokenize:
       name: whitespace
+    lowercase: true
     stem:
-      name: trunc
-      length: 4
+      name: mock
 
 topics:
   input:

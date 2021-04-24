@@ -2,7 +2,7 @@ import pathlib
 
 from .error import ConfigError
 from .pipeline import MultiplexItem
-from .schema import TokenizeConfig, TruncStemConfig
+from .schema import TokenizeConfig, StemConfig
 from .util import ComponentFactory
 
 
@@ -15,9 +15,9 @@ class TokenizerFactory(ComponentFactory):
 
 class StemmerFactory(ComponentFactory):
     classes = {
-        'trunc': 'TruncatingStemmer',
+        'mock': 'MockStemmer',
     }
-    config_class = TruncStemConfig
+    config_class = StemConfig
 
 
 class Normalizer:
@@ -95,10 +95,13 @@ class Stemmer:
         pass
 
 
-class TruncatingStemmer(Stemmer):
+class MockStemmer(Stemmer):
+    def __init__(self, config, lang):
+        super().__init__(config, lang)
+        self.length = 5
+
     def stem(self, tokens):
-        length = self.config.length
-        return [x[:length] for x in tokens]
+        return [x[:self.length] for x in tokens]
 
 
 class Splitter:

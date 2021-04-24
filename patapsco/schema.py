@@ -5,17 +5,12 @@ Text Processing
 """""""""""""""""
 
 
-class TokenizeConfig(BaseConfig):
-    name: str
-
-
 class StemConfig(BaseConfig):
     name: str
 
 
-class TruncStemConfig(BaseConfig):
+class TokenizeConfig(BaseConfig):
     name: str
-    length: int
 
 
 class TextProcessorConfig(BaseConfig):
@@ -24,7 +19,7 @@ class TextProcessorConfig(BaseConfig):
     tokenize: TokenizeConfig
     lowercase: bool = True
     stopwords: Union[None, bool, str] = "lucene"
-    stem: Union[None, bool, StemConfig, TruncStemConfig]
+    stem: Union[bool, StemConfig] = False
     splits: Optional[list]
 
 
