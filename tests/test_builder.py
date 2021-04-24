@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from patapsco.index import MockIndexer
-from patapsco.runner import *
+from patapsco.builder import *
 from patapsco.schema import *
 
 
