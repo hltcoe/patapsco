@@ -15,3 +15,7 @@ def main():
         runner.run()
     except PatapscoError as error:
         print(f"Error: {error}")
+
+
+if __name__ == '__main__':
+    main()
