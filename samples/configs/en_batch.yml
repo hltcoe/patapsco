@@ -1,0 +1,55 @@
+run:
+  name: English run with batched pipeline
+  path: runs/en_batch
+  stage1:
+    mode: batch
+    batch_size: 10
+  stage2:
+    mode: batch
+    batch_size: 1
+
+documents:
+  input:
+    format: json
+    lang: en
+    encoding: utf8
+    path: samples/data/en_mini_dataset.jsonl
+  process:
+    normalize: true
+    tokenize:
+      name: whitespace
+    lowercase: true
+    stem:
+      name: mock
+
+index:
+  name: anserini
+
+topics:
+  input:
+    format: json
+    lang: en
+    encoding: utf8
+    path: samples/data/en_mini_dataset_topics.jsonl
+  fields: title
+
+queries:
+  process:
+    inherit: documents.process
+
+retrieve:
+  name: bm25
+  number: 5
+
+rerank:
+  name: pacrr
+  embedding: bert
+
+score:
+  input:
+    format: trec
+    path: samples/data/en_mini_dataset_qrels
+  metrics:
+    - map
+    - p@20
+    - ndcg
