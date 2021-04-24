@@ -2,6 +2,7 @@ import enum
 import functools
 import json
 import logging
+import logging.handlers
 import pathlib
 
 from .__version__ import __version__
@@ -548,6 +549,10 @@ class Runner:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         console.setFormatter(formatter)
         logger.addHandler(console)
+        buffer = logging.handlers.MemoryHandler(1024)
+        buffer.setLevel(log_level)
+        buffer.setFormatter(formatter)
+        logger.addHandler(buffer)
 
     @staticmethod
     def add_file_logging(path):
@@ -555,7 +560,9 @@ class Runner:
         file = logging.FileHandler(pathlib.Path(path) / 'patapsco.log')
         file.setLevel(logger.level)
         file.setFormatter(logger.handlers[0].formatter)
-        logger.addHandler(file)
+        logger.handlers[1].setTarget(file)
+        logger.handlers[1].flush()
+        logger.handlers[1] = file
 
     def write_report(self):
         # TODO maybe rename this as timing.txt
