@@ -512,6 +512,7 @@ class Runner:
         self.conf = ConfigPreprocessor.process(config_filename, overrides)
         builder = PipelineBuilder(self.conf)
         self.stage1, self.stage2 = builder.build()
+        self.add_file_logging(self.conf.run.path)
 
     def run(self):
         if self.conf.run.name:
@@ -547,6 +548,14 @@ class Runner:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         console.setFormatter(formatter)
         logger.addHandler(console)
+
+    @staticmethod
+    def add_file_logging(path):
+        logger = logging.getLogger('patapsco')
+        file = logging.FileHandler(pathlib.Path(path) / 'patapsco.log')
+        file.setLevel(logger.level)
+        file.setFormatter(logger.handlers[0].formatter)
+        logger.addHandler(file)
 
     def write_report(self):
         # TODO maybe rename this as timing.txt
