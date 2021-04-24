@@ -61,11 +61,11 @@ class GlobFileGenerator:
         self.args = args
         self.kwargs = kwargs
 
+        self._validate_globs(globs)
+
         self.pattern = None
         self.first_use_of_gen = True
         paths = self._next_glob()
-        if not paths:
-            raise ConfigError(f"No files match pattern '{self.pattern}'")
         self.paths = iter(paths)
         self.gen = self._next_generator()
 
@@ -95,3 +95,9 @@ class GlobFileGenerator:
         path = next(self.paths)
         self.first_use_of_gen = True
         return self.parsing_func(path, *self.args, **self.kwargs)
+
+    @staticmethod
+    def _validate_globs(globs):
+        for pattern in globs:
+            if not glob.glob(pattern):
+                raise ConfigError(f"No files match pattern '{pattern}'")

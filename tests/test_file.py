@@ -42,6 +42,13 @@ class TestGlobFileGenerator:
         with pytest.raises(ConfigError):
             file.GlobFileGenerator(str(glob.absolute()), next_line)
 
+    def test_with_bad_path_not_first(self):
+        directory = pathlib.Path(__file__).parent / 'glob_files'
+        glob1 = directory / 'file?.txt'
+        glob2 = directory / 'nothing.txt'
+        with pytest.raises(ConfigError):
+            file.GlobFileGenerator([str(glob1), str(glob2)], next_line)
+
     def test_with_multiple_patterns(self):
         directory = pathlib.Path(__file__).parent / 'glob_files'
         glob1 = directory / 'file?.txt'
