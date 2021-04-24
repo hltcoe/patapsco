@@ -43,7 +43,7 @@ For more information on configuration, see `docs/config.md`.
 ## Running
 After installing Patapsco, a sample run is started with:
 ```
-patapsco sample/en_mini.yaml
+patapsco sample/en_mini.yml
 ```
 
 ## Submitting Results
