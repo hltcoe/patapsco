@@ -76,10 +76,12 @@ class ShellReranker(Reranker):
     """
 
     def __init__(self, config, db):
+        if not pathlib.Path(config.script).exists():
+            raise ConfigError(f"Reranker shell script does not exist: {config.script}")
         super().__init__(config, db)
         self.dir = pathlib.Path(config.output.path) / 'shell'
         self.dir.mkdir(parents=True, exist_ok=True)
-        self.batch = 1
+        self.batch = 0
 
     def process(self, results):
         raise ConfigError("Shell reranker only runs with a batch pipeline")
@@ -90,8 +92,7 @@ class ShellReranker(Reranker):
         Args:
             items (list of Results)
         """
-        if not pathlib.Path(self.config.script).exists():
-            raise ConfigError(f"Reranker shell script does not exist: {self.config.script}")
+        self.batch += 1
         query_lang = self._get_query_lang(items)
         doc_lang = self._get_doc_lang(items)
         input_path = str(self.dir / f"input_{self.batch}.json")
@@ -106,7 +107,6 @@ class ShellReranker(Reranker):
             self._write_log(log_path, e.cmd, e.output)
             raise PatapscoError(e)
 
-        self.batch += 1
         new_items = self._read_output(output_path, query_lang)
         if len(items) != len(new_items):
             raise PatapscoError(f"Mismatch between queries in input and output for {self.config.script}")

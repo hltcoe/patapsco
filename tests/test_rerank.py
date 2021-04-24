@@ -52,7 +52,7 @@ class TestShellReranker:
         assert new_items[0].query.lang == 'en'
         assert new_items[0].results[0].doc_id == 'bbb'
         assert new_items[0].results[1].doc_id == 'aaa'
-        assert reranker.batch == 2
+        assert reranker.batch == 1
 
     def test_shell_reranker_with_fewer_queries_in_output(self):
         script = str(self.directory / 'success.sh')
@@ -76,10 +76,8 @@ class TestShellReranker:
     def test_shell_reranker_with_no_exist_script(self):
         script = str(self.directory / 'nothing.sh')
         config = self.create_config(script)
-        reranker = ShellReranker(config=config, db=MockDB())
-        items = [Results(Query('1', 'en', 'text'), 'test', [Result('1', 1, 0.5)])]
         with pytest.raises(ConfigError):
-            reranker.batch_process(items)
+            ShellReranker(config=config, db=MockDB())
 
     def test_shell_reranker_call_process(self):
         script = str(self.directory / 'success.sh')
@@ -105,4 +103,4 @@ class TestShellReranker:
         assert new_items[0].query.lang == 'en'
         assert new_items[0].results[0].doc_id == 'bbb'
         assert new_items[0].results[1].doc_id == 'aaa'
-        assert reranker.batch == 2
+        assert reranker.batch == 1
