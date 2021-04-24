@@ -3,10 +3,11 @@ import dataclasses
 import json
 import pathlib
 
-from .config import BaseConfig, ConfigService, PathConfig, Optional, Union
+from .config import BaseConfig, ConfigService, Optional
 from .error import ConfigError, ParseError
 from .pipeline import Task
-from .text import Splitter, TextProcessor, TextProcessorConfig
+from .schema import TopicsInputConfig
+from .text import Splitter, TextProcessor
 from .util import trec, ComponentFactory, DataclassJSONEncoder
 from .util.file import GlobFileGenerator, touch_complete, validate_encoding
 
@@ -25,37 +26,6 @@ class Query:
     id: str
     lang: str
     text: str
-
-
-class TopicsInputConfig(BaseConfig):
-    """Configuration for Topic input"""
-    format: str
-    lang: str
-    encoding: str = "utf8"
-    strip_non_digits: bool = False
-    prefix: Union[bool, str] = "EN-"
-    path: Union[str, list]
-
-
-class TopicsConfig(BaseConfig):
-    """Configuration for topics task"""
-    input: TopicsInputConfig
-    fields: str = "title"  # field1+field2 where field is title, desc, or narr
-    output: Union[bool, PathConfig]
-
-
-class QueriesInputConfig(BaseConfig):
-    """Configuration for reading queries"""
-    format: str = "json"
-    encoding: str = "utf8"
-    path: Union[str, list]
-
-
-class QueriesConfig(BaseConfig):
-    """Configuration for processing queries"""
-    input: Optional[QueriesInputConfig]
-    process: TextProcessorConfig
-    output: Union[bool, PathConfig]
 
 
 class TopicReaderFactory(ComponentFactory):

@@ -1,13 +1,9 @@
 import pathlib
 
-from .config import BaseConfig, Optional, Union
 from .error import ConfigError
 from .pipeline import MultiplexItem
+from .schema import TokenizeConfig, StemConfig
 from .util import ComponentFactory
-
-
-class TokenizeConfig(BaseConfig):
-    name: str
 
 
 class TokenizerFactory(ComponentFactory):
@@ -17,30 +13,11 @@ class TokenizerFactory(ComponentFactory):
     config_class = TokenizeConfig
 
 
-class StemConfig(BaseConfig):
-    name: str
-
-
-class TruncStemConfig(BaseConfig):
-    name: str
-    length: int
-
-
-class TextProcessorConfig(BaseConfig):
-    """Configuration for the text processing"""
-    normalize: bool = True
-    tokenize: TokenizeConfig
-    lowercase: bool = True
-    stopwords: Union[None, bool, str] = "lucene"
-    stem: Union[None, bool, StemConfig, TruncStemConfig]
-    splits: Optional[list]
-
-
 class StemmerFactory(ComponentFactory):
     classes = {
-        'trunc': 'TruncatingStemmer',
+        'mock': 'MockStemmer',
     }
-    config_class = TruncStemConfig
+    config_class = StemConfig
 
 
 class Normalizer:
@@ -118,10 +95,13 @@ class Stemmer:
         pass
 
 
-class TruncatingStemmer(Stemmer):
+class MockStemmer(Stemmer):
+    def __init__(self, config, lang):
+        super().__init__(config, lang)
+        self.length = 5
+
     def stem(self, tokens):
-        length = self.config.length
-        return [x[:length] for x in tokens]
+        return [x[:self.length] for x in tokens]
 
 
 class Splitter:

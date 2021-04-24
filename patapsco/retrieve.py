@@ -4,30 +4,12 @@ import logging
 import pathlib
 import random
 
-from .config import BaseConfig, Optional, PathConfig, Union
 from .pipeline import Task, MultiplexTask
 from .results import Result, Results
+from .schema import RetrieveConfig
 from .util import ComponentFactory
 
 LOGGER = logging.getLogger(__name__)
-
-
-class RetrieveIndexPathConfig(BaseConfig):
-    path: dict  # index name: index path
-
-
-class RetrieveInputConfig(BaseConfig):
-    """Configuration of optional retrieval inputs"""
-    index: Union[PathConfig, RetrieveIndexPathConfig]
-    queries: Optional[PathConfig]
-
-
-class RetrieveConfig(BaseConfig):
-    """Configuration for retrieval"""
-    name: str
-    number: int = 1000
-    input: RetrieveInputConfig
-    output: Union[bool, PathConfig]
 
 
 class RetrieverFactory(ComponentFactory):

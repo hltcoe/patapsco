@@ -15,8 +15,5 @@ documents:
     lowercase: true
     tokenize:
       name: whitespace
-    stem:
-      name: trunc
-      length: 4
   output:
     path: tests/build_files/output/docs_complete/docs/

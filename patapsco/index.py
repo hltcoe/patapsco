@@ -1,21 +1,10 @@
 import pathlib
 
-from .config import BaseConfig, ConfigService, PathConfig, Optional
+from .config import ConfigService
 from .pipeline import Task
+from .schema import IndexConfig
 from .util import ComponentFactory
 from .util.file import touch_complete
-
-
-class IndexInputConfig(BaseConfig):
-    """Configuration of optional retrieval inputs"""
-    documents: PathConfig
-
-
-class IndexConfig(BaseConfig):
-    """Configuration for building an index"""
-    input: Optional[IndexInputConfig]
-    name: str
-    output: PathConfig
 
 
 class IndexerFactory(ComponentFactory):
