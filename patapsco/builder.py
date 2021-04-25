@@ -72,10 +72,11 @@ class ArtifactHelper:
 class ConfigPreprocessor:
     """Processes the config dictionary before creating the config object with its validation
 
-    1. sets the output directory names from defaults if not already set
-    2. sets the paths for output to be under the run directory
-    3. sets the retriever's index path based on the index task if not already set
-    4. sets the reranker's db path based on the document processor if not already set
+    1. sets the run output if not set based on run name
+    2. sets the output directory names from defaults if not already set
+    3. sets the paths for output to be under the run output directory
+    4. sets the retriever's index path based on the index task if not already set
+    5. sets the reranker's db path based on the document processor if not already set
     """
 
     @classmethod
@@ -86,6 +87,7 @@ class ConfigPreprocessor:
         except FileNotFoundError as error:
             raise ConfigError(error)
         cls._validate(conf_dict)
+        cls._set_run_path(conf_dict)
         cls._set_output_paths(conf_dict)
         cls._update_relative_paths(conf_dict)
         cls._set_retrieve_input_path(conf_dict)
@@ -95,11 +97,19 @@ class ConfigPreprocessor:
     @staticmethod
     def _validate(conf_dict):
         # This tests for:
-        # 1. The run base path is set
+        #  1. The run name is set
         try:
-            conf_dict['run']['path']
+            conf_dict['run']['name']
         except KeyError:
-            raise ConfigError("run.path is not set")
+            raise ConfigError("run.name is not set")
+
+    @classmethod
+    def _set_run_path(cls, conf_dict):
+        # set run path from name if not already set
+        if 'path' not in conf_dict['run']:
+            mapping = str.maketrans(" ", "-", "'\",")
+            path = conf_dict['run']['name'].translate(mapping)
+            conf_dict['run']['path'] = str(pathlib.Path('runs') / path)
 
     output_defaults = {
         'documents': False,

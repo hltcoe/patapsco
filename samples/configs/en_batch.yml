@@ -1,6 +1,5 @@
 run:
-  name: English run with batched pipeline
-  path: runs/en_batch
+  name: English batch
   stage1:
     mode: batch
     batch_size: 10

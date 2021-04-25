@@ -1,6 +1,5 @@
 run:
   name: English test run
-  path: runs/en_basic
 
 documents:
   input:
