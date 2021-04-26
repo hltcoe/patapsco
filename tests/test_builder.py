@@ -10,13 +10,25 @@ from patapsco.schema import *
 
 def test_config_preprocessor_validate():
     conf = {}
-    with pytest.raises(ConfigError, match='run.path is not set'):
+    with pytest.raises(ConfigError, match='run.name is not set'):
         ConfigPreprocessor._validate(conf)
+
+
+def test_config_preprocessor_set_run_path():
+    test_cases = {
+        'test': 'test',
+        'test space': 'test-space',
+        "test's": 'tests',
+    }
+    for arg, ans in test_cases.items():
+        conf = {'run': {'name': arg}}
+        ConfigPreprocessor._set_run_path(conf)
+        assert conf['run']['path'] == str(pathlib.Path('runs') / ans)
 
 
 def test_config_preprocessor_set_output_paths():
     conf = {
-        'run': {'path': 'test'},
+        'run': {'name': 'run name', 'path': 'test'},
         'documents': {'db': {'path': 'docs_db'}},
         'index': {},
         'retrieve': {'output': {'path': 'initial_results'}},
@@ -30,7 +42,7 @@ def test_config_preprocessor_set_output_paths():
 
 def test_config_preprocessor_update_relative_paths():
     conf = {
-        'run': {'path': 'test'},
+        'run': {'name': 'run name', 'path': 'test'},
         'retrieve': {'output': {'path': 'retrieve'}},
         'documents': {'db': {'path': 'database'}}
     }
@@ -41,7 +53,7 @@ def test_config_preprocessor_update_relative_paths():
 
 def test_config_preprocessor_update_relative_paths_with_abs_path():
     conf = {
-        'run': {'path': '/opt/test'},
+        'run': {'name': 'run name', 'path': '/opt/test'},
         'retrieve': {'output': {'path': '/opt/patapsco/retrieve'}},
         'documents': {'db': {'path': '/opt/patapsco/database'}}
     }
@@ -52,7 +64,7 @@ def test_config_preprocessor_update_relative_paths_with_abs_path():
 
 def test_config_preprocessor_update_relative_paths_with_bad_db_conf():
     conf = {
-        'run': {'path': 'test'},
+        'run': {'name': 'run name', 'path': 'test'},
         'retrieve': {'output': {'path': 'retrieve'}},
         'documents': {'database': {'path': 'database'}}
     }
@@ -62,7 +74,7 @@ def test_config_preprocessor_update_relative_paths_with_bad_db_conf():
 
 def test_config_preprocessor_set_retrieve_input_path_with_input_set():
     conf = {
-        'run': {'path': 'test'},
+        'run': {'name': 'run name', 'path': 'test'},
         'retrieve': {'input': {'index': {'path': 'path_to_index'}}},
     }
     ConfigPreprocessor._set_retrieve_input_path(conf)
@@ -71,7 +83,7 @@ def test_config_preprocessor_set_retrieve_input_path_with_input_set():
 
 def test_config_preprocessor_set_retrieve_input_path_with_index():
     conf = {
-        'run': {'path': 'test'},
+        'run': {'name': 'run name', 'path': 'test'},
         'index': {'output': {'path': 'index'}},
         'retrieve': {},
     }
@@ -81,7 +93,7 @@ def test_config_preprocessor_set_retrieve_input_path_with_index():
 
 def test_config_preprocessor_set_retrieve_input_path_with_bad_index():
     conf = {
-        'run': {'path': 'test'},
+        'run': {'name': 'run name', 'path': 'test'},
         'index': {'output': {'notpath': 'index'}},
         'retrieve': {},
     }
@@ -91,7 +103,7 @@ def test_config_preprocessor_set_retrieve_input_path_with_bad_index():
 
 def test_config_preprocessor_set_rerank_db_path_with_input_set():
     conf = {
-        'run': {'path': 'test'},
+        'run': {'name': 'run name', 'path': 'test'},
         'rerank': {'input': {'db': {'path': 'path_to_db'}}},
     }
     ConfigPreprocessor._set_rerank_db_path(conf)
@@ -100,7 +112,7 @@ def test_config_preprocessor_set_rerank_db_path_with_input_set():
 
 def test_config_preprocessor_set_rerank_db_path_with_index():
     conf = {
-        'run': {'path': 'test'},
+        'run': {'name': 'run name', 'path': 'test'},
         'documents': {'db': {'path': 'path_to_db'}},
         'rerank': {},
     }
@@ -142,7 +154,7 @@ class TestPipelineBuilder:
         if path == 'test':
             output_directory = self.temp_dir
         return RunnerConfig(
-            run=RunConfig(path=str(output_directory)),
+            run=RunConfig(name='run name', path=str(output_directory)),
             documents=DocumentsConfig(
                 input=DocumentsInputConfig(format="jsonl", lang="en", path=str(input_directory / "docs.jsonl")),
                 process=TextProcessorConfig(tokenize=TokenizeConfig(name="whitespace"), stem=False),
@@ -172,7 +184,7 @@ class TestPipelineBuilder:
         )
 
     def test_create_plan_with_no_stages(self):
-        conf = RunnerConfig(run=RunConfig(path=str(self.temp_dir)))
+        conf = RunnerConfig(run=RunConfig(name='test'))
         builder = PipelineBuilder(conf)
         with pytest.raises(ConfigError, match='No tasks are configured to run'):
             builder.create_plan()

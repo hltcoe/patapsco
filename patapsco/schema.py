@@ -168,9 +168,9 @@ class StageConfig(BaseConfig):
 
 
 class RunConfig(BaseConfig):
-    """Configuration for a run of the system"""
-    path: str  # base path for run output
-    name: Optional[str]
+    """Configuration for a run of Patapsco"""
+    name: str
+    path: Optional[str]  # base path for run output by default created based on name
     stage1: StageConfig = StageConfig()
     stage2: StageConfig = StageConfig()
 
