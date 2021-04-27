@@ -75,12 +75,13 @@ class GlobFileGenerator:
         """
         if isinstance(globs, str):
             globs = [globs]
+        self.original_globs = globs
         self.globs = iter(globs)
         self.parsing_func = func
         self.args = args
         self.kwargs = kwargs
 
-        self._validate_globs(globs)
+        self._validate_globs(self.original_globs)
 
         self.pattern = None
         self.first_use_of_gen = True
@@ -105,6 +106,14 @@ class GlobFileGenerator:
             except StopIteration:
                 self.paths = iter(self._next_glob())
             return self.__next__()
+
+    def __len__(self):
+        count = 0
+        for pattern in self.original_globs:
+            for path in glob.glob(pattern):
+                reader = self.parsing_func(path, *self.args, **self.kwargs)
+                count += len(reader)
+        return count
 
     def _next_glob(self):
         self.pattern = next(self.globs)

@@ -6,12 +6,6 @@ from patapsco.error import BadDataError, ConfigError
 from patapsco.util import file
 
 
-def next_line(path):
-    with open(path) as fp:
-        for line in fp:
-            yield line.strip()
-
-
 def test_validate_encoding():
     file.validate_encoding('utf-8')
     file.validate_encoding('utf8')
@@ -30,6 +24,20 @@ def test_count_lines_with():
     directory = pathlib.Path(__file__).parent / 'trec_files'
     assert file.count_lines_with('.DID', str(directory / 'hamshahri_docs.txt')) == 2
     assert file.count_lines_with('aaa', str(directory / 'results.txt')) == 2
+
+
+def next_line(path):
+    with open(path) as fp:
+        for line in fp:
+            yield line.strip()
+
+
+class MockIterator:
+    def __init__(self, path):
+        self.path = path
+
+    def __len__(self):
+        return file.count_lines(self.path)
 
 
 class TestGlobFileGenerator:
@@ -85,3 +93,9 @@ class TestGlobFileGenerator:
         iterator = file.GlobFileGenerator(str(glob.absolute()), bad_input)
         with pytest.raises(BadDataError):
             next(iterator)
+
+    def test_len(self):
+        directory = pathlib.Path(__file__).parent / 'glob_files'
+        glob = directory / 'file?.txt'
+        iterator = file.GlobFileGenerator(str(glob), MockIterator)
+        assert len(iterator) == 3
