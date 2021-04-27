@@ -1,5 +1,6 @@
 import enum
 import functools
+import json
 import logging
 import pathlib
 
@@ -14,7 +15,7 @@ from .retrieve import Joiner, RetrieverFactory
 from .schema import RunnerConfig
 from .score import QrelsReaderFactory, Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
-from .util import SlicedIterator
+from .util import SlicedIterator, Timer
 from .util.file import delete_dir, is_complete
 
 LOGGER = logging.getLogger(__name__)
@@ -34,6 +35,52 @@ class Tasks(enum.Enum):
     RETRIEVE = enum.auto()
     RERANK = enum.auto()
     SCORE = enum.auto()
+
+
+class Job:
+    def __init__(self, conf, stage1, stage2):
+        self.conf = conf
+        self.run_path = conf.run.path
+        self.stage1 = stage1
+        self.stage2 = stage2
+
+    def run(self):
+        if self.conf.run.name:
+            LOGGER.info("Starting run: %s", self.conf.run.name)
+
+        if self.stage1:
+            timer1 = Timer()
+            LOGGER.info("Stage 1: Starting processing of documents")
+            with timer1:
+                self.stage1.run()
+            LOGGER.info("Stage 1: Ingested %d documents", self.stage1.count)
+            LOGGER.info("Stage 1 took %.1f secs", timer1.time)
+
+        if self.stage2:
+            timer2 = Timer()
+            LOGGER.info("Stage 2: Starting processing of topics")
+            with timer2:
+                self.stage2.run()
+            LOGGER.info("Stage 2: Processed %d topics", self.stage2.count)
+            LOGGER.info("Stage 2 took %.1f secs", timer2.time)
+
+        self.write_config()
+        self.write_report()
+        LOGGER.info("Run complete")
+
+    def write_report(self):
+        path = pathlib.Path(self.run_path) / 'timing.txt'
+        data = {}
+        if self.stage1:
+            data['stage1'] = self.stage1.report
+        if self.stage2:
+            data['stage2'] = self.stage2.report
+        with open(path, 'w') as fp:
+            json.dump(data, fp, indent=4)
+
+    def write_config(self):
+        path = pathlib.Path(self.run_path) / 'config.yml'
+        ConfigService.write_config_file(str(path), self.conf)
 
 
 class ArtifactHelper:
@@ -175,8 +222,8 @@ class ConfigPreprocessor:
                     raise ConfigError("rerank.input.db.path needs to be set")
 
 
-class PipelineBuilder:
-    """Builds the stage 1 and stage 2 pipelines
+class JobBuilder:
+    """Builds a Job based on stage 1 and stage 2 pipelines
 
     Analyzes the configuration to create a plan of which tasks to include.
     Then builds the pipelines based on the plan and configuration.
@@ -216,7 +263,7 @@ class PipelineBuilder:
         if stage2 and Tasks.RETRIEVE in stage2_plan:
             self.check_text_processing()
 
-        return stage1, stage2
+        return Job(self.conf, stage1, stage2)
 
     def _create_stage1_plan(self):
         # Analyze the config and check there are any artifacts from a previous run.
