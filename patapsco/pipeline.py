@@ -87,7 +87,7 @@ class MultiplexItem:
 
     def items(self):
         """
-        Returns an iterable over key-value pairs
+        Returns an iterator over key-value pairs
         """
         return self._items.items()
 
