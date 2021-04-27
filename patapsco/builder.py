@@ -276,6 +276,7 @@ class PipelineBuilder:
                 # documents already processed so locate them to create the iterator and update self.config
                 iterable = self._setup_input(DocReader, 'index.input.documents.path',
                                              'documents.output.path', 'index not configured with documents')
+                iterable = itertools.islice(iterable, stage_conf.start, stage_conf.stop)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.INDEX)
             if self.conf.documents.process.splits:
                 # if we are splitting the documents output, multiplex the indexer
@@ -343,6 +344,7 @@ class PipelineBuilder:
                 # queries already processed so locate them to set the iterator
                 iterable = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output.path',
                                              'retrieve not configured with queries')
+                iterable = itertools.islice(iterable, stage_conf.start, stage_conf.stop)
             if not self.conf.index:
                 # copy in the configuration that created the index (this path is always set in the ConfigPreprocessor)
                 self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
@@ -359,6 +361,7 @@ class PipelineBuilder:
                 # retrieve results already processed so locate them to set the iterator
                 iterable = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output.path',
                                              'rerank not configured with retrieve results')
+                iterable = itertools.islice(iterable, stage_conf.start, stage_conf.stop)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
             db = DocumentDatabaseFactory.create(self.conf.rerank.input.db.path, readonly=True)
             tasks.append(RerankFactory.create(self.conf.rerank, db))

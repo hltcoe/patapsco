@@ -166,7 +166,6 @@ class StageConfig(BaseConfig):
     mode: str = "streaming"
     batch_size: Optional[int]  # default is a single batch
     # start and stop are intended for parallel processing
-    # start/stop only applied to pipelines that start at the beginning (documents or topics/queries)
     start: Optional[int]  # O-based index of start position in input (inclusive)
     stop: Optional[int]  # O-based index of stop position in input (exclusive)
 
