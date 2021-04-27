@@ -4,7 +4,7 @@ import logging
 import pathlib
 
 from .config import ConfigService
-from .util import Timer, TimedIterable, ChunkedIterable
+from .util import Timer, TimedIterator, ChunkedIterator
 from .util.file import touch_complete
 
 LOGGER = logging.getLogger(__name__)
@@ -146,13 +146,13 @@ class MultiplexTask(Task):
 class Pipeline(abc.ABC):
     """Interface for a pipeline of tasks"""
 
-    def __init__(self, iterable, tasks):
+    def __init__(self, iterator, tasks):
         """
         Args:
-            iterable (iterable): Iterable of input for pipeline.
+            iterator (iterator): Iterator over input for pipeline.
             tasks (list): List of tasks run in sequence.
         """
-        self.iterable = TimedIterable(iterable)
+        self.iterator = TimedIterator(iterator)
         self.tasks = [TimedTask(task) for task in tasks]
         self.count = 0
 
@@ -171,12 +171,12 @@ class Pipeline(abc.ABC):
 
     @property
     def report(self):
-        report = [(str(self.iterable), self.iterable.time)]
+        report = [(str(self.iterator), self.iterator.time)]
         report.extend((str(task), task.time) for task in self.tasks)
         return report
 
     def __str__(self):
-        task_names = [str(self.iterable)]
+        task_names = [str(self.iterator)]
         task_names.extend(str(task) for task in self.tasks)
         return ' | '.join(task_names)
 
@@ -186,7 +186,7 @@ class StreamingPipeline(Pipeline):
 
     def run(self):
         self.begin()
-        for item in self.iterable:
+        for item in self.iterator:
             for task in self.tasks:
                 item = task.process(item)
             self.count += 1
@@ -196,18 +196,18 @@ class StreamingPipeline(Pipeline):
 class BatchPipeline(Pipeline):
     """Pipeline that pushes chunks of input through the tasks"""
 
-    def __init__(self, iterable, tasks, n):
+    def __init__(self, iterator, tasks, n):
         """
         Args:
-            iterable (iterable): Iterator that generates input for the pipeline.
+            iterator (iterator): Iterator that produces input for the pipeline.
             tasks (list): List of tasks.
             n (int): Batch size or None to process all.
         """
-        super().__init__(ChunkedIterable(iterable, n), tasks)
+        super().__init__(ChunkedIterator(iterator, n), tasks)
 
     def run(self):
         self.begin()
-        for chunk in self.iterable:
+        for chunk in self.iterator:
             self.count += len(chunk)
             for task in self.tasks:
                 chunk = task.batch_process(chunk)

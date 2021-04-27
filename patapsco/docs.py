@@ -11,7 +11,7 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import Splitter, TextProcessor
-from .util import trec, DataclassJSONEncoder, InputIterable, ReaderFactory
+from .util import trec, DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, is_complete, touch_complete
 
 
@@ -34,7 +34,7 @@ class DocumentReaderFactory(ReaderFactory):
     name = "input document type"
 
 
-class SgmlDocumentReader(InputIterable):
+class SgmlDocumentReader(InputIterator):
     """Iterator that reads a TREC sgml document"""
 
     def __init__(self, path, encoding, lang):
@@ -54,7 +54,7 @@ class SgmlDocumentReader(InputIterable):
         return count_lines_with('<DOC>', self.path, self.encoding)
 
 
-class Tc4JsonDocumentReader(InputIterable):
+class Tc4JsonDocumentReader(InputIterator):
     """Read documents from a JSONL file to start a pipeline"""
 
     def __init__(self, path, encoding, lang):
@@ -92,7 +92,7 @@ class Tc4JsonDocumentReader(InputIterable):
         return count_lines(self.path, self.encoding)
 
 
-class TsvDocumentReader(InputIterable):
+class TsvDocumentReader(InputIterator):
     """Iterator that reads TSV documents from MSMARCO Passages"""
 
     def __init__(self, path, encoding, lang):
@@ -118,7 +118,7 @@ class TsvDocumentReader(InputIterable):
         return count_lines(self.path, self.encoding)
 
 
-class HamshahriDocumentReader(InputIterable):
+class HamshahriDocumentReader(InputIterator):
     """Iterator that reads CLEF Farsi documents"""
 
     def __init__(self, path, encoding, lang):
@@ -168,7 +168,7 @@ class DocWriter(Task):
         touch_complete(self.dir)
 
 
-class DocReader(InputIterable):
+class DocReader(InputIterator):
     """Iterator over documents written by DocWriter"""
 
     def __init__(self, path):

@@ -8,7 +8,7 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import TopicsInputConfig
 from .text import Splitter, TextProcessor
-from .util import trec, DataclassJSONEncoder, InputIterable, ReaderFactory
+from .util import trec, DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, touch_complete
 
 
@@ -80,7 +80,7 @@ class TopicProcessor(Task):
             raise ConfigError(f"Unrecognized topic field: {e}")
 
 
-class SgmlTopicReader(InputIterable):
+class SgmlTopicReader(InputIterator):
     """Iterator over topics from trec sgml"""
 
     def __init__(self, path, encoding, lang, prefix, strip_non_digits):
@@ -102,7 +102,7 @@ class SgmlTopicReader(InputIterable):
         return count_lines_with('<top>', self.path, self.encoding)
 
 
-class XmlTopicReader(InputIterable):
+class XmlTopicReader(InputIterator):
     """Iterator over topics from trec xml"""
 
     def __init__(self, path, encoding, lang, strip_non_digits, **kwargs):
@@ -124,7 +124,7 @@ class XmlTopicReader(InputIterable):
         return count_lines_with('<topic', self.path, self.encoding)
 
 
-class Tc4JsonTopicReader(InputIterable):
+class Tc4JsonTopicReader(InputIterator):
     """Iterator over topics from jsonl file """
 
     def __init__(self, path, encoding, lang, **kwargs):
@@ -165,7 +165,7 @@ class Tc4JsonTopicReader(InputIterable):
                 raise ParseError(f"Problem parsing json from {path}: {e}")
 
 
-class TsvTopicReader(InputIterable):
+class TsvTopicReader(InputIterator):
     """Iterator over topics from tsv file like MSMARCO"""
 
     def __init__(self, path, encoding, lang, **kwargs):
@@ -227,7 +227,7 @@ class QueryWriter(Task):
         touch_complete(self.dir)
 
 
-class QueryReader(InputIterable):
+class QueryReader(InputIterator):
     """Iterator over queries from jsonl file """
 
     def __init__(self, path):

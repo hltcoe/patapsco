@@ -4,8 +4,7 @@ import pytrec_eval
 
 from .pipeline import Task
 from .schema import ScoreInputConfig
-from .util import ComponentFactory, trec
-from .util.file import GlobFileGenerator
+from .util import ComponentFactory, GlobIterator, trec
 
 LOGGER = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class TrecQrelsReader:
 
     def __init__(self, config):
         self.path = config.path
-        self.qrels_iter = GlobFileGenerator(config.path, trec.parse_qrels)
+        self.qrels_iter = GlobIterator(config.path, trec.parse_qrels)
 
     def read(self):
         """
