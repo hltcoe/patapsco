@@ -117,10 +117,12 @@ class GlobFileGenerator:
         return count
 
     def slice(self, start, stop):
-        # TODO replace the skip to starting position with something smarter
-        stop -= start
-        for _ in range(start):
-            next(self)
+        # TODO replace the skip to starting position with something more efficient
+        if start and stop:
+            stop -= start
+        if start:
+            for _ in range(start):
+                next(self)
         return itertools.islice(self, stop)
 
     def _next_glob(self):

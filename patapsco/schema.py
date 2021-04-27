@@ -164,7 +164,11 @@ Main
 class StageConfig(BaseConfig):
     """Configuration for one of the stages"""
     mode: str = "streaming"
-    batch_size: int = 0  # the default is a single batch
+    batch_size: int = 0  # 0 = a single batch for all items
+    # start and stop are intended for parallel processing
+    # start/stop only applied to pipelines that start at the beginning (documents or topics/queries)
+    start: Optional[int]  # O-based index of start position in input (inclusive)
+    stop: Optional[int]  # O-based index of stop position in input (exclusive)
 
 
 class RunConfig(BaseConfig):

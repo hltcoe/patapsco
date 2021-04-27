@@ -1,5 +1,6 @@
 import enum
 import functools
+import itertools
 import logging
 import pathlib
 
@@ -248,6 +249,7 @@ class PipelineBuilder:
             return None
         tasks = []
         iterable = None
+        stage_conf = self.conf.run.stage1
 
         if Tasks.DOCUMENTS in plan:
             # doc reader -> doc processor with doc db -> optional doc writer
@@ -255,6 +257,7 @@ class PipelineBuilder:
             self.clear_output(self.conf.documents, clear_db=True)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
             iterable = DocumentReaderFactory.create(self.conf.documents.input)
+            iterable = iterable.slice(stage_conf.start, stage_conf.stop)
             db = DocumentDatabaseFactory.create(self.conf.documents.db.path, artifact_conf)
             tasks.append(DocumentProcessor(self.conf.documents.process, lang, db))
             # add doc writer if user requesting that we save processed docs
@@ -281,15 +284,15 @@ class PipelineBuilder:
             else:
                 tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
 
-        if self.conf.run.stage1.mode == PipelineMode.STREAMING:
+        if stage_conf.mode == PipelineMode.STREAMING:
             LOGGER.info("Stage 1 is a streaming pipeline")
             pipeline_class = StreamingPipeline
-        elif self.conf.run.stage1.mode == PipelineMode.BATCH:
-            batch_size_char = str(self.conf.run.stage1.batch_size) if self.conf.run.stage1.batch_size else '∞'
+        elif stage_conf.mode == PipelineMode.BATCH:
+            batch_size_char = str(stage_conf.batch_size) if stage_conf.batch_size else '∞'
             LOGGER.info("Stage 1 is a batch pipeline selected with batch size of %s", batch_size_char)
-            pipeline_class = functools.partial(BatchPipeline, n=self.conf.run.stage1.batch_size)
+            pipeline_class = functools.partial(BatchPipeline, n=stage_conf.batch_size)
         else:
-            raise ConfigError(f"Unrecognized pipeline mode: {self.conf.run.stage1.mode}")
+            raise ConfigError(f"Unrecognized pipeline mode: {stage_conf.mode}")
         pipeline = pipeline_class(iterable, tasks)
         LOGGER.info("Stage 1 pipeline: %s", pipeline)
         return pipeline
@@ -302,13 +305,16 @@ class PipelineBuilder:
             return None
         tasks = []
         iterable = None
+        stage_conf = self.conf.run.stage2
         lang = None
+
         if Tasks.TOPICS in plan:
             # topic reader -> topic processor -> optional query writer
             lang = self.standardize_language(self.conf.topics.input)
             self.clear_output(self.conf.topics)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.TOPICS)
             iterable = TopicReaderFactory.create(self.conf.topics.input)
+            iterable = iterable.slice(stage_conf.start, stage_conf.stop)
             tasks.append(TopicProcessor(self.conf.topics))
             if self.conf.topics.output:
                 tasks.append(QueryWriter(self.conf.topics, artifact_conf))
@@ -317,11 +323,11 @@ class PipelineBuilder:
             # optional query reader -> query processor -> optional query writer
             self.clear_output(self.conf.queries)
             if Tasks.TOPICS not in plan:
-                # we don't load
                 iterable = self._setup_input(QueryReader, 'queries.input.path', 'topics.output.path',
                                              'query processor not configured with input')
                 query = iterable.peek()
                 lang = query.lang
+                iterable = itertools.islice(iterable, stage_conf.start, stage_conf.stop)
             tasks.append(QueryProcessor(self.conf.queries.process, lang))
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.QUERIES)
             if self.conf.queries.output:
@@ -362,13 +368,15 @@ class PipelineBuilder:
             qrels = QrelsReaderFactory.create(self.conf.score.input).read()
             tasks.append(Scorer(self.conf.score, qrels))
 
-        if self.conf.run.stage2.mode == PipelineMode.STREAMING:
+        if stage_conf.mode == PipelineMode.STREAMING:
             LOGGER.info("Stage 2 is a streaming pipeline")
             pipeline_class = StreamingPipeline
-        else:
-            batch_size_char = str(self.conf.run.stage2.batch_size) if self.conf.run.stage1.batch_size else '∞'
+        elif stage_conf.mode == PipelineMode.BATCH:
+            batch_size_char = str(stage_conf.batch_size) if stage_conf.batch_size else '∞'
             LOGGER.info("Stage 2 is a batch pipeline selected with batch size of %s", batch_size_char)
-            pipeline_class = functools.partial(BatchPipeline, n=self.conf.run.stage1.batch_size)
+            pipeline_class = functools.partial(BatchPipeline, n=stage_conf.batch_size)
+        else:
+            raise ConfigError(f"Unrecognized pipeline mode: {stage_conf.mode}")
         pipeline = pipeline_class(iterable, tasks)
         LOGGER.info("Stage 2 pipeline: %s", pipeline)
         return pipeline
