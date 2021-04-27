@@ -23,7 +23,7 @@ def test_chunked_iterator_not_divisible():
 
 def test_chunked_iterator_all():
     data = [1, 2, 3, 4]
-    it = ChunkedIterable(iter(data), 0)
+    it = ChunkedIterable(iter(data), None)
     assert next(it) == [1, 2, 3, 4]
     with pytest.raises(StopIteration):
         next(it)

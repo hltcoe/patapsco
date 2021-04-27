@@ -201,7 +201,7 @@ class BatchPipeline(Pipeline):
         Args:
             iterable (iterable): Iterator that generates input for the pipeline.
             tasks (list): List of tasks.
-            n (int): Batch size.
+            n (int): Batch size or None to process all.
         """
         super().__init__(ChunkedIterable(iterable, n), tasks)
 
