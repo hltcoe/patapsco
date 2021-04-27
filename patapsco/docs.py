@@ -12,7 +12,7 @@ from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import Splitter, TextProcessor
 from .util import trec, DataclassJSONEncoder, ReaderFactory
-from .util.file import is_complete, touch_complete
+from .util.file import count_lines, count_lines_with, is_complete, touch_complete
 
 
 @dataclasses.dataclass
@@ -38,6 +38,8 @@ class SgmlDocumentReader:
     """Iterator that reads a TREC sgml document"""
 
     def __init__(self, path, encoding, lang):
+        self.path = path
+        self.encoding = encoding
         self.lang = lang
         self.docs_iter = iter(trec.parse_sgml_documents(path, encoding))
 
@@ -47,6 +49,9 @@ class SgmlDocumentReader:
     def __next__(self):
         doc = next(self.docs_iter)
         return Doc(doc[0], self.lang, doc[1])
+
+    def __len__(self):
+        return count_lines_with('<DOC>', self.path, self.encoding)
 
 
 class Tc4JsonDocumentReader:
@@ -60,6 +65,7 @@ class Tc4JsonDocumentReader:
             lang (str): Language of documents in file
         """
         self.path = path
+        self.encoding = encoding
         self.lang = lang
         open_func = gzip.open if path.endswith('.gz') else open
         self.fp = open_func(path, 'rt', encoding=encoding)
@@ -82,12 +88,16 @@ class Tc4JsonDocumentReader:
         except KeyError as e:
             raise ParseError(f"Missing field {e} in json element in {self.path} on line {self.count}")
 
+    def __len__(self):
+        return count_lines(self.path, self.encoding)
+
 
 class TsvDocumentReader:
     """Iterator that reads TSV documents from MSMARCO Passages"""
 
     def __init__(self, path, encoding, lang):
         self.path = path
+        self.encoding = encoding
         self.lang = lang
         open_func = gzip.open if path.endswith('.gz') else open
         self.fp = open_func(path, 'rt', encoding=encoding)
@@ -104,11 +114,16 @@ class TsvDocumentReader:
             self.fp.close()
             raise
 
+    def __len__(self):
+        return count_lines(self.path, self.encoding)
+
 
 class HamshahriDocumentReader:
     """Iterator that reads CLEF Farsi documents"""
 
     def __init__(self, path, encoding, lang):
+        self.path = path
+        self.encoding = encoding
         self.lang = lang
         self.docs_iter = iter(trec.parse_hamshahri_documents(path, encoding))
 
@@ -118,6 +133,9 @@ class HamshahriDocumentReader:
     def __next__(self):
         doc = next(self.docs_iter)
         return Doc(doc[0], self.lang, doc[1])
+
+    def __len__(self):
+        return count_lines_with('.DID', self.path, self.encoding)
 
 
 class DocWriter(Task):

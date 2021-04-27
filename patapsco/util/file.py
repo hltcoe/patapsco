@@ -38,12 +38,22 @@ def is_complete(path):
     return file.exists()
 
 
-def count_lines(path):
+def count_lines(path, encoding='utf8'):
     """Count lines in a text file"""
     count = 0
-    with open(path, 'r') as fp:
+    with open(path, 'r', encoding=encoding) as fp:
         for _ in fp:
             count += 1
+    return count
+
+
+def count_lines_with(string, path, encoding='utf8'):
+    """Count lines in a text file with a particular string"""
+    count = 0
+    with open(path, 'r', encoding=encoding) as fp:
+        for line in fp:
+            if string in line:
+                count += 1
     return count
 
 

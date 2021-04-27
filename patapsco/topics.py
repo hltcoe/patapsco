@@ -9,7 +9,7 @@ from .pipeline import Task
 from .schema import TopicsInputConfig
 from .text import Splitter, TextProcessor
 from .util import trec, DataclassJSONEncoder, ReaderFactory
-from .util.file import GlobFileGenerator, touch_complete, validate_encoding
+from .util.file import count_lines, count_lines_with, touch_complete
 
 
 @dataclasses.dataclass
@@ -84,6 +84,8 @@ class SgmlTopicReader:
     """Iterator over topics from trec sgml"""
 
     def __init__(self, path, encoding, lang, prefix, strip_non_digits):
+        self.path = path
+        self.encoding = encoding
         self.lang = lang
         self.strip_non_digits = strip_non_digits
         self.topics = iter(topic for topic in trec.parse_sgml_topics(path, encoding, prefix))
@@ -96,11 +98,16 @@ class SgmlTopicReader:
         identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
         return Topic(identifier, self.lang, topic[1], topic[2], topic[3])
 
+    def __len__(self):
+        return count_lines_with('<top>', self.path, self.encoding)
+
 
 class XmlTopicReader:
     """Iterator over topics from trec xml"""
 
     def __init__(self, path, encoding, lang, strip_non_digits, **kwargs):
+        self.path = path
+        self.encoding = encoding
         self.lang = lang
         self.strip_non_digits = strip_non_digits
         self.topics = iter(topic for topic in trec.parse_xml_topics(path, encoding))
@@ -112,6 +119,9 @@ class XmlTopicReader:
         topic = next(self.topics)
         identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
         return Topic(identifier, topic[1], topic[2], topic[3], topic[4])
+
+    def __len__(self):
+        return count_lines_with('<topic', self.path, self.encoding)
 
 
 class JsonTopicReader:
@@ -125,6 +135,8 @@ class JsonTopicReader:
             lang (str): Language of the topics.
             **kwargs (dict): Unused
         """
+        self.path = path
+        self.encoding = encoding
         self.lang = lang
         self.topics = iter(self.parse(path, encoding))
 
@@ -133,6 +145,9 @@ class JsonTopicReader:
 
     def __next__(self):
         return next(self.topics)
+
+    def __len__(self):
+        return count_lines(self.path, self.encoding)
 
     def construct(self, data):
         try:
@@ -154,6 +169,8 @@ class TsvTopicReader:
     """Iterator over topics from tsv file like MSMARCO"""
 
     def __init__(self, path, encoding, lang, **kwargs):
+        self.path = path
+        self.encoding = encoding
         self.lang = lang
         self.topics = iter(topic for topic in self.parse(path, encoding))
 
@@ -163,6 +180,9 @@ class TsvTopicReader:
     def __next__(self):
         topic = next(self.topics)
         return Topic(topic[0], self.lang, topic[1], None, None)
+
+    def __len__(self):
+        return count_lines(self.path, self.encoding)
 
     @staticmethod
     def parse(path, encoding='utf8'):

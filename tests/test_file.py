@@ -26,6 +26,12 @@ def test_count_lines():
     assert file.count_lines(str(directory / 'results.txt')) == 4
 
 
+def test_count_lines_with():
+    directory = pathlib.Path(__file__).parent / 'trec_files'
+    assert file.count_lines_with('.DID', str(directory / 'hamshahri_docs.txt')) == 2
+    assert file.count_lines_with('aaa', str(directory / 'results.txt')) == 2
+
+
 class TestGlobFileGenerator:
     def test_with_absolute(self):
         directory = pathlib.Path(__file__).parent / 'glob_files'
