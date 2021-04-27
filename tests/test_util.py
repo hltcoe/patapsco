@@ -107,39 +107,67 @@ class TestGlobIterator:
         iterator = GlobIterator(str(glob), MockIterator)
         assert len(iterator) == 3
 
-    def test_slice_with_start_0(self):
-        directory = pathlib.Path(__file__).parent / 'glob_files'
-        glob1 = directory / 'file?.txt'
-        glob2 = directory / 'other*'
-        iterator = GlobIterator([str(glob1), str(glob2)], MockIterator)
-        iterator = iterator.slice(0, 3)
-        assert next(iterator) == '1'
-        assert next(iterator) == '2'
-        assert next(iterator) == '3'
-        with pytest.raises(StopIteration):
-            next(iterator)
 
-    def test_slice_with_start_3(self):
+class TestSlicedIterator:
+    def test_len(self):
         directory = pathlib.Path(__file__).parent / 'glob_files'
         glob1 = directory / 'file?.txt'
         glob2 = directory / 'other*'
-        iterator = GlobIterator([str(glob1), str(glob2)], MockIterator)
-        iterator = iterator.slice(2, 4)
-        assert next(iterator) == '3'
-        assert next(iterator) == '4'
-        with pytest.raises(StopIteration):
-            next(iterator)
+        it1 = GlobIterator([str(glob1), str(glob2)], MockIterator)
+        it2 = SlicedIterator(it1, 0, 5)
+        assert len(it1) == 5
+        assert len(it2) == 5
+        it2 = SlicedIterator(it1, 0, 4)
+        assert len(it2) == 4
+        it2 = SlicedIterator(it1, 0, 10)
+        assert len(it2) == 5
+        it2 = SlicedIterator(it1, 2, 4)
+        assert len(it2) == 2
 
-    def test_slice_with_stop_beyond_end(self):
+    def test_next(self):
         directory = pathlib.Path(__file__).parent / 'glob_files'
         glob1 = directory / 'file?.txt'
         glob2 = directory / 'other*'
-        iterator = GlobIterator([str(glob1), str(glob2)], MockIterator)
-        iterator = iterator.slice(0, 10)
-        assert next(iterator) == '1'
-        assert next(iterator) == '2'
-        assert next(iterator) == '3'
-        assert next(iterator) == '4'
-        assert next(iterator) == '5'
+        it1 = GlobIterator([str(glob1), str(glob2)], MockIterator)
+        it2 = SlicedIterator(it1, 1, 4)
+        assert next(it2) == '2'
+        assert next(it2) == '3'
+        assert next(it2) == '4'
         with pytest.raises(StopIteration):
-            next(iterator)
+            next(it2)
+
+    def test_with_nones(self):
+        directory = pathlib.Path(__file__).parent / 'glob_files'
+        glob1 = directory / 'file?.txt'
+        glob2 = directory / 'other*'
+        it1 = GlobIterator([str(glob1), str(glob2)], MockIterator)
+        it2 = SlicedIterator(it1, None, None)
+        assert next(it2) == '1'
+        assert next(it2) == '2'
+        assert next(it2) == '3'
+        assert next(it2) == '4'
+        assert next(it2) == '5'
+        with pytest.raises(StopIteration):
+            next(it2)
+
+    def test_with_none_start(self):
+        directory = pathlib.Path(__file__).parent / 'glob_files'
+        glob1 = directory / 'file?.txt'
+        glob2 = directory / 'other*'
+        it1 = GlobIterator([str(glob1), str(glob2)], MockIterator)
+        it2 = SlicedIterator(it1, None, 2)
+        assert next(it2) == '1'
+        assert next(it2) == '2'
+        with pytest.raises(StopIteration):
+            next(it2)
+
+    def test_with_none_stop(self):
+        directory = pathlib.Path(__file__).parent / 'glob_files'
+        glob1 = directory / 'file?.txt'
+        glob2 = directory / 'other*'
+        it1 = GlobIterator([str(glob1), str(glob2)], MockIterator)
+        it2 = SlicedIterator(it1, 3, None)
+        assert next(it2) == '4'
+        assert next(it2) == '5'
+        with pytest.raises(StopIteration):
+            next(it2)

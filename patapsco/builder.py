@@ -1,6 +1,5 @@
 import enum
 import functools
-import itertools
 import logging
 import pathlib
 
@@ -15,6 +14,7 @@ from .retrieve import Joiner, RetrieverFactory
 from .schema import RunnerConfig
 from .score import QrelsReaderFactory, Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
+from .util import SlicedIterator
 from .util.file import delete_dir, is_complete
 
 LOGGER = logging.getLogger(__name__)
@@ -258,8 +258,7 @@ class PipelineBuilder:
             self.clear_output(self.conf.documents, clear_db=True)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
             iterator = DocumentReaderFactory.create(self.conf.documents.input)
-            if stage_conf.start or stage_conf.stop:
-                iterator = iterator.slice(stage_conf.start, stage_conf.stop)
+            iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
             db = DocumentDatabaseFactory.create(self.conf.documents.db.path, artifact_conf)
             tasks.append(DocumentProcessor(self.conf.documents.process, lang, db))
             # add doc writer if user requesting that we save processed docs
@@ -278,7 +277,7 @@ class PipelineBuilder:
                 # documents already processed so locate them to create the iterator and update config
                 iterator = self._setup_input(DocReader, 'index.input.documents.path',
                                              'documents.output.path', 'index not configured with documents')
-                iterator = itertools.islice(iterator, stage_conf.start, stage_conf.stop)
+                iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.INDEX)
             if self.conf.documents.process.splits:
                 # if we are splitting the documents output, multiplex the indexer
@@ -317,7 +316,7 @@ class PipelineBuilder:
             self.clear_output(self.conf.topics)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.TOPICS)
             iterator = TopicReaderFactory.create(self.conf.topics.input)
-            iterator = iterator.slice(stage_conf.start, stage_conf.stop)
+            iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
             tasks.append(TopicProcessor(self.conf.topics))
             if self.conf.topics.output:
                 tasks.append(QueryWriter(self.conf.topics, artifact_conf))
@@ -330,7 +329,7 @@ class PipelineBuilder:
                                              'query processor not configured with input')
                 query = iterator.peek()
                 lang = query.lang
-                iterator = itertools.islice(iterator, stage_conf.start, stage_conf.stop)
+                iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
             tasks.append(QueryProcessor(self.conf.queries.process, lang))
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.QUERIES)
             if self.conf.queries.output:
@@ -346,7 +345,7 @@ class PipelineBuilder:
                 # queries already processed so locate them to set the iterator
                 iterator = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output.path',
                                              'retrieve not configured with queries')
-                iterator = itertools.islice(iterator, stage_conf.start, stage_conf.stop)
+                iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
             if not self.conf.index:
                 # copy in the configuration that created the index (this path is always set in the ConfigPreprocessor)
                 self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
@@ -363,7 +362,7 @@ class PipelineBuilder:
                 # retrieve results already processed so locate them to set the iterator
                 iterator = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output.path',
                                              'rerank not configured with retrieve results')
-                iterator = itertools.islice(iterator, stage_conf.start, stage_conf.stop)
+                iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
             db = DocumentDatabaseFactory.create(self.conf.rerank.input.db.path, readonly=True)
             tasks.append(RerankFactory.create(self.conf.rerank, db))

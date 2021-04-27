@@ -85,12 +85,14 @@ class Timer:
 
 class InputIterator(abc.ABC, collections.abc.Iterator, collections.abc.Sized):
     """Iterable that also supports len()"""
-    pass
+
+    def __str__(self):
+        return self.__class__.__name__
 
 
 class TimedIterator(collections.abc.Iterator):
-    def __init__(self, iterable):
-        self.iterable = iterable
+    def __init__(self, iterator):
+        self.iterator = iterator
         self.timer = Timer()
 
     @property
@@ -98,11 +100,11 @@ class TimedIterator(collections.abc.Iterator):
         return self.timer.time
 
     def __str__(self):
-        return self.iterable.__class__.__name__
+        return str(self.iterator)
 
     def __next__(self):
         with self.timer:
-            return next(self.iterable)
+            return next(self.iterator)
 
 
 class ChunkedIterator(collections.abc.Iterator):
@@ -126,6 +128,35 @@ class ChunkedIterator(collections.abc.Iterator):
             return next(self.chunked)
 
 
+class SlicedIterator(InputIterator):
+    """Support start and stop offsets on InputIterator"""
+
+    def __init__(self, iterator, start, stop):
+        self.original_iterator = iterator
+        self.start = start
+        self.stop = stop
+        if start is None and stop is None:
+            self.iterator = iterator
+        elif start is not None and hasattr(iterator, "skip"):
+            iterator.skip(start)
+            if stop:
+                self.iterator = itertools.islice(iterator, stop - start)
+            else:
+                self.iterator = iterator
+        else:
+            self.iterator = itertools.islice(iterator, start, stop)
+
+    def __next__(self):
+        return next(self.iterator)
+
+    def __len__(self):
+        original_length = len(self.original_iterator)
+        return min(original_length, self.stop) - self.start
+
+    def __str__(self):
+        return str(self.original_iterator)
+
+
 class GlobIterator(InputIterator):
     """
     You have a callable that returns an iterator over items given a file.
@@ -134,11 +165,11 @@ class GlobIterator(InputIterator):
     Use GlobIterator.
     """
 
-    def __init__(self, globs, func, *args, **kwargs):
+    def __init__(self, globs, cls, *args, **kwargs):
         """
         Args:
             globs (list or str): array of glob strings or single glob string
-            func (callable): parsing function returns an iterator
+            cls (class): InputIterator class
             *args: variable length arguments for the parsing function
             **kwargs: keyword arguments for the parsing function
         """
@@ -146,7 +177,7 @@ class GlobIterator(InputIterator):
             globs = [globs]
         self.original_globs = globs
         self.globs = iter(globs)
-        self.parsing_func = func
+        self.cls = cls
         self.args = args
         self.kwargs = kwargs
 
@@ -177,18 +208,18 @@ class GlobIterator(InputIterator):
         count = 0
         for pattern in self.original_globs:
             for path in glob.glob(pattern):
-                reader = self.parsing_func(path, *self.args, **self.kwargs)
+                reader = self.cls(path, *self.args, **self.kwargs)
                 count += len(reader)
         return count
 
-    def slice(self, start, stop):
+    def __str__(self):
+        return str(self.cls.__name__)
+
+    def skip(self, start):
         # TODO replace the skip to starting position with something more efficient
-        if start and stop:
-            stop -= start
         if start:
             for _ in range(start):
                 next(self)
-        return itertools.islice(self, stop)
 
     def _next_glob(self):
         self.pattern = next(self.globs)
@@ -197,7 +228,7 @@ class GlobIterator(InputIterator):
     def _next_generator(self):
         path = next(self.paths)
         self.first_use_of_gen = True
-        return self.parsing_func(path, *self.args, **self.kwargs)
+        return self.cls(path, *self.args, **self.kwargs)
 
     @staticmethod
     def _validate_globs(globs):

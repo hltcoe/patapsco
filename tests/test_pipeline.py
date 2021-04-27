@@ -32,8 +32,7 @@ class NumberGenerator:
     def __next__(self):
         return next(self.docs)
 
-    @property
-    def name(self):
+    def __str__(self):
         return 'NumberGenerator'
 
 
