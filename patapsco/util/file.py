@@ -38,6 +38,15 @@ def is_complete(path):
     return file.exists()
 
 
+def count_lines(path):
+    """Count lines in a text file"""
+    count = 0
+    with open(path, 'r') as fp:
+        for _ in fp:
+            count += 1
+    return count
+
+
 class GlobFileGenerator:
     """
     You have a function that returns a generator given a file.

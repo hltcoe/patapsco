@@ -20,6 +20,12 @@ def test_validate_encoding():
         file.validate_encoding('abc')
 
 
+def test_count_lines():
+    directory = pathlib.Path(__file__).parent / 'trec_files'
+    assert file.count_lines(str(directory / 'hamshahri_docs.txt')) == 10
+    assert file.count_lines(str(directory / 'results.txt')) == 4
+
+
 class TestGlobFileGenerator:
     def test_with_absolute(self):
         directory = pathlib.Path(__file__).parent / 'glob_files'
