@@ -80,6 +80,11 @@ class Timer:
         self.time += timeit.default_timer() - self.start
 
 
+class InputIterable(collections.abc.Iterable, collections.abc.Sized):
+    """Iterable that also supports len()"""
+    pass
+
+
 class TimedIterable(collections.abc.Iterable):
     def __init__(self, iterable):
         self.iterable = iterable

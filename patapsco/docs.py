@@ -11,7 +11,7 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import Splitter, TextProcessor
-from .util import trec, DataclassJSONEncoder, ReaderFactory
+from .util import trec, DataclassJSONEncoder, InputIterable, ReaderFactory
 from .util.file import count_lines, count_lines_with, is_complete, touch_complete
 
 
@@ -34,7 +34,7 @@ class DocumentReaderFactory(ReaderFactory):
     name = "input document type"
 
 
-class SgmlDocumentReader:
+class SgmlDocumentReader(InputIterable):
     """Iterator that reads a TREC sgml document"""
 
     def __init__(self, path, encoding, lang):
@@ -54,7 +54,7 @@ class SgmlDocumentReader:
         return count_lines_with('<DOC>', self.path, self.encoding)
 
 
-class Tc4JsonDocumentReader:
+class Tc4JsonDocumentReader(InputIterable):
     """Read documents from a JSONL file to start a pipeline"""
 
     def __init__(self, path, encoding, lang):
@@ -92,7 +92,7 @@ class Tc4JsonDocumentReader:
         return count_lines(self.path, self.encoding)
 
 
-class TsvDocumentReader:
+class TsvDocumentReader(InputIterable):
     """Iterator that reads TSV documents from MSMARCO Passages"""
 
     def __init__(self, path, encoding, lang):
@@ -118,7 +118,7 @@ class TsvDocumentReader:
         return count_lines(self.path, self.encoding)
 
 
-class HamshahriDocumentReader:
+class HamshahriDocumentReader(InputIterable):
     """Iterator that reads CLEF Farsi documents"""
 
     def __init__(self, path, encoding, lang):
@@ -139,7 +139,7 @@ class HamshahriDocumentReader:
 
 
 class DocWriter(Task):
-    """Write documents to a json file"""
+    """Write documents to a json file using internal format"""
 
     def __init__(self, config, artifact_config):
         super().__init__()
@@ -168,12 +168,14 @@ class DocWriter(Task):
         touch_complete(self.dir)
 
 
-class DocReader:
+class DocReader(InputIterable):
     """Iterator over documents written by DocWriter"""
 
     def __init__(self, path):
-        path = pathlib.Path(path) / 'documents.jsonl'
-        self.file = open(path, 'r')
+        self.path = pathlib.Path(path)
+        if self.path.is_dir():
+            self.path = self.path / 'documents.jsonl'
+        self.file = open(self.path, 'r')
 
     def __iter__(self):
         return self
@@ -185,6 +187,9 @@ class DocReader:
             raise StopIteration
         data = json.loads(line)
         return Doc(**data)
+
+    def __len__(self):
+        return count_lines(self.path)
 
 
 class DocumentDatabase(sqlitedict.SqliteDict):

@@ -8,7 +8,7 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import TopicsInputConfig
 from .text import Splitter, TextProcessor
-from .util import trec, DataclassJSONEncoder, ReaderFactory
+from .util import trec, DataclassJSONEncoder, InputIterable, ReaderFactory
 from .util.file import count_lines, count_lines_with, touch_complete
 
 
@@ -32,8 +32,8 @@ class TopicReaderFactory(ReaderFactory):
     classes = {
         'sgml': 'SgmlTopicReader',
         'xml': 'XmlTopicReader',
-        'json': 'JsonTopicReader',
-        'jsonl': 'JsonTopicReader',
+        'json': 'Tc4JsonTopicReader',
+        'jsonl': 'Tc4JsonTopicReader',
         'msmarco': 'TsvTopicReader'
     }
     config_class = TopicsInputConfig
@@ -80,7 +80,7 @@ class TopicProcessor(Task):
             raise ConfigError(f"Unrecognized topic field: {e}")
 
 
-class SgmlTopicReader:
+class SgmlTopicReader(InputIterable):
     """Iterator over topics from trec sgml"""
 
     def __init__(self, path, encoding, lang, prefix, strip_non_digits):
@@ -102,7 +102,7 @@ class SgmlTopicReader:
         return count_lines_with('<top>', self.path, self.encoding)
 
 
-class XmlTopicReader:
+class XmlTopicReader(InputIterable):
     """Iterator over topics from trec xml"""
 
     def __init__(self, path, encoding, lang, strip_non_digits, **kwargs):
@@ -124,7 +124,7 @@ class XmlTopicReader:
         return count_lines_with('<topic', self.path, self.encoding)
 
 
-class JsonTopicReader:
+class Tc4JsonTopicReader(InputIterable):
     """Iterator over topics from jsonl file """
 
     def __init__(self, path, encoding, lang, **kwargs):
@@ -165,7 +165,7 @@ class JsonTopicReader:
                 raise ParseError(f"Problem parsing json from {path}: {e}")
 
 
-class TsvTopicReader:
+class TsvTopicReader(InputIterable):
     """Iterator over topics from tsv file like MSMARCO"""
 
     def __init__(self, path, encoding, lang, **kwargs):
@@ -193,7 +193,7 @@ class TsvTopicReader:
 
 
 class QueryWriter(Task):
-    """Write queries to a jsonl file"""
+    """Write queries to a jsonl file using internal format"""
 
     def __init__(self, config, artifact_config):
         """
@@ -227,14 +227,14 @@ class QueryWriter(Task):
         touch_complete(self.dir)
 
 
-class QueryReader:
+class QueryReader(InputIterable):
     """Iterator over queries from jsonl file """
 
     def __init__(self, path):
-        path = pathlib.Path(path)
-        if path.is_dir():
-            path = path / 'queries.jsonl'
-        with open(path) as fp:
+        self.path = pathlib.Path(path)
+        if self.path.is_dir():
+            self.path = self.path / 'queries.jsonl'
+        with open(self.path) as fp:
             self.data = fp.readlines()
 
     def __iter__(self):
@@ -245,6 +245,9 @@ class QueryReader:
             return Query(**json.loads(self.data.pop(0)))
         except IndexError:
             raise StopIteration()
+
+    def __len__(self):
+        return count_lines(self.path)
 
     def peek(self):
         return Query(**json.loads(self.data[0]))
