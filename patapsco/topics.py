@@ -8,7 +8,7 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import TopicsInputConfig
 from .text import Splitter, TextProcessor
-from .util import trec, ComponentFactory, DataclassJSONEncoder
+from .util import trec, DataclassJSONEncoder, ReaderFactory
 from .util.file import GlobFileGenerator, touch_complete, validate_encoding
 
 
@@ -28,7 +28,7 @@ class Query:
     text: str
 
 
-class TopicReaderFactory(ComponentFactory):
+class TopicReaderFactory(ReaderFactory):
     classes = {
         'sgml': 'SgmlTopicReader',
         'xml': 'XmlTopicReader',
@@ -83,12 +83,10 @@ class TopicProcessor(Task):
 class SgmlTopicReader:
     """Iterator over topics from trec sgml"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.strip_non_digits = config.strip_non_digits
-        prefix = config.prefix
-        self.topics = GlobFileGenerator(config.path, trec.parse_sgml_topics, prefix, config.encoding)
+    def __init__(self, path, encoding, lang, prefix, strip_non_digits):
+        self.lang = lang
+        self.strip_non_digits = strip_non_digits
+        self.topics = iter(topic for topic in trec.parse_sgml_topics(path, encoding, prefix))
 
     def __iter__(self):
         return self
@@ -102,11 +100,10 @@ class SgmlTopicReader:
 class XmlTopicReader:
     """Iterator over topics from trec xml"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.strip_non_digits = config.strip_non_digits
-        self.topics = GlobFileGenerator(config.path, trec.parse_xml_topics, config.encoding)
+    def __init__(self, path, encoding, lang, strip_non_digits, **kwargs):
+        self.lang = lang
+        self.strip_non_digits = strip_non_digits
+        self.topics = iter(topic for topic in trec.parse_xml_topics(path, encoding))
 
     def __iter__(self):
         return self
@@ -120,41 +117,45 @@ class XmlTopicReader:
 class JsonTopicReader:
     """Iterator over topics from jsonl file """
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.topics = GlobFileGenerator(config.path, self.parse, config.encoding)
+    def __init__(self, path, encoding, lang, **kwargs):
+        """
+        Args:
+            path (str): Path to topics file.
+            encoding (str): File encoding.
+            lang (str): Language of the topics.
+            **kwargs (dict): Unused
+        """
+        self.lang = lang
+        self.topics = iter(self.parse(path, encoding))
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        topic = next(self.topics)
-        return Topic(topic[0], self.lang, topic[1], topic[2], None)
+        return next(self.topics)
 
-    @staticmethod
-    def parse(path, encoding='utf8'):
+    def construct(self, data):
+        try:
+            title = data['topic_name'].strip()
+            desc = data['topic_description'].strip()
+            return Topic(data['topic_id'], self.lang, title, desc, None)
+        except KeyError as e:
+            raise ParseError(f"Missing field {e} in json docs element: {data}")
+
+    def parse(self, path, encoding='utf8'):
         with open(path, 'r', encoding=encoding) as fp:
-            for line in fp:
-                try:
-                    data = json.loads(line.strip())
-                except json.decoder.JSONDecodeError as e:
-                    raise ParseError(f"Problem parsing json from {path}: {e}")
-                try:
-                    title = data['topic_name'].strip()
-                    desc = data['topic_description'].strip()
-                    yield data['topic_id'], title, desc
-                except KeyError as e:
-                    raise ParseError(f"Missing field {e} in json docs element: {data}")
+            try:
+                return [self.construct(json.loads(data)) for data in fp]
+            except json.decoder.JSONDecodeError as e:
+                raise ParseError(f"Problem parsing json from {path}: {e}")
 
 
 class TsvTopicReader:
-    """Iterator over topics from tsv file """
+    """Iterator over topics from tsv file like MSMARCO"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.topics = GlobFileGenerator(config.path, self.parse, config.encoding)
+    def __init__(self, path, encoding, lang, **kwargs):
+        self.lang = lang
+        self.topics = iter(topic for topic in self.parse(path, encoding))
 
     def __iter__(self):
         return self

@@ -11,8 +11,8 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import Splitter, TextProcessor
-from .util import trec, ComponentFactory, DataclassJSONEncoder
-from .util.file import GlobFileGenerator, is_complete, touch_complete, validate_encoding
+from .util import trec, DataclassJSONEncoder, ReaderFactory
+from .util.file import is_complete, touch_complete
 
 
 @dataclasses.dataclass
@@ -22,7 +22,7 @@ class Doc:
     text: str
 
 
-class DocumentReaderFactory(ComponentFactory):
+class DocumentReaderFactory(ReaderFactory):
     classes = {
         'sgml': 'SgmlDocumentReader',
         'json': 'Tc4JsonDocumentReader',
@@ -35,88 +35,88 @@ class DocumentReaderFactory(ComponentFactory):
 
 
 class SgmlDocumentReader:
-    """Iterator that reads TREC sgml documents"""
+    """Iterator that reads a TREC sgml document"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, trec.parse_sgml_documents, config.encoding)
+    def __init__(self, path, encoding, lang):
+        self.lang = lang
+        self.docs_iter = iter(trec.parse_sgml_documents(path, encoding))
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        doc = next(self.docs)
+        doc = next(self.docs_iter)
         return Doc(doc[0], self.lang, doc[1])
 
 
 class Tc4JsonDocumentReader:
-    """Read JSONL documents to start a pipeline"""
+    """Read documents from a JSONL file to start a pipeline"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, self.parse, config.encoding)
+    def __init__(self, path, encoding, lang):
+        """
+        Args:
+            path (str): Path to file to parse
+            encoding (str): Encoding of file
+            lang (str): Language of documents in file
+        """
+        self.path = path
+        self.lang = lang
+        open_func = gzip.open if path.endswith('.gz') else open
+        self.fp = open_func(path, 'rt', encoding=encoding)
+        self.count = 0
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        doc = next(self.docs)
-        return Doc(doc[0], self.lang, doc[1])
-
-    @staticmethod
-    def parse(path, encoding='utf8'):
-        open_func = gzip.open if path.endswith('.gz') else open
-        with open_func(path, 'rt', encoding=encoding) as fp:
-            for line in fp:
-                try:
-                    data = json.loads(line.strip())
-                except json.decoder.JSONDecodeError as e:
-                    raise ParseError(f"Problem parsing json from {path}: {e}")
-                try:
-                    yield data['id'], ' '.join([data['title'].strip(), data['text'].strip()])
-                except KeyError as e:
-                    raise ParseError(f"Missing field {e} in json docs element: {data}")
+        self.count += 1
+        line = self.fp.readline()
+        if not line:
+            self.fp.close()
+            raise StopIteration()
+        try:
+            data = json.loads(line.strip())
+            return Doc(data['id'], self.lang, ' '.join([data['title'].strip(), data['text'].strip()]))
+        except json.decoder.JSONDecodeError as e:
+            raise ParseError(f"Problem parsing json from {self.path} on line {self.count}: {e}")
+        except KeyError as e:
+            raise ParseError(f"Missing field {e} in json element in {self.path} on line {self.count}")
 
 
 class TsvDocumentReader:
-    """Iterator that reads TSV documents like from MSMARCO"""
+    """Iterator that reads TSV documents from MSMARCO Passages"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, self.parse, config.encoding)
+    def __init__(self, path, encoding, lang):
+        self.path = path
+        self.lang = lang
+        open_func = gzip.open if path.endswith('.gz') else open
+        self.fp = open_func(path, 'rt', encoding=encoding)
+        self.reader = csv.reader(self.fp, delimiter='\t')
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        doc = next(self.docs)
-        return Doc(doc[0], self.lang, doc[1])
-
-    @staticmethod
-    def parse(path, encoding='utf8'):
-        open_func = gzip.open if path.endswith('.gz') else open
-        with open_func(path, 'rt', encoding=encoding) as fp:
-            reader = csv.reader(fp, delimiter='\t')
-            for line in reader:
-                yield line[0], line[1].strip()
+        try:
+            row = next(self.reader)
+            return Doc(row[0], self.lang, row[1])
+        except StopIteration:
+            self.fp.close()
+            raise
 
 
 class HamshahriDocumentReader:
     """Iterator that reads CLEF Farsi documents"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, trec.parse_hamshahri_documents, config.encoding)
+    def __init__(self, path, encoding, lang):
+        self.lang = lang
+        self.docs_iter = iter(trec.parse_hamshahri_documents(path, encoding))
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        doc = next(self.docs)
+        doc = next(self.docs_iter)
         return Doc(doc[0], self.lang, doc[1])
 
 

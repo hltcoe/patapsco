@@ -8,6 +8,7 @@ import more_itertools
 
 from ..config import BaseConfig
 from ..error import ConfigError
+from .file import GlobFileGenerator, validate_encoding
 
 
 class ComponentFactory:
@@ -19,10 +20,16 @@ class ComponentFactory:
     def create(cls, config, *args, **kwargs):
         """
         Args:
+            config (BaseConfig)
+        """
+        return cls._get_class(config)(config, *args, **kwargs)
+
+    @classmethod
+    def _get_class(cls, config):
+        """
+        Args:
             config (dict, BaseConfig)
         """
-        if not isinstance(config, BaseConfig):
-            config = cls.config_class(**config)
         namespace = vars(sys.modules[cls.__module__])
         if hasattr(config, 'name'):
             component_type = config.name
@@ -35,10 +42,23 @@ class ComponentFactory:
         except KeyError:
             raise ConfigError(f"Unknown {cls.name}: {component_type}")
         try:
-            class_ = namespace[class_name]
+            return namespace[class_name]
         except KeyError:
             raise RuntimeError(f"Cannot find {class_name} in {cls.__name__}")
-        return class_(config, *args, **kwargs)
+
+
+class ReaderFactory(ComponentFactory):
+    """Same as ComponentFactory but wrapped in a GlobFileGenerator"""
+    @classmethod
+    def create(cls, config, *args, **kwargs):
+        """
+        Args:
+            config (DocumentsInputConfig or TopicsInputConfig)
+        """
+        validate_encoding(config.encoding)
+        # support passing additional args to reader constructors
+        args = {key: value for key, value in config.dict().items() if key not in ['format', 'path', 'encoding', 'lang']}
+        return GlobFileGenerator(config.path, cls._get_class(config), config.encoding, config.lang, **args)
 
 
 class DataclassJSONEncoder(json.JSONEncoder):
