@@ -1,4 +1,5 @@
 import glob
+import itertools
 import pathlib
 
 from ..error import BadDataError, ConfigError
@@ -114,6 +115,13 @@ class GlobFileGenerator:
                 reader = self.parsing_func(path, *self.args, **self.kwargs)
                 count += len(reader)
         return count
+
+    def slice(self, start, stop):
+        # TODO replace the skip to starting position with something smarter
+        stop -= start
+        for _ in range(start):
+            next(self)
+        return itertools.islice(self, stop)
 
     def _next_glob(self):
         self.pattern = next(self.globs)

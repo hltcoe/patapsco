@@ -99,3 +99,40 @@ class TestGlobFileGenerator:
         glob = directory / 'file?.txt'
         iterator = file.GlobFileGenerator(str(glob), MockIterator)
         assert len(iterator) == 3
+
+    def test_slice_with_start_0(self):
+        directory = pathlib.Path(__file__).parent / 'glob_files'
+        glob1 = directory / 'file?.txt'
+        glob2 = directory / 'other*'
+        iterator = file.GlobFileGenerator([str(glob1), str(glob2)], next_line)
+        iterator = iterator.slice(0, 3)
+        assert next(iterator) == '1'
+        assert next(iterator) == '2'
+        assert next(iterator) == '3'
+        with pytest.raises(StopIteration):
+            next(iterator)
+
+    def test_slice_with_start_3(self):
+        directory = pathlib.Path(__file__).parent / 'glob_files'
+        glob1 = directory / 'file?.txt'
+        glob2 = directory / 'other*'
+        iterator = file.GlobFileGenerator([str(glob1), str(glob2)], next_line)
+        iterator = iterator.slice(2, 4)
+        assert next(iterator) == '3'
+        assert next(iterator) == '4'
+        with pytest.raises(StopIteration):
+            next(iterator)
+
+    def test_slice_with_stop_beyond_end(self):
+        directory = pathlib.Path(__file__).parent / 'glob_files'
+        glob1 = directory / 'file?.txt'
+        glob2 = directory / 'other*'
+        iterator = file.GlobFileGenerator([str(glob1), str(glob2)], next_line)
+        iterator = iterator.slice(0, 10)
+        assert next(iterator) == '1'
+        assert next(iterator) == '2'
+        assert next(iterator) == '3'
+        assert next(iterator) == '4'
+        assert next(iterator) == '5'
+        with pytest.raises(StopIteration):
+            next(iterator)
