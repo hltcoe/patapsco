@@ -134,7 +134,7 @@ class ConfigPreprocessor:
     @staticmethod
     def _update_relative_paths(conf_dict):
         # set path for components to be under the base directory of run
-        # note that if the path is an absoluate path, pathlib does not change it.
+        # note that if the path is an absolute path, pathlib does not change it.
         base = pathlib.Path(conf_dict['run']['path'])
         for c in conf_dict.values():
             if isinstance(c, dict):
@@ -190,11 +190,27 @@ class PipelineBuilder:
         """
         self.conf = conf
         self.artifact_helper = ArtifactHelper()
+        self.doc_lang = None
+        self.query_lang = None
 
     def build(self):
-        stage1_plan, stage2_plan = self.create_plan()
-        stage1 = self.build_stage1(stage1_plan)
-        stage2 = self.build_stage2(stage2_plan)
+        stage1 = stage2 = None
+
+        stage1_plan = self._create_stage1_plan()
+        if stage1_plan:
+            stage1_iter = self._get_stage1_iterator(stage1_plan)
+            stage1_tasks = self._get_stage1_tasks(stage1_plan)
+            stage1 = self._build_stage1_pipeline(stage1_iter, stage1_tasks)
+
+        stage2_plan = self._create_stage2_plan()
+        if stage2_plan:
+            stage2_iter = self._get_stage2_iterator(stage2_plan)
+            stage2_tasks = self._get_stage2_tasks(stage2_plan)
+            stage2 = self._build_stage2_pipeline(stage2_iter, stage2_tasks)
+
+        if not stage1 and not stage2:
+            raise ConfigError("No tasks are configured to run")
+
         if not stage1 and stage2 and Tasks.RERANK in stage2_plan:
             self.check_sources_of_documents()
         if stage2 and Tasks.RETRIEVE in stage2_plan:
@@ -202,7 +218,7 @@ class PipelineBuilder:
 
         return stage1, stage2
 
-    def create_plan(self):
+    def _create_stage1_plan(self):
         # Analyze the config and check there are any artifacts from a previous run.
         # A plan consists of a list of Tasks to be constructed into a pipeline.
         stage1 = []
@@ -213,7 +229,73 @@ class PipelineBuilder:
         if self.conf.index:
             if not index_complete:
                 stage1.append(Tasks.INDEX)
+        return stage1
 
+    def _get_stage1_iterator(self, plan):
+        # Get the iterator for pipeline based on plan and configuration
+        if Tasks.DOCUMENTS in plan:
+            iterator = DocumentReaderFactory.create(self.conf.documents.input)
+        else:
+            # documents already processed so locate them to create the iterator and update config
+            iterator = self._setup_input(DocReader, 'index.input.documents.path',
+                                         'documents.output.path', 'index not configured with documents')
+        stage_conf = self.conf.run.stage1
+        return SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
+
+    def _get_stage1_tasks(self, plan):
+        # Stage 1 is generally: read docs, process them, build index.
+        # For each task, we clear previous data from a failed run if it exists.
+        # Then we build the tasks from the plan and configuration.
+        tasks = []
+
+        if Tasks.DOCUMENTS in plan:
+            # doc reader -> doc processor with doc db -> optional doc writer
+            self.docs_lang = self.standardize_language(self.conf.documents.input)
+            self.clear_output(self.conf.documents, clear_db=True)
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
+            db = DocumentDatabaseFactory.create(self.conf.documents.db.path, artifact_conf)
+            tasks.append(DocumentProcessor(self.conf.documents.process, self.docs_lang, db))
+            # add doc writer if user requesting that we save processed docs
+            if self.conf.documents.output and self.conf.documents.output.path:
+                if self.conf.documents.process.splits:
+                    # if we are splitting the documents output, multiplex the doc writer
+                    tasks.append(MultiplexTask(self.conf.documents.process.splits, DocWriter,
+                                               self.conf.documents, artifact_conf))
+                else:
+                    tasks.append(DocWriter(self.conf.documents, artifact_conf))
+
+        if Tasks.INDEX in plan:
+            # indexer or processed doc reader -> indexer
+            self.clear_output(self.conf.index)
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.INDEX)
+            if self.conf.documents.process.splits:
+                # if we are splitting the documents output, multiplex the indexer
+                tasks.append(MultiplexTask(self.conf.documents.process.splits, IndexerFactory.create,
+                                           self.conf.index, artifact_conf))
+            else:
+                tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
+
+        return tasks
+
+    def _build_stage1_pipeline(self, iterator, tasks):
+        # select pipeline based on stage configuration
+        stage_conf = self.conf.run.stage1
+        if stage_conf.mode == PipelineMode.STREAMING:
+            LOGGER.info("Stage 1 is a streaming pipeline")
+            pipeline_class = StreamingPipeline
+        elif stage_conf.mode == PipelineMode.BATCH:
+            batch_size_char = str(stage_conf.batch_size) if stage_conf.batch_size else '∞'
+            LOGGER.info("Stage 1 is a batch pipeline selected with batch size of %s", batch_size_char)
+            pipeline_class = functools.partial(BatchPipeline, n=stage_conf.batch_size)
+        else:
+            raise ConfigError(f"Unrecognized pipeline mode: {stage_conf.mode}")
+        pipeline = pipeline_class(iterator, tasks)
+        LOGGER.info("Stage 1 pipeline: %s", pipeline)
+        return pipeline
+
+    def _create_stage2_plan(self):
+        # Analyze the config and check there are any artifacts from a previous run.
+        # A plan consists of a list of Tasks to be constructed into a pipeline.
         stage2 = []
         # TODO need to confirm that the db is also built
         retrieve_complete = self.conf.retrieve and self.is_task_complete(self.conf.retrieve)
@@ -236,87 +318,39 @@ class PipelineBuilder:
             if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:
                 raise ConfigError("Scorer can only run if either retrieve or rerank is configured.")
             stage2.append(Tasks.SCORE)
+        return stage2
 
-        if not stage1 and not stage2:
-            raise ConfigError("No tasks are configured to run")
-
-        return stage1, stage2
-
-    def build_stage1(self, plan):
-        # Stage 1 is generally: read docs, process them, build index.
-        # For each task, we clear previous data from a failed run if it exists.
-        # Then we build the tasks from the plan and create the iterator to drive the pipeline.
+    def _get_stage2_iterator(self, plan):
+        # Get the iterator for pipeline based on plan and configuration
         if not plan:
             return None
-        tasks = []
-        iterator = None
-        stage_conf = self.conf.run.stage1
-
-        if Tasks.DOCUMENTS in plan:
-            # doc reader -> doc processor with doc db -> optional doc writer
-            lang = self.standardize_language(self.conf.documents.input)
-            self.clear_output(self.conf.documents, clear_db=True)
-            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
-            iterator = DocumentReaderFactory.create(self.conf.documents.input)
-            iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
-            db = DocumentDatabaseFactory.create(self.conf.documents.db.path, artifact_conf)
-            tasks.append(DocumentProcessor(self.conf.documents.process, lang, db))
-            # add doc writer if user requesting that we save processed docs
-            if self.conf.documents.output and self.conf.documents.output.path:
-                if self.conf.documents.process.splits:
-                    # if we are splitting the documents output, multiplex the doc writer
-                    tasks.append(MultiplexTask(self.conf.documents.process.splits, DocWriter,
-                                               self.conf.documents, artifact_conf))
-                else:
-                    tasks.append(DocWriter(self.conf.documents, artifact_conf))
-
-        if Tasks.INDEX in plan:
-            # indexer or processed doc reader -> indexer
-            self.clear_output(self.conf.index)
-            if Tasks.DOCUMENTS not in plan:
-                # documents already processed so locate them to create the iterator and update config
-                iterator = self._setup_input(DocReader, 'index.input.documents.path',
-                                             'documents.output.path', 'index not configured with documents')
-                iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
-            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.INDEX)
-            if self.conf.documents.process.splits:
-                # if we are splitting the documents output, multiplex the indexer
-                tasks.append(MultiplexTask(self.conf.documents.process.splits, IndexerFactory.create,
-                                           self.conf.index, artifact_conf))
-            else:
-                tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
-
-        if stage_conf.mode == PipelineMode.STREAMING:
-            LOGGER.info("Stage 1 is a streaming pipeline")
-            pipeline_class = StreamingPipeline
-        elif stage_conf.mode == PipelineMode.BATCH:
-            batch_size_char = str(stage_conf.batch_size) if stage_conf.batch_size else '∞'
-            LOGGER.info("Stage 1 is a batch pipeline selected with batch size of %s", batch_size_char)
-            pipeline_class = functools.partial(BatchPipeline, n=stage_conf.batch_size)
+        if Tasks.TOPICS in plan:
+            iterator = TopicReaderFactory.create(self.conf.topics.input)
+        elif Tasks.QUERIES in plan:
+            iterator = self._setup_input(QueryReader, 'queries.input.path', 'topics.output.path',
+                                         'query processor not configured with input')
+            query = iterator.peek()
+            self.query_lang = query.lang
+        elif Tasks.RETRIEVE in plan:
+            iterator = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output.path',
+                                         'retrieve not configured with queries')
         else:
-            raise ConfigError(f"Unrecognized pipeline mode: {stage_conf.mode}")
-        pipeline = pipeline_class(iterator, tasks)
-        LOGGER.info("Stage 1 pipeline: %s", pipeline)
-        return pipeline
+            iterator = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output.path',
+                                         'rerank not configured with retrieve results')
+        stage_conf = self.conf.run.stage2
+        return SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
 
-    def build_stage2(self, plan):
+    def _get_stage2_tasks(self, plan):
         # Stage 2 is generally: read topics, extract query, process them, retrieve results, rerank them, score.
         # For each task, we clear previous data from a failed run if it exists.
-        # Then we build the tasks from the plan and create the iterator to drive the pipeline.
-        if not plan:
-            return None
+        # Then we build the tasks from the plan and configuration.
         tasks = []
-        iterator = None
-        stage_conf = self.conf.run.stage2
-        lang = None
 
         if Tasks.TOPICS in plan:
             # topic reader -> topic processor -> optional query writer
-            lang = self.standardize_language(self.conf.topics.input)
+            self.query_lang = self.standardize_language(self.conf.topics.input)
             self.clear_output(self.conf.topics)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.TOPICS)
-            iterator = TopicReaderFactory.create(self.conf.topics.input)
-            iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
             tasks.append(TopicProcessor(self.conf.topics))
             if self.conf.topics.output:
                 tasks.append(QueryWriter(self.conf.topics, artifact_conf))
@@ -324,13 +358,7 @@ class PipelineBuilder:
         if Tasks.QUERIES in plan:
             # optional query reader -> query processor -> optional query writer
             self.clear_output(self.conf.queries)
-            if Tasks.TOPICS not in plan:
-                iterator = self._setup_input(QueryReader, 'queries.input.path', 'topics.output.path',
-                                             'query processor not configured with input')
-                query = iterator.peek()
-                lang = query.lang
-                iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
-            tasks.append(QueryProcessor(self.conf.queries.process, lang))
+            tasks.append(QueryProcessor(self.conf.queries.process, self.query_lang))
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.QUERIES)
             if self.conf.queries.output:
                 if self.conf.queries.process.splits:
@@ -341,11 +369,6 @@ class PipelineBuilder:
 
         if Tasks.RETRIEVE in plan:
             self.clear_output(self.conf.retrieve)
-            if Tasks.QUERIES not in plan:
-                # queries already processed so locate them to set the iterator
-                iterator = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output.path',
-                                             'retrieve not configured with queries')
-                iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
             if not self.conf.index:
                 # copy in the configuration that created the index (this path is always set in the ConfigPreprocessor)
                 self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
@@ -358,11 +381,6 @@ class PipelineBuilder:
 
         if Tasks.RERANK in plan:
             self.clear_output(self.conf.rerank)
-            if Tasks.RETRIEVE not in plan:
-                # retrieve results already processed so locate them to set the iterator
-                iterator = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output.path',
-                                             'rerank not configured with retrieve results')
-                iterator = SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
             db = DocumentDatabaseFactory.create(self.conf.rerank.input.db.path, readonly=True)
             tasks.append(RerankFactory.create(self.conf.rerank, db))
@@ -372,6 +390,11 @@ class PipelineBuilder:
             qrels = QrelsReaderFactory.create(self.conf.score.input).read()
             tasks.append(Scorer(self.conf.score, qrels))
 
+        return tasks
+
+    def _build_stage2_pipeline(self, iterator, tasks):
+        # select pipeline based on stage configuration
+        stage_conf = self.conf.run.stage2
         if stage_conf.mode == PipelineMode.STREAMING:
             LOGGER.info("Stage 2 is a streaming pipeline")
             pipeline_class = StreamingPipeline

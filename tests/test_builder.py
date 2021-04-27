@@ -187,14 +187,19 @@ class TestPipelineBuilder:
         conf = RunnerConfig(run=RunConfig(name='test'))
         builder = PipelineBuilder(conf)
         with pytest.raises(ConfigError, match='No tasks are configured to run'):
-            builder.create_plan()
+            builder.build()
 
-    def test_create_plan_with_normal_config(self):
+    def test_create_plan1_with_normal_config(self):
         conf = self.create_config('test')
         builder = PipelineBuilder(conf)
-        stage1_plan, stage2_plan = builder.create_plan()
+        stage1_plan = builder._create_stage1_plan()
         assert Tasks.DOCUMENTS in stage1_plan
         assert Tasks.INDEX in stage1_plan
+
+    def test_create_plan2_with_normal_config(self):
+        conf = self.create_config('test')
+        builder = PipelineBuilder(conf)
+        stage2_plan = builder._create_stage2_plan()
         assert Tasks.TOPICS in stage2_plan
         assert Tasks.QUERIES in stage2_plan
         assert Tasks.RETRIEVE in stage2_plan
@@ -204,40 +209,40 @@ class TestPipelineBuilder:
     def test_create_plan_with_complete_documents(self):
         conf = self.create_config('docs_complete')
         builder = PipelineBuilder(conf)
-        stage1_plan, _ = builder.create_plan()
+        stage1_plan = builder._create_stage1_plan()
         assert Tasks.DOCUMENTS not in stage1_plan
         assert Tasks.INDEX in stage1_plan
 
     def test_create_plan_with_incomplete_documents(self):
         conf = self.create_config('docs_incomplete')
         builder = PipelineBuilder(conf)
-        stage1_plan, _ = builder.create_plan()
+        stage1_plan = builder._create_stage1_plan()
         assert Tasks.DOCUMENTS in stage1_plan
         assert Tasks.INDEX in stage1_plan
 
     def test_create_plan_with_complete_documents_and_complete_index(self):
         conf = self.create_config('stage1_complete')
         builder = PipelineBuilder(conf)
-        stage1_plan, _ = builder.create_plan()
+        stage1_plan = builder._create_stage1_plan()
         assert stage1_plan == []
 
     def test_create_plan_with_incomplete_documents_and_complete_index(self):
         conf = self.create_config('docs_incomplete_index_complete')
         builder = PipelineBuilder(conf)
-        stage1_plan, _ = builder.create_plan()
+        stage1_plan = builder._create_stage1_plan()
         assert stage1_plan == []
 
     def test_create_plan_with_complete_topics(self):
         conf = self.create_config('topics_complete')
         builder = PipelineBuilder(conf)
-        _, stage2_plan = builder.create_plan()
+        stage2_plan = builder._create_stage2_plan()
         assert Tasks.TOPICS not in stage2_plan
         assert Tasks.QUERIES in stage2_plan
 
     def test_create_plan_with_complete_queries(self):
         conf = self.create_config('queries_complete')
         builder = PipelineBuilder(conf)
-        _, stage2_plan = builder.create_plan()
+        stage2_plan = builder._create_stage2_plan()
         assert Tasks.TOPICS not in stage2_plan
         assert Tasks.QUERIES not in stage2_plan
         assert Tasks.RETRIEVE in stage2_plan
@@ -245,7 +250,7 @@ class TestPipelineBuilder:
     def test_create_plan_with_complete_retrieval(self):
         conf = self.create_config('retrieval_complete')
         builder = PipelineBuilder(conf)
-        _, stage2_plan = builder.create_plan()
+        stage2_plan = builder._create_stage2_plan()
         assert Tasks.TOPICS not in stage2_plan
         assert Tasks.QUERIES not in stage2_plan
         assert Tasks.RETRIEVE not in stage2_plan
@@ -255,7 +260,7 @@ class TestPipelineBuilder:
         conf = self.create_config('rerank_complete')
         builder = PipelineBuilder(conf)
         with pytest.raises(ConfigError, match="Rerank is already complete. Delete its output directory to rerun reranking."):
-            builder.create_plan()
+            builder._create_stage2_plan()
 
     def test_create_plan_with_no_rerank_retrieval(self):
         conf = self.create_config('test')
@@ -263,25 +268,25 @@ class TestPipelineBuilder:
         conf.retrieve = None
         builder = PipelineBuilder(conf)
         with pytest.raises(ConfigError, match="Scorer can only run if either retrieve or rerank is configured."):
-            builder.create_plan()
+            builder._create_stage2_plan()
 
     def test_build_stage1_with_standard_docs(self):
         conf = self.create_config('test')
         builder = PipelineBuilder(conf)
         plan = [Tasks.DOCUMENTS]
-        pipeline = builder.build_stage1(plan)
-        assert len(pipeline.tasks) == 2
-        assert isinstance(pipeline.tasks[0].task, DocumentProcessor)
-        assert isinstance(pipeline.tasks[1].task, DocWriter)
+        tasks = builder._get_stage1_tasks(plan)
+        assert len(tasks) == 2
+        assert isinstance(tasks[0], DocumentProcessor)
+        assert isinstance(tasks[1], DocWriter)
 
     def test_build_stage1_with_standard_docs_but_no_output(self):
         conf = self.create_config('test')
         conf.documents.output = False
         builder = PipelineBuilder(conf)
         plan = [Tasks.DOCUMENTS]
-        pipeline = builder.build_stage1(plan)
-        assert len(pipeline.tasks) == 1
-        assert isinstance(pipeline.tasks[0].task, DocumentProcessor)
+        tasks = builder._get_stage1_tasks(plan)
+        assert len(tasks) == 1
+        assert isinstance(tasks[0], DocumentProcessor)
 
     def test_build_stage1_with_bad_doc_format(self):
         conf = self.create_config('test')
@@ -289,7 +294,7 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.DOCUMENTS]
         with pytest.raises(ConfigError, match="Unknown input document type: abc"):
-            builder.build_stage1(plan)
+            builder._get_stage1_iterator(plan)
 
     def test_build_stage1_with_bad_doc_encoding(self):
         conf = self.create_config('test')
@@ -297,7 +302,7 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.DOCUMENTS]
         with pytest.raises(ConfigError, match="abc is not a valid file encoding"):
-            builder.build_stage1(plan)
+            builder._get_stage1_iterator(plan)
 
     def test_build_stage1_with_no_files(self):
         conf = self.create_config('test')
@@ -305,7 +310,7 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.DOCUMENTS]
         with pytest.raises(ConfigError, match="No files match pattern"):
-            builder.build_stage1(plan)
+            builder._get_stage1_iterator(plan)
 
     def test_build_stage1_with_bad_lang(self):
         conf = self.create_config('test')
@@ -313,7 +318,7 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.DOCUMENTS]
         with pytest.raises(ConfigError, match="Unknown language code: da"):
-            builder.build_stage1(plan)
+            builder._get_stage1_tasks(plan)
 
     def test_build_stage1_with_bad_tokenizer(self):
         conf = self.create_config('test')
@@ -321,18 +326,18 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.DOCUMENTS]
         with pytest.raises(ConfigError):
-            builder.build_stage1(plan)
+            builder._get_stage1_tasks(plan)
 
     def test_build_stage1_with_standard_docs_split(self):
         conf = self.create_config('test')
         conf.documents.process.splits = ['tokenize', 'tokenize+lowercase']
         builder = PipelineBuilder(conf)
         plan = [Tasks.DOCUMENTS]
-        pipeline = builder.build_stage1(plan)
-        assert len(pipeline.tasks) == 2
-        assert isinstance(pipeline.tasks[0].task, DocumentProcessor)
-        assert pipeline.tasks[0].task.splitter.splits == {'tokenize': 'tokenize', 'lowercase': 'tokenize+lowercase'}
-        assert isinstance(pipeline.tasks[1].task, MultiplexTask)
+        tasks = builder._get_stage1_tasks(plan)
+        assert len(tasks) == 2
+        assert isinstance(tasks[0], DocumentProcessor)
+        assert tasks[0].splitter.splits == {'tokenize': 'tokenize', 'lowercase': 'tokenize+lowercase'}
+        assert isinstance(tasks[1], MultiplexTask)
 
     def test_build_stage1_with_standard_docs_and_bad_split(self):
         conf = self.create_config('test')
@@ -340,7 +345,7 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.DOCUMENTS]
         with pytest.raises(ConfigError, match="Unrecognized split"):
-            builder.build_stage1(plan)
+            builder._get_stage1_tasks(plan)
 
     def test_build_stage1_with_no_documents_for_indexer(self):
         conf = self.create_config('test')
@@ -348,14 +353,15 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.INDEX]
         with pytest.raises(ConfigError, match="index not configured with documents"):
-            builder.build_stage1(plan)
+            builder._get_stage1_iterator(plan)
 
     def test_build_stage1_with_indexer_gets_docs_from_documents(self):
         conf = self.create_config('docs_complete')
         builder = PipelineBuilder(conf)
         plan = [Tasks.INDEX]
-        pipeline = builder.build_stage1(plan)
-        assert isinstance(pipeline.tasks[0].task, MockIndexer)
+        builder._get_stage1_iterator(plan)
+        tasks = builder._get_stage1_tasks(plan)
+        assert isinstance(tasks[0], MockIndexer)
 
     def test_build_stage1_with_indexer_gets_docs_from_input(self):
         conf = self.create_config('docs_complete')
@@ -363,8 +369,9 @@ class TestPipelineBuilder:
         conf.index.input = IndexInputConfig(documents=PathConfig(path=str(self.dir / "build_files" / "output" / "docs_complete" / "docs")))
         builder = PipelineBuilder(conf)
         plan = [Tasks.INDEX]
-        pipeline = builder.build_stage1(plan)
-        assert isinstance(pipeline.tasks[0].task, MockIndexer)
+        builder._get_stage1_iterator(plan)
+        tasks = builder._get_stage1_tasks(plan)
+        assert isinstance(tasks[0], MockIndexer)
 
     def test_build_stage1_with_indexer_gets_bad_docs_from_input(self):
         conf = self.create_config('test')
@@ -373,43 +380,45 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.INDEX]
         with pytest.raises(ConfigError, match="Unable to load artifact config"):
-            builder.build_stage1(plan)
+            builder._get_stage1_iterator(plan)
 
     def test_build_stage1_with_standard_docs_index(self):
         conf = self.create_config('test')
         builder = PipelineBuilder(conf)
         plan = [Tasks.DOCUMENTS, Tasks.INDEX]
-        pipeline = builder.build_stage1(plan)
-        assert len(pipeline.tasks) == 3
-        assert isinstance(pipeline.tasks[0].task, DocumentProcessor)
-        assert isinstance(pipeline.tasks[1].task, DocWriter)
-        assert isinstance(pipeline.tasks[2].task, MockIndexer)
+        tasks = builder._get_stage1_tasks(plan)
+        assert len(tasks) == 3
+        assert isinstance(tasks[0], DocumentProcessor)
+        assert isinstance(tasks[1], DocWriter)
+        assert isinstance(tasks[2], MockIndexer)
 
     def test_build_stage1_with_bad_pipeline_mode(self):
         conf = self.create_config('test')
         conf.run.stage1.mode = "fast"
         builder = PipelineBuilder(conf)
         plan = [Tasks.DOCUMENTS, Tasks.INDEX]
+        iterator = builder._get_stage1_iterator(plan)
+        tasks = builder._get_stage1_tasks(plan)
         with pytest.raises(ConfigError, match="Unrecognized pipeline mode"):
-            builder.build_stage1(plan)
+            builder._build_stage1_pipeline(iterator, tasks)
 
     def test_build_stage2_with_standard_topics(self):
         conf = self.create_config('test')
         builder = PipelineBuilder(conf)
         plan = [Tasks.TOPICS]
-        pipeline = builder.build_stage2(plan)
-        assert len(pipeline.tasks) == 2
-        assert isinstance(pipeline.tasks[0].task, TopicProcessor)
-        assert isinstance(pipeline.tasks[1].task, QueryWriter)
+        tasks = builder._get_stage2_tasks(plan)
+        assert len(tasks) == 2
+        assert isinstance(tasks[0], TopicProcessor)
+        assert isinstance(tasks[1], QueryWriter)
 
     def test_build_stage2_with_standard_topics_but_no_output(self):
         conf = self.create_config('test')
         conf.topics.output = False
         builder = PipelineBuilder(conf)
         plan = [Tasks.TOPICS]
-        pipeline = builder.build_stage2(plan)
-        assert len(pipeline.tasks) == 1
-        assert isinstance(pipeline.tasks[0].task, TopicProcessor)
+        tasks = builder._get_stage2_tasks(plan)
+        assert len(tasks) == 1
+        assert isinstance(tasks[0], TopicProcessor)
 
     def test_build_stage2_with_bad_topic_format(self):
         conf = self.create_config('test')
@@ -417,7 +426,7 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.TOPICS]
         with pytest.raises(ConfigError, match="Unknown topic type: abc"):
-            builder.build_stage2(plan)
+            builder._get_stage2_iterator(plan)
 
     def test_build_stage2_with_bad_encoding(self):
         conf = self.create_config('test')
@@ -425,7 +434,7 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.TOPICS]
         with pytest.raises(ConfigError, match="abc is not a valid file encoding"):
-            builder.build_stage2(plan)
+            builder._get_stage2_iterator(plan)
 
     def test_build_stage2_with_no_files(self):
         conf = self.create_config('test')
@@ -433,7 +442,7 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.TOPICS]
         with pytest.raises(ConfigError, match="No files match pattern"):
-            builder.build_stage2(plan)
+            builder._get_stage2_iterator(plan)
 
     def test_build_stage2_with_bad_lang(self):
         conf = self.create_config('test')
@@ -441,7 +450,7 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.TOPICS]
         with pytest.raises(ConfigError, match="Unknown language code: da"):
-            builder.build_stage2(plan)
+            builder._get_stage2_tasks(plan)
 
     def test_build_stage2_queries_with_no_topics(self):
         conf = self.create_config('test')
@@ -449,14 +458,15 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(conf)
         plan = [Tasks.QUERIES]
         with pytest.raises(ConfigError, match="query processor not configured with input"):
-            builder.build_stage2(plan)
+            builder._get_stage2_iterator(plan)
 
     def test_build_stage2_queries_with_topic_output(self):
         conf = self.create_config('topics_complete')
         builder = PipelineBuilder(conf)
         plan = [Tasks.QUERIES]
-        pipeline = builder.build_stage2(plan)
-        assert isinstance(pipeline.tasks[0].task, QueryProcessor)
+        builder._get_stage2_iterator(plan)
+        tasks = builder._get_stage2_tasks(plan)
+        assert isinstance(tasks[0], QueryProcessor)
 
     def test_build_stage2_queries_with_query_input(self):
         conf = self.create_config('topics_complete')
@@ -464,8 +474,9 @@ class TestPipelineBuilder:
         conf.queries.input = QueriesInputConfig(path=str(self.dir / "build_files" / "output" / "topics_complete" / "topics"))
         builder = PipelineBuilder(conf)
         plan = [Tasks.QUERIES]
-        pipeline = builder.build_stage2(plan)
-        assert isinstance(pipeline.tasks[0].task, QueryProcessor)
+        builder._get_stage2_iterator(plan)
+        tasks = builder._get_stage2_tasks(plan)
+        assert isinstance(tasks[0], QueryProcessor)
 
     def test_build_stage2_queries_with_query_input_to_file(self):
         conf = self.create_config('topics_complete')
@@ -473,9 +484,10 @@ class TestPipelineBuilder:
         conf.queries.input = QueriesInputConfig(path=str(self.dir / "build_files" / "output" / "topics_complete" / "topics" / "queries.jsonl"))
         builder = PipelineBuilder(conf)
         plan = [Tasks.QUERIES]
-        pipeline = builder.build_stage2(plan)
-        assert isinstance(pipeline.tasks[0].task, QueryProcessor)
-        assert pipeline.tasks[0].task.lang == "en"
+        builder._get_stage2_iterator(plan)
+        tasks = builder._get_stage2_tasks(plan)
+        assert isinstance(tasks[0], QueryProcessor)
+        assert tasks[0].lang == "en"
 
     def test_check_sources_of_documents_standard_config(self):
         conf = self.create_config('test')
