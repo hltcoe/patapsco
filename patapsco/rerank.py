@@ -52,7 +52,7 @@ class MockReranker(Reranker):
     """
 
     def process(self, results):
-        new_results = copy.copy(results.results)
+        new_results = copy.deepcopy(results.results)
         # retrieve documents and pop one to exercise db
         docs = [self.db[result.doc_id] for result in new_results]
         docs.pop()
