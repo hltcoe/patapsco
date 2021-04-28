@@ -83,7 +83,7 @@ class Scorer(Task):
         evaluator = pytrec_eval.RelevanceEvaluator(qrels, {'ndcg'})
         modified_run = collections.defaultdict(dict)
         for result in self.run:
-            query_id = results.query.id
+            query_id = result.query.id
             for r in result.results:
                 if r.doc_id in qrels[query_id].keys():
                     modified_run[query_id][r.doc_id] = float(r.score)
