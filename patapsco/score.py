@@ -91,3 +91,4 @@ class Scorer(Task):
             res[elt[0]] = {'ndcg_prime': elt[1]['ndcg']}
         for q, results_dict in res.items():
             LOGGER.info(f"{q} = {results_dict}")
+        return res
