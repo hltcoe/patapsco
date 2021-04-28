@@ -1,4 +1,5 @@
 import pathlib
+import stanza
 
 from .error import ConfigError
 from .pipeline import MultiplexItem
@@ -8,6 +9,7 @@ from .util import ComponentFactory
 
 class TokenizerFactory(ComponentFactory):
     classes = {
+        'stanza': 'StanzaTozenizer',
         'whitespace': 'WhiteSpaceTokenizer',
     }
     config_class = TokenizeConfig
@@ -50,6 +52,21 @@ class Tokenizer:
 class WhiteSpaceTokenizer(Tokenizer):
     def tokenize(self, text):
         return text.split()
+
+
+class StanzaTokenizer(Tokenizer):
+    def __init__(self, config, lang):
+        super().__init__(config, lang)
+        stanza.download(self.lang)
+        self.nlp = stanza.Pipeline(self.lang, processors='tokenize')
+
+    def tokenize(self, text):
+        doc = self.nlp(text)
+        tokens = []
+        for sentence in doc.sentences:
+            for word in sentence.words:
+                tokens.append(word.text)
+        return tokens
 
 
 class StopWordsRemoval:
