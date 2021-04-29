@@ -24,6 +24,12 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Job:
+    """A job is an executable component of a system run
+
+    For a serial run, a job = the run.
+    For a parallel run, the input is divided into chunks and each chunk is a job.
+    """
+
     def __init__(self, conf, stage1, stage2):
         self.conf = conf
         self.run_path = conf.run.path
@@ -41,6 +47,7 @@ class Job:
         LOGGER.info("Run complete")
 
     def _run(self):
+        # Children of Job must implement this which is called by run()
         pass
 
     def write_report(self):
@@ -59,6 +66,7 @@ class Job:
 
 
 class SerialJob(Job):
+    """Single threaded job"""
 
     def _run(self):
         if self.stage1:
@@ -79,37 +87,44 @@ class SerialJob(Job):
 
 
 class ParallelJob(Job):
+    """Parallel job that uses multiple processes.
+
+    This uses concurrent.futures to implement map/reduce over the input iterators.
+    """
     def __init__(self, conf, stage1, stage2):
         super().__init__(conf, stage1, stage2)
         self.num_processes = 2
-        self.stage1_confs = self._get_stage1_confs()
-        self.stage2_confs = self._get_stage2_confs()
+        self.stage1_confs = self.stage2_confs = None
+        if stage1:
+            self.stage1_confs = self._get_stage1_confs()
+        if stage2:
+            self.stage2_confs = self._get_stage2_confs()
 
     def _run(self):
-        LOGGER.info("Stage 1: Starting processing of documents")
-        self.stage1.begin()
+        if self.stage1_confs:
+            LOGGER.info("Stage 1: Starting processing of documents")
+            self.stage1.begin()
+            self.map(self.stage1_confs)
+            self.stage1.reduce()
+            self.stage1.end()
+            LOGGER.info("Stage 1: Ingested %d documents", 7)
+
+        if self.stage2_confs:
+            LOGGER.info("Stage 2: Starting processing of queries")
+            self.stage2.begin()
+            self.map(self.stage2_confs)
+            self.stage2.reduce()
+            self.stage2.end()
+            LOGGER.info("Stage 2: Processed %d queries", 7)
+
+    def map(self, confs):
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.num_processes) as executor:
             # we loop in a try/except to catch errors from the jon running in separate process
             try:
-                for _ in executor.map(self._fork, self.stage1_confs):
+                for _ in executor.map(self._fork, confs):
                     pass
             except Exception as e:
                 LOGGER.error(f"Parallel job failed with {e}")
-        self.stage1.reduce()
-        self.stage1.end()
-        LOGGER.info("Stage 1: Ingested %d documents", 7)
-
-        LOGGER.info("Stage 2: Starting processing of queries")
-        self.stage2.begin()
-        with concurrent.futures.ProcessPoolExecutor(max_workers=self.num_processes) as executor:
-            try:
-                for _ in executor.map(self._fork, self.stage2_confs):
-                    pass
-            except Exception as e:
-                LOGGER.error(f"Parallel job failed with {e}")
-        self.stage2.reduce()
-        self.stage2.end()
-        LOGGER.info("Stage 2: Processed %d queries", 7)
 
     @staticmethod
     def _fork(conf):
@@ -150,7 +165,7 @@ class ParallelJob(Job):
 
     @staticmethod
     def _update_stage1_output_paths(conf, part):
-        # configs may not have all of these paths so we ignore errors
+        # configs may not have all tasks so we ignore errors
         try:
             conf.documents.db.path = path_append(conf.documents.db.path, part)
         except AttributeError:
@@ -166,7 +181,7 @@ class ParallelJob(Job):
 
     @staticmethod
     def _update_stage2_output_paths(conf, part):
-        # configs may not have all of these paths so we ignore errors
+        # configs may not have all tasks so we ignore errors
         try:
             conf.topics.output.path = path_append(conf.topics.output.path, part)
         except AttributeError:
