@@ -16,6 +16,7 @@ class MultiplyTask(Task):
 
 class CollectorTask(Task):
     def __init__(self):
+        super().__init__()
         self.items = []
 
     def process(self, item):
