@@ -1,4 +1,5 @@
 import concurrent.futures
+import dataclasses
 import functools
 import json
 import logging
@@ -86,6 +87,12 @@ class SerialJob(Job):
             LOGGER.info("Stage 2 took %.1f secs", timer2.time)
 
 
+@dataclasses.dataclass
+class ParallelJobDef:
+    id: int
+    conf: RunnerConfig
+
+
 class ParallelJob(Job):
     """Parallel job that uses multiple processes.
 
@@ -94,48 +101,57 @@ class ParallelJob(Job):
     def __init__(self, conf, stage1, stage2):
         super().__init__(conf, stage1, stage2)
         self.num_processes = 2
-        self.stage1_confs = self.stage2_confs = None
+        self.stage1_jobs = self.stage2_jobs = None
         if stage1:
-            self.stage1_confs = self._get_stage1_confs()
+            self.stage1_jobs = self._get_stage1_jobs()
         if stage2:
-            self.stage2_confs = self._get_stage2_confs()
+            self.stage2_jobs = self._get_stage2_jobs()
 
     def _run(self):
-        if self.stage1_confs:
+        if self.stage1_jobs:
             LOGGER.info("Stage 1: Starting processing of documents")
             self.stage1.begin()
-            self.map(self.stage1_confs)
+            self.map(self.stage1_jobs)
             self.stage1.reduce()
             self.stage1.end()
             LOGGER.info("Stage 1: Ingested %d documents", 7)
 
-        if self.stage2_confs:
+        if self.stage2_jobs:
             LOGGER.info("Stage 2: Starting processing of queries")
             self.stage2.begin()
-            self.map(self.stage2_confs)
+            self.map(self.stage2_jobs)
             self.stage2.reduce()
             self.stage2.end()
             LOGGER.info("Stage 2: Processed %d queries", 7)
 
-    def map(self, confs):
+    def map(self, jobs):
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.num_processes) as executor:
             # we loop in a try/except to catch errors from the jon running in separate process
             try:
-                for _ in executor.map(self._fork, confs):
+                for _ in executor.map(self._fork, jobs):
                     pass
             except Exception as e:
                 LOGGER.error(f"Parallel job failed with {e}")
 
     @staticmethod
-    def _fork(conf):
-        job = JobBuilder(conf).build()
+    def _fork(job):
+        # only log parallel jobs to their unique log file
+        log_file = path_append(job.conf.run.path, f"patapsco.log.{job.id}")
+        logger = logging.getLogger('patapsco')
+        file = logging.FileHandler(log_file)
+        file.setLevel(logger.level)
+        file.setFormatter(logger.handlers[0].formatter)
+        logger.handlers = []
+        logger.addHandler(file)
+
+        job = JobBuilder(job.conf).build()
         job.run()
 
-    def _get_stage1_confs(self):
+    def _get_stage1_jobs(self):
         num_items = len(self.stage1.iterator)
         job_size = int(math.ceil(num_items / self.num_processes))
         indices = [(i, i + job_size) for i in range(0, num_items, job_size)]
-        stage1_confs = []
+        stage1_jobs = []
         for part, (start, stop) in enumerate(indices):
             sub_directory = f"part_{part}"
             conf = self.conf.copy(deep=True)
@@ -144,14 +160,14 @@ class ParallelJob(Job):
             conf.run.parallel = None
             conf.run.stage2 = False
             self._update_stage1_output_paths(conf, sub_directory)
-            stage1_confs.append(conf)
-        return stage1_confs
+            stage1_jobs.append(ParallelJobDef(part, conf))
+        return stage1_jobs
 
-    def _get_stage2_confs(self):
+    def _get_stage2_jobs(self):
         num_items = len(self.stage2.iterator)
         job_size = int(math.ceil(num_items / self.num_processes))
         indices = [(i, i + job_size) for i in range(0, num_items, job_size)]
-        stage2_confs = []
+        stage2_jobs = []
         for part, (start, stop) in enumerate(indices):
             sub_directory = f"part_{part}"
             conf = self.conf.copy(deep=True)
@@ -160,8 +176,8 @@ class ParallelJob(Job):
             conf.run.parallel = None
             conf.run.stage1 = False
             self._update_stage2_output_paths(conf, sub_directory)
-            stage2_confs.append(conf)
-        return stage2_confs
+            stage2_jobs.append(ParallelJobDef(part, conf))
+        return stage2_jobs
 
     @staticmethod
     def _update_stage1_output_paths(conf, part):
