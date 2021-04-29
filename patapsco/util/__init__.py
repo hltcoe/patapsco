@@ -106,6 +106,9 @@ class TimedIterator(collections.abc.Iterator):
         with self.timer:
             return next(self.iterator)
 
+    def __len__(self):
+        return len(self.iterator)
+
 
 class ChunkedIterator(collections.abc.Iterator):
     def __init__(self, iterable, n):

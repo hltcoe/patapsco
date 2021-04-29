@@ -2,6 +2,7 @@ import csv
 import dataclasses
 import gzip
 import json
+import logging
 import pathlib
 
 import sqlitedict
@@ -12,7 +13,9 @@ from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import Splitter, TextProcessor
 from .util import trec, DataclassJSONEncoder, InputIterator, ReaderFactory
-from .util.file import count_lines, count_lines_with, is_complete, touch_complete
+from .util.file import count_lines, count_lines_with, path_append, is_complete, touch_complete
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -161,6 +164,13 @@ class DocWriter(Task):
         super().end()
         self.file.close()
 
+    def reduce(self, dirs):
+        for base in dirs:
+            path = path_append(base, 'documents.jsonl')
+            with open(path) as fp:
+                for line in fp:
+                    self.file.write(line)
+
 
 class DocReader(InputIterator):
     """Iterator over documents written by DocWriter"""
@@ -199,14 +209,14 @@ class DocumentDatabase(sqlitedict.SqliteDict):
     def __init__(self, path, config, readonly=False, *args, **kwargs):
         kwargs['autocommit'] = True
         self.readonly = readonly
-        self.dir = pathlib.Path(path)
-        self.path = self.dir / "docs.db"
+        self.base = pathlib.Path(path)
+        self.path = self.base / "docs.db"
         if readonly and not self.path.exists():
             raise ConfigError(f"Document database does not exist: {self.path}")
-        if not self.dir.exists():
-            self.dir.mkdir(parents=True)
+        if not self.base.exists():
+            self.base.mkdir(parents=True)
         self.config = config
-        self.config_path = self.dir / 'config.yml'
+        self.config_path = self.base / 'config.yml'
         super().__init__(str(self.path), *args, **kwargs)
 
     def __setitem__(self, key, value):
@@ -217,7 +227,11 @@ class DocumentDatabase(sqlitedict.SqliteDict):
     def end(self):
         if not self.readonly:
             ConfigService.write_config_file(self.config_path, self.config)
-            touch_complete(self.dir)
+            touch_complete(self.base)
+
+    def reduce(self):
+        # TODO
+        LOGGER.info("Database reduce is not implemented")
 
 
 class DocumentDatabaseFactory:
@@ -276,6 +290,9 @@ class DocumentProcessor(Task, TextProcessor):
 
     def end(self):
         self.db.end()
+
+    def run_reduce(self):
+        self.db.reduce()
 
     @property
     def name(self):

@@ -24,10 +24,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Job:
-    def __init__(self, conf):
+    def __init__(self, conf, stage1, stage2):
         self.conf = conf
         self.run_path = conf.run.path
-        self.stage1 = self.stage2 = None
+        self.stage1 = stage1
+        self.stage2 = stage2
 
     def run(self):
         if self.conf.run.name:
@@ -58,10 +59,6 @@ class Job:
 
 
 class SerialJob(Job):
-    def __init__(self, conf, stage1, stage2):
-        super().__init__(conf)
-        self.stage1 = stage1
-        self.stage2 = stage2
 
     def _run(self):
         if self.stage1:
@@ -82,15 +79,18 @@ class SerialJob(Job):
 
 
 class ParallelJob(Job):
-    def __init__(self, conf, iterator1, iterator2):
-        super().__init__(conf)
+    def __init__(self, conf, stage1, stage2):
+        super().__init__(conf, stage1, stage2)
         self.num_processes = 2
-        self.stage1_confs = self._get_stage1_confs(iterator1, self.num_processes)
+        self.stage1_confs = self._get_stage1_confs()
 
     def _run(self):
         LOGGER.info("Stage 1: Starting processing of documents")
+        self.stage1.begin()
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.num_processes) as executor:
             executor.map(self._fork, self.stage1_confs)
+        self.stage1.reduce()
+        self.stage1.end()
         LOGGER.info("Stage 1: Ingested %d documents", 7)
 
     @staticmethod
@@ -98,8 +98,8 @@ class ParallelJob(Job):
         job = JobBuilder(conf).build()
         job.run()
 
-    def _get_stage1_confs(self, iterator, num_processes):
-        num_items = len(iterator)
+    def _get_stage1_confs(self):
+        num_items = len(self.stage1.iterator)
         job_size = int(math.ceil(num_items / self.num_processes))
         indices = [(i, i + job_size) for i in range(0, num_items, job_size)]
         stage1_confs = []
@@ -109,11 +109,26 @@ class ParallelJob(Job):
             conf.run.stage1.start = start
             conf.run.stage1.stop = stop
             conf.run.parallel = None
-            conf.index.output.path = path_append(conf.index.output.path, sub_directory)
-            conf.documents.db.path = path_append(conf.documents.db.path, sub_directory)
             conf.run.stage2 = False
+            self._update_stage1_output_paths(conf, sub_directory)
             stage1_confs.append(conf)
         return stage1_confs
+
+    @staticmethod
+    def _update_stage1_output_paths(conf, part):
+        # configs may not have all of these paths so we ignore errors
+        try:
+            conf.documents.db.path = path_append(conf.documents.db.path, part)
+        except AttributeError:
+            pass
+        try:
+            conf.documents.output.path = path_append(conf.documents.output.path, part)
+        except AttributeError:
+            pass
+        try:
+            conf.index.output.path = path_append(conf.index.output.path, part)
+        except AttributeError:
+            pass
 
 
 class JobBuilder:
@@ -139,9 +154,6 @@ class JobBuilder:
         stage1_plan = []
         stage2_plan = []
 
-        if self.conf.run.parallel:
-            return self._build_parallel_job()
-
         if self.conf.run.stage1:
             stage1_plan = self._create_stage1_plan()
             if stage1_plan:
@@ -164,20 +176,10 @@ class JobBuilder:
         if stage2 and Tasks.RETRIEVE in stage2_plan:
             self.check_text_processing()
 
-        return SerialJob(self.conf, stage1, stage2)
-
-    def _build_parallel_job(self):
-        stage1_iter = stage2_iter = None
-
-        stage1_plan = self._create_stage1_plan()
-        if stage1_plan:
-            stage1_iter = self._get_stage1_iterator(stage1_plan)
-
-        stage2_plan = self._create_stage2_plan()
-        if stage2_plan:
-            stage2_iter = self._get_stage2_iterator(stage2_plan)
-
-        return ParallelJob(self.conf, stage1_iter, stage2_iter)
+        if self.conf.run.parallel:
+            return ParallelJob(self.conf, stage1, stage2)
+        else:
+            return SerialJob(self.conf, stage1, stage2)
 
     def _create_stage1_plan(self):
         # Analyze the config and check there are any artifacts from a previous run.

@@ -68,6 +68,12 @@ class Task(abc.ABC):
         """
         pass
 
+    def run_reduce(self):
+        """Method for pipeline to call to run reduce()"""
+        if self.base:
+            dirs = sorted(list(self.base.glob('part*')))
+            self.reduce(dirs)
+
     def __str__(self):
         return self.__class__.__name__
 
@@ -94,6 +100,9 @@ class TimedTask(Task):
 
     def reduce(self, dirs):
         self.task.reduce(dirs)
+
+    def run_reduce(self):
+        self.task.run_reduce()
 
     @property
     def time(self):
@@ -197,7 +206,7 @@ class Pipeline(abc.ABC):
 
     def reduce(self):
         for task in self.tasks:
-            task.reduce()
+            task.run_reduce()
 
     @property
     def report(self):
