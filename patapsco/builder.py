@@ -37,7 +37,7 @@ class Job:
         self._run()
 
         self.write_config()
-        #self.write_report()
+        # self.write_report()
         LOGGER.info("Run complete")
 
     def _run(self):
@@ -83,15 +83,33 @@ class ParallelJob(Job):
         super().__init__(conf, stage1, stage2)
         self.num_processes = 2
         self.stage1_confs = self._get_stage1_confs()
+        self.stage2_confs = self._get_stage2_confs()
 
     def _run(self):
         LOGGER.info("Stage 1: Starting processing of documents")
         self.stage1.begin()
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.num_processes) as executor:
-            executor.map(self._fork, self.stage1_confs)
+            # we loop in a try/except to catch errors from the jon running in separate process
+            try:
+                for _ in executor.map(self._fork, self.stage1_confs):
+                    pass
+            except Exception as e:
+                LOGGER.error(f"Parallel job failed with {e}")
         self.stage1.reduce()
         self.stage1.end()
         LOGGER.info("Stage 1: Ingested %d documents", 7)
+
+        LOGGER.info("Stage 2: Starting processing of queries")
+        self.stage2.begin()
+        with concurrent.futures.ProcessPoolExecutor(max_workers=self.num_processes) as executor:
+            try:
+                for _ in executor.map(self._fork, self.stage2_confs):
+                    pass
+            except Exception as e:
+                LOGGER.error(f"Parallel job failed with {e}")
+        self.stage2.reduce()
+        self.stage2.end()
+        LOGGER.info("Stage 2: Processed %d queries", 7)
 
     @staticmethod
     def _fork(conf):
@@ -114,6 +132,22 @@ class ParallelJob(Job):
             stage1_confs.append(conf)
         return stage1_confs
 
+    def _get_stage2_confs(self):
+        num_items = len(self.stage2.iterator)
+        job_size = int(math.ceil(num_items / self.num_processes))
+        indices = [(i, i + job_size) for i in range(0, num_items, job_size)]
+        stage2_confs = []
+        for part, (start, stop) in enumerate(indices):
+            sub_directory = f"part_{part}"
+            conf = self.conf.copy(deep=True)
+            conf.run.stage2.start = start
+            conf.run.stage2.stop = stop
+            conf.run.parallel = None
+            conf.run.stage1 = False
+            self._update_stage2_output_paths(conf, sub_directory)
+            stage2_confs.append(conf)
+        return stage2_confs
+
     @staticmethod
     def _update_stage1_output_paths(conf, part):
         # configs may not have all of these paths so we ignore errors
@@ -127,6 +161,26 @@ class ParallelJob(Job):
             pass
         try:
             conf.index.output.path = path_append(conf.index.output.path, part)
+        except AttributeError:
+            pass
+
+    @staticmethod
+    def _update_stage2_output_paths(conf, part):
+        # configs may not have all of these paths so we ignore errors
+        try:
+            conf.topics.output.path = path_append(conf.topics.output.path, part)
+        except AttributeError:
+            pass
+        try:
+            conf.queries.output.path = path_append(conf.queries.output.path, part)
+        except AttributeError:
+            pass
+        try:
+            conf.retrieve.output.path = path_append(conf.retrieve.output.path, part)
+        except AttributeError:
+            pass
+        try:
+            conf.rerank.output.path = path_append(conf.rerank.output.path, part)
         except AttributeError:
             pass
 

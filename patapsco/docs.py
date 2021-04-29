@@ -8,7 +8,7 @@ import pathlib
 import sqlitedict
 
 from .config import ConfigService
-from .error import ConfigError, ParseError
+from .error import BadDataError, ConfigError, ParseError
 from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import Splitter, TextProcessor
@@ -224,14 +224,24 @@ class DocumentDatabase(sqlitedict.SqliteDict):
             return
         super().__setitem__(key, value)
 
+    def __getitem__(self, key):
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            raise BadDataError(f"Unable to retrieve doc {key} from the database")
+
     def end(self):
         if not self.readonly:
             ConfigService.write_config_file(self.config_path, self.config)
             touch_complete(self.base)
 
     def reduce(self):
-        # TODO
-        LOGGER.info("Database reduce is not implemented")
+        dirs = sorted(list(self.base.glob('part*')))
+        for base in dirs:
+            path = path_append(base, 'docs.db')
+            db = sqlitedict.SqliteDict(str(path))
+            for doc_id in db:
+                self[doc_id] = db[doc_id]
 
 
 class DocumentDatabaseFactory:

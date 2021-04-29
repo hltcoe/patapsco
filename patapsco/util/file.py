@@ -7,7 +7,7 @@ def path_append(path, subdirectory):
     """Append a subdirectory to a path
 
     Args:
-        path (str): base path
+        path (str or Path): base path
         subdirectory (str): directory to add to path
     """
     return str(pathlib.Path(path) / subdirectory)

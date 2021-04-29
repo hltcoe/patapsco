@@ -9,7 +9,7 @@ from .pipeline import Task
 from .schema import TopicsInputConfig
 from .text import Splitter, TextProcessor
 from .util import trec, DataclassJSONEncoder, InputIterator, ReaderFactory
-from .util.file import count_lines, count_lines_with
+from .util.file import count_lines, count_lines_with, path_append
 
 
 @dataclasses.dataclass
@@ -219,6 +219,13 @@ class QueryWriter(Task):
     def end(self):
         super().end()
         self.file.close()
+
+    def reduce(self, dirs):
+        for base in dirs:
+            path = path_append(base, 'queries.jsonl')
+            with open(path) as fp:
+                for line in fp:
+                    self.file.write(line)
 
 
 class QueryReader(InputIterator):
