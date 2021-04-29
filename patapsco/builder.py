@@ -18,7 +18,7 @@ from .schema import RunnerConfig, PipelineMode, Tasks
 from .score import QrelsReaderFactory, Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
 from .util import SlicedIterator, Timer
-from .util.file import delete_dir, is_complete
+from .util.file import delete_dir, is_complete, path_append
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,6 +27,7 @@ class Job:
     def __init__(self, conf):
         self.conf = conf
         self.run_path = conf.run.path
+        self.stage1 = self.stage2 = None
 
     def run(self):
         if self.conf.run.name:
@@ -80,35 +81,39 @@ class SerialJob(Job):
             LOGGER.info("Stage 2 took %.1f secs", timer2.time)
 
 
-def run_parallel_job(conf):
-    job = JobBuilder(conf).build()
-    job.run()
-
-
 class ParallelJob(Job):
     def __init__(self, conf, iterator1, iterator2):
         super().__init__(conf)
         self.num_processes = 2
-        num_items = len(iterator1)
-        job_size = int(math.ceil(num_items / self.num_processes))
-        indices = [(i, i + job_size) for i in range(0, num_items, job_size)]
-        self.confs = []
-        for part, (start, stop) in enumerate(indices):
-            new_conf = conf.copy(deep=True)
-            new_conf.run.stage1.start = start
-            new_conf.run.stage1.stop = stop
-            new_conf.run.parallel = None
-            new_conf.run.path = str(pathlib.Path(new_conf.run.path) / f"part_{part}")
-            self.confs.append(new_conf)
-
-        #self.stage1 = stage1
-        #self.stage2 = stage2
+        self.stage1_confs = self._get_stage1_confs(iterator1, self.num_processes)
 
     def _run(self):
         LOGGER.info("Stage 1: Starting processing of documents")
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.num_processes) as executor:
-            executor.map(run_parallel_job, self.confs)
+            executor.map(self._fork, self.stage1_confs)
         LOGGER.info("Stage 1: Ingested %d documents", 7)
+
+    @staticmethod
+    def _fork(conf):
+        job = JobBuilder(conf).build()
+        job.run()
+
+    def _get_stage1_confs(self, iterator, num_processes):
+        num_items = len(iterator)
+        job_size = int(math.ceil(num_items / self.num_processes))
+        indices = [(i, i + job_size) for i in range(0, num_items, job_size)]
+        stage1_confs = []
+        for part, (start, stop) in enumerate(indices):
+            sub_directory = f"part_{part}"
+            conf = self.conf.copy(deep=True)
+            conf.run.stage1.start = start
+            conf.run.stage1.stop = stop
+            conf.run.parallel = None
+            conf.index.output.path = path_append(conf.index.output.path, sub_directory)
+            conf.documents.db.path = path_append(conf.documents.db.path, sub_directory)
+            conf.topics = conf.queries = conf.retrieve = conf.rerank = conf.score = None
+            stage1_confs.append(conf)
+        return stage1_confs
 
 
 class JobBuilder:
@@ -158,12 +163,17 @@ class JobBuilder:
         return SerialJob(self.conf, stage1, stage2)
 
     def _build_parallel_job(self):
-        stage1 = stage2 = None
+        stage1_iter = stage2_iter = None
 
         stage1_plan = self._create_stage1_plan()
-        stage1_iter = self._get_stage1_iterator(stage1_plan)
+        if stage1_plan:
+            stage1_iter = self._get_stage1_iterator(stage1_plan)
 
-        return ParallelJob(self.conf, stage1_iter, None)
+        stage2_plan = self._create_stage2_plan()
+        if stage2_plan:
+            stage2_iter = self._get_stage2_iterator(stage2_plan)
+
+        return ParallelJob(self.conf, stage1_iter, stage2_iter)
 
     def _create_stage1_plan(self):
         # Analyze the config and check there are any artifacts from a previous run.

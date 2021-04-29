@@ -3,6 +3,16 @@ import pathlib
 from ..error import ConfigError
 
 
+def path_append(path, subdirectory):
+    """Append a subdirectory to a path
+
+    Args:
+        path (str): base path
+        subdirectory (str): directory to add to path
+    """
+    return str(pathlib.Path(path) / subdirectory)
+
+
 def validate_encoding(encoding):
     """Validate that this encoding is supported by python"""
     try:
