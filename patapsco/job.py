@@ -18,10 +18,42 @@ from .retrieve import Joiner, RetrieverFactory
 from .schema import RunnerConfig, PipelineMode, Tasks
 from .score import QrelsReaderFactory, Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
-from .util import SlicedIterator, Timer
+from .util import DataclassJSONEncoder, SlicedIterator, Timer
 from .util.file import delete_dir, is_complete, path_append
 
 LOGGER = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass
+class StageReport:
+    count: int = 0
+    timing: list = dataclasses.field(default_factory=list)
+
+    def __add__(self, other):
+        if self.timing and not other.timing:
+            timing = self.timing
+        elif not self.timing and other.timing:
+            timing = other.timing
+        else:
+            timing = [(a[0], a[1] + b[1]) for a, b in zip(self.timing, other.timing)]
+        return StageReport(self.count + other.count, timing)
+
+
+@dataclasses.dataclass
+class Report:
+    stage1: StageReport = StageReport()
+    stage2: StageReport = StageReport()
+
+    def __add__(self, other):
+        stage1 = self.stage1 + other.stage1
+        stage2 = self.stage2 + other.stage2
+        return Report(stage1, stage2)
+
+    def __radd__(self, other):
+        if other == 0:
+            return self
+        else:
+            return self.__add__(other)
 
 
 class Job:
@@ -37,29 +69,26 @@ class Job:
         self.stage1 = stage1
         self.stage2 = stage2
 
-    def run(self):
+    def run(self, sub_job=False):
         if self.conf.run.name:
             LOGGER.info("Starting run: %s", self.conf.run.name)
 
-        self._run()
+        report = self._run()
 
-        self.write_config()
-        # self.write_report()
+        if not sub_job:
+            self.write_config()
+            self.write_report(report)
         LOGGER.info("Run complete")
+        return report
 
     def _run(self):
         # Children of Job must implement this which is called by run()
         pass
 
-    def write_report(self):
-        path = pathlib.Path(self.run_path) / 'timing.txt'
-        data = {}
-        if self.stage1:
-            data['stage1'] = self.stage1.report
-        if self.stage2:
-            data['stage2'] = self.stage2.report
+    def write_report(self, report):
+        path = pathlib.Path(self.run_path) / 'timing.json'
         with open(path, 'w') as fp:
-            json.dump(data, fp, indent=4)
+            json.dump(report, fp, indent=4, cls=DataclassJSONEncoder)
 
     def write_config(self):
         path = pathlib.Path(self.run_path) / 'config.yml'
@@ -70,11 +99,13 @@ class SerialJob(Job):
     """Single threaded job"""
 
     def _run(self):
+        report = Report()
         if self.stage1:
             timer1 = Timer()
             LOGGER.info("Stage 1: Starting processing of documents")
             with timer1:
                 self.stage1.run()
+            report.stage1 = StageReport(self.stage1.count, self.stage1.report)
             LOGGER.info("Stage 1: Ingested %d documents", self.stage1.count)
             LOGGER.info("Stage 1 took %.1f secs", timer1.time)
 
@@ -83,8 +114,11 @@ class SerialJob(Job):
             LOGGER.info("Stage 2: Starting processing of topics")
             with timer2:
                 self.stage2.run()
+            report.stage2 = StageReport(self.stage2.count, self.stage2.report)
             LOGGER.info("Stage 2: Processed %d topics", self.stage2.count)
             LOGGER.info("Stage 2 took %.1f secs", timer2.time)
+
+        return report
 
 
 @dataclasses.dataclass
@@ -108,10 +142,12 @@ class ParallelJob(Job):
             self.stage2_jobs = self._get_stage2_jobs()
 
     def _run(self):
+        report1 = Report()
+        report2 = Report()
         if self.stage1_jobs:
             LOGGER.info("Stage 1: Starting processing of documents")
             self.stage1.begin()
-            self.map(self.stage1_jobs)
+            report1 = self.map(self.stage1_jobs)
             self.stage1.reduce()
             self.stage1.end()
             LOGGER.info("Stage 1: Ingested %d documents", 7)
@@ -119,17 +155,22 @@ class ParallelJob(Job):
         if self.stage2_jobs:
             LOGGER.info("Stage 2: Starting processing of queries")
             self.stage2.begin()
-            self.map(self.stage2_jobs)
+            report2 = self.map(self.stage2_jobs)
             self.stage2.reduce()
             self.stage2.end()
             LOGGER.info("Stage 2: Processed %d queries", 7)
 
+        return report1 + report2
+
     def map(self, jobs):
+        """
+        Returns:
+            Report
+        """
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.num_processes) as executor:
-            # we loop in a try/except to catch errors from the jon running in separate process
+            # we loop in a try/except to catch errors from the jobs running in separate processes
             try:
-                for _ in executor.map(self._fork, jobs):
-                    pass
+                return sum(executor.map(self._fork, jobs))
             except Exception as e:
                 LOGGER.error(f"Parallel job failed with {e}")
 
@@ -145,7 +186,7 @@ class ParallelJob(Job):
         logger.addHandler(file)
 
         job = JobBuilder(job.conf).build()
-        job.run()
+        return job.run(sub_job=True)
 
     def _get_stage1_jobs(self):
         num_items = len(self.stage1.iterator)
