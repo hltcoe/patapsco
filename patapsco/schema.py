@@ -194,8 +194,8 @@ class RunConfig(BaseConfig):
     name: str
     path: Optional[str]  # base path for run output by default created based on name
     parallel: Optional[str]  # MP or QSUB if running in parallel
-    stage1: StageConfig = StageConfig()
-    stage2: StageConfig = StageConfig()
+    stage1: Union[bool, StageConfig] = StageConfig()
+    stage2: Union[bool, StageConfig] = StageConfig()
 
 
 class RunnerConfig(BaseConfig):

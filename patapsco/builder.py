@@ -111,7 +111,7 @@ class ParallelJob(Job):
             conf.run.parallel = None
             conf.index.output.path = path_append(conf.index.output.path, sub_directory)
             conf.documents.db.path = path_append(conf.documents.db.path, sub_directory)
-            conf.topics = conf.queries = conf.retrieve = conf.rerank = conf.score = None
+            conf.run.stage2 = False
             stage1_confs.append(conf)
         return stage1_confs
 
@@ -136,21 +136,25 @@ class JobBuilder:
 
     def build(self):
         stage1 = stage2 = None
+        stage1_plan = []
+        stage2_plan = []
 
         if self.conf.run.parallel:
             return self._build_parallel_job()
 
-        stage1_plan = self._create_stage1_plan()
-        if stage1_plan:
-            stage1_iter = self._get_stage1_iterator(stage1_plan)
-            stage1_tasks = self._get_stage1_tasks(stage1_plan)
-            stage1 = self._build_stage1_pipeline(stage1_iter, stage1_tasks)
+        if self.conf.run.stage1:
+            stage1_plan = self._create_stage1_plan()
+            if stage1_plan:
+                stage1_iter = self._get_stage1_iterator(stage1_plan)
+                stage1_tasks = self._get_stage1_tasks(stage1_plan)
+                stage1 = self._build_stage1_pipeline(stage1_iter, stage1_tasks)
 
-        stage2_plan = self._create_stage2_plan()
-        if stage2_plan:
-            stage2_iter = self._get_stage2_iterator(stage2_plan)
-            stage2_tasks = self._get_stage2_tasks(stage2_plan)
-            stage2 = self._build_stage2_pipeline(stage2_iter, stage2_tasks)
+        if self.conf.run.stage2:
+            stage2_plan = self._create_stage2_plan()
+            if stage2_plan:
+                stage2_iter = self._get_stage2_iterator(stage2_plan)
+                stage2_tasks = self._get_stage2_tasks(stage2_plan)
+                stage2 = self._build_stage2_pipeline(stage2_iter, stage2_tasks)
 
         if not stage1 and not stage2:
             raise ConfigError("No tasks are configured to run")
