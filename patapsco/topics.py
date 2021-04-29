@@ -3,13 +3,13 @@ import dataclasses
 import json
 import pathlib
 
-from .config import BaseConfig, ConfigService, Optional
+from .config import BaseConfig, Optional
 from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import TopicsInputConfig
 from .text import Splitter, TextProcessor
 from .util import trec, DataclassJSONEncoder, InputIterator, ReaderFactory
-from .util.file import count_lines, count_lines_with, touch_complete
+from .util.file import count_lines, count_lines_with
 
 
 @dataclasses.dataclass
@@ -198,16 +198,12 @@ class QueryWriter(Task):
     def __init__(self, config, artifact_config):
         """
         Args:
-            config (BaseConfig): Config that includes output.path.
+            config (OutputConfig): Config that includes output.path.
             artifact_config (BaseConfig or None): Config that resulted in this artifact
         """
-        super().__init__()
-        self.dir = pathlib.Path(config.output.path)
-        self.dir.mkdir(parents=True)
-        path = self.dir / 'queries.jsonl'
+        super().__init__(artifact_config, config.output.path)
+        path = self.base / 'queries.jsonl'
         self.file = open(path, 'w')
-        self.config = artifact_config
-        self.config_path = self.dir / 'config.yml'
 
     def process(self, query):
         """
@@ -221,10 +217,8 @@ class QueryWriter(Task):
         return query
 
     def end(self):
+        super().end()
         self.file.close()
-        if self.config:
-            ConfigService.write_config_file(self.config_path, self.config)
-        touch_complete(self.dir)
 
 
 class QueryReader(InputIterator):

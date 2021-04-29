@@ -18,6 +18,18 @@ class Task(abc.ABC):
     See Pipeline for how to construct a pipeline of tasks.
     """
 
+    def __init__(self, artifact_config=None, base=None):
+        """
+        Args:
+            artifact_config (BaseConfig): Config for all tasks up to this task.
+            base (Path): Path to base directory of task.
+        """
+        self.artifact_config = artifact_config
+        if base:
+            base = pathlib.Path(base)
+            base.mkdir(parents=True, exist_ok=True)
+        self.base = base
+
     @abc.abstractmethod
     def process(self, item):
         """Process an item
@@ -43,7 +55,17 @@ class Task(abc.ABC):
         pass
 
     def end(self):
-        """Optional end method for cleaning up"""
+        """End method for cleaning up and marking as complete"""
+        if self.base:
+            ConfigService.write_config_file(self.base / 'config.yml', self.artifact_config)
+            touch_complete(self.base)
+
+    def reduce(self, dirs):
+        """Reduce output across parallel jobs
+
+        Args:
+            dirs (list): List of directories with partial output
+        """
         pass
 
     def __str__(self):
@@ -53,6 +75,7 @@ class Task(abc.ABC):
 class TimedTask(Task):
     """Task with a built in timer that wraps another task"""
     def __init__(self, task):
+        super().__init__(task.base)
         self.task = task
         self.timer = Timer()
 
@@ -68,6 +91,9 @@ class TimedTask(Task):
 
     def end(self):
         self.task.end()
+
+    def reduce(self, dirs):
+        self.task.reduce(dirs)
 
     @property
     def time(self):
@@ -168,6 +194,10 @@ class Pipeline(abc.ABC):
     def end(self):
         for task in self.tasks:
             task.end()
+
+    def reduce(self):
+        for task in self.tasks:
+            task.reduce()
 
     @property
     def report(self):

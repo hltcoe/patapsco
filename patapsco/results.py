@@ -94,16 +94,12 @@ class JsonResultsWriter(Task):
     def __init__(self, config, artifact_config):
         """
         Args:
-            config (BaseConfig): Config object with output.path.
+            config (OutputConfig): Config object with output.path.
             artifact_config (BaseConfig): Config used to generate this artifact.
         """
-        super().__init__()
-        self.dir = pathlib.Path(config.output.path)
-        self.dir.mkdir(parents=True)
-        self.path = self.dir / 'results.jsonl'
+        super().__init__(artifact_config, config.output.path)
+        self.path = self.base / 'results.jsonl'
         self.file = open(self.path, 'w')
-        self.config = artifact_config
-        self.config_path = self.dir / 'config.yml'
 
     def process(self, results):
         """
@@ -114,9 +110,8 @@ class JsonResultsWriter(Task):
         return results
 
     def end(self):
+        super().end()
         self.file.close()
-        ConfigService.write_config_file(self.config_path, self.config)
-        touch_complete(self.dir)
 
 
 class JsonResultsReader:

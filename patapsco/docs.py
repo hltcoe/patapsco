@@ -142,13 +142,9 @@ class DocWriter(Task):
     """Write documents to a json file using internal format"""
 
     def __init__(self, config, artifact_config):
-        super().__init__()
-        self.dir = pathlib.Path(config.output.path)
-        self.dir.mkdir(parents=True)
-        path = self.dir / 'documents.jsonl'
+        super().__init__(artifact_config, config.output.path)
+        path = self.base / 'documents.jsonl'
         self.file = open(path, 'w')
-        self.config = artifact_config
-        self.config_path = self.dir / 'config.yml'
 
     def process(self, doc):
         """
@@ -162,10 +158,8 @@ class DocWriter(Task):
         return doc
 
     def end(self):
+        super().end()
         self.file.close()
-        if self.config:
-            ConfigService.write_config_file(self.config_path, self.config)
-        touch_complete(self.dir)
 
 
 class DocReader(InputIterator):

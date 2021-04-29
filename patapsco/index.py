@@ -1,10 +1,7 @@
-import pathlib
-
-from .config import ConfigService
 from .pipeline import Task
 from .schema import IndexConfig
 from .util import ComponentFactory
-from .util.file import touch_complete
+from .util.file import path_append
 
 
 class IndexerFactory(ComponentFactory):
@@ -27,13 +24,9 @@ class MockIndexer(Task):
             index_config (IndexerConfig)
             artifact_config (RunnerConfig)
         """
-        super().__init__()
-        self.dir = pathlib.Path(index_config.output.path)
-        self.dir.mkdir(parents=True, exist_ok=True)
-        self.path = self.dir / 'index.txt'
-        self.file = open(self.path, 'w')
-        self.artifact_config = artifact_config
-        self.config_path = self.dir / 'config.yml'
+        super().__init__(artifact_config, index_config.output.path)
+        path = self.base / 'index.txt'
+        self.file = open(path, 'w')
 
     def process(self, doc):
         """
@@ -47,6 +40,12 @@ class MockIndexer(Task):
         return doc
 
     def end(self):
+        super().end()
         self.file.close()
-        ConfigService.write_config_file(self.config_path, self.artifact_config)
-        touch_complete(self.dir)
+
+    def reduce(self, dirs):
+        for base in dirs:
+            path = path_append(base, 'index.txt')
+            with open(path) as fp:
+                for line in fp:
+                    self.file.write(line)

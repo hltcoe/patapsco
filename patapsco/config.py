@@ -34,6 +34,11 @@ class PathConfig(BaseConfig):
     path: str
 
 
+class OutputConfig(BaseConfig):
+    """Config with an output"""
+    output: PathConfig
+
+
 class ConfigService:
     """Configuration service
 
