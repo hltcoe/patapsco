@@ -13,6 +13,7 @@ class Runner:
     def __init__(self, config_filename, verbose=False, overrides=None):
         self.setup_logging(verbose)
         LOGGER.info(f"Patapsco version {__version__}")
+        LOGGER.info(f"Configuration: {pathlib.Path(config_filename).absolute()}")
         conf = ConfigPreprocessor.process(config_filename, overrides)
         self.add_file_logging(conf.run.path)
         self.job = JobBuilder(conf).build()
