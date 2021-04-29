@@ -150,7 +150,7 @@ class ParallelJob(Job):
             report1 = self.map(self.stage1_jobs)
             self.stage1.reduce()
             self.stage1.end()
-            LOGGER.info("Stage 1: Ingested %d documents", 7)
+            LOGGER.info("Stage 1: Ingested %d documents", report1.stage1.count)
 
         if self.stage2_jobs:
             LOGGER.info("Stage 2: Starting processing of queries")
@@ -158,7 +158,7 @@ class ParallelJob(Job):
             report2 = self.map(self.stage2_jobs)
             self.stage2.reduce()
             self.stage2.end()
-            LOGGER.info("Stage 2: Processed %d queries", 7)
+            LOGGER.info("Stage 2: Processed %d queries", report2.stage2.count)
 
         return report1 + report2
 
