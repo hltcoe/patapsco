@@ -1,6 +1,8 @@
+import concurrent.futures
 import functools
 import json
 import logging
+import math
 import pathlib
 
 from .config import ConfigService
@@ -22,16 +24,45 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Job:
-    def __init__(self, conf, stage1, stage2):
+    def __init__(self, conf):
         self.conf = conf
         self.run_path = conf.run.path
-        self.stage1 = stage1
-        self.stage2 = stage2
 
     def run(self):
         if self.conf.run.name:
             LOGGER.info("Starting run: %s", self.conf.run.name)
 
+        self._run()
+
+        self.write_config()
+        #self.write_report()
+        LOGGER.info("Run complete")
+
+    def _run(self):
+        pass
+
+    def write_report(self):
+        path = pathlib.Path(self.run_path) / 'timing.txt'
+        data = {}
+        if self.stage1:
+            data['stage1'] = self.stage1.report
+        if self.stage2:
+            data['stage2'] = self.stage2.report
+        with open(path, 'w') as fp:
+            json.dump(data, fp, indent=4)
+
+    def write_config(self):
+        path = pathlib.Path(self.run_path) / 'config.yml'
+        ConfigService.write_config_file(str(path), self.conf)
+
+
+class SerialJob(Job):
+    def __init__(self, conf, stage1, stage2):
+        super().__init__(conf)
+        self.stage1 = stage1
+        self.stage2 = stage2
+
+    def _run(self):
         if self.stage1:
             timer1 = Timer()
             LOGGER.info("Stage 1: Starting processing of documents")
@@ -48,23 +79,36 @@ class Job:
             LOGGER.info("Stage 2: Processed %d topics", self.stage2.count)
             LOGGER.info("Stage 2 took %.1f secs", timer2.time)
 
-        self.write_config()
-        self.write_report()
-        LOGGER.info("Run complete")
 
-    def write_report(self):
-        path = pathlib.Path(self.run_path) / 'timing.txt'
-        data = {}
-        if self.stage1:
-            data['stage1'] = self.stage1.report
-        if self.stage2:
-            data['stage2'] = self.stage2.report
-        with open(path, 'w') as fp:
-            json.dump(data, fp, indent=4)
+def run_parallel_job(conf):
+    job = JobBuilder(conf).build()
+    job.run()
 
-    def write_config(self):
-        path = pathlib.Path(self.run_path) / 'config.yml'
-        ConfigService.write_config_file(str(path), self.conf)
+
+class ParallelJob(Job):
+    def __init__(self, conf, iterator1, iterator2):
+        super().__init__(conf)
+        self.num_processes = 2
+        num_items = len(iterator1)
+        job_size = int(math.ceil(num_items / self.num_processes))
+        indices = [(i, i + job_size) for i in range(0, num_items, job_size)]
+        self.confs = []
+        for part, (start, stop) in enumerate(indices):
+            new_conf = conf.copy(deep=True)
+            new_conf.run.stage1.start = start
+            new_conf.run.stage1.stop = stop
+            new_conf.run.parallel = None
+            new_conf.run.path = str(pathlib.Path(new_conf.run.path) / f"part_{part}")
+            self.confs.append(new_conf)
+
+        #self.stage1 = stage1
+        #self.stage2 = stage2
+
+    def _run(self):
+        LOGGER.info("Stage 1: Starting processing of documents")
+        with concurrent.futures.ProcessPoolExecutor(max_workers=self.num_processes) as executor:
+            executor.map(run_parallel_job, self.confs)
+        LOGGER.info("Stage 1: Ingested %d documents", 7)
 
 
 class JobBuilder:
@@ -88,6 +132,9 @@ class JobBuilder:
     def build(self):
         stage1 = stage2 = None
 
+        if self.conf.run.parallel:
+            return self._build_parallel_job()
+
         stage1_plan = self._create_stage1_plan()
         if stage1_plan:
             stage1_iter = self._get_stage1_iterator(stage1_plan)
@@ -108,7 +155,15 @@ class JobBuilder:
         if stage2 and Tasks.RETRIEVE in stage2_plan:
             self.check_text_processing()
 
-        return Job(self.conf, stage1, stage2)
+        return SerialJob(self.conf, stage1, stage2)
+
+    def _build_parallel_job(self):
+        stage1 = stage2 = None
+
+        stage1_plan = self._create_stage1_plan()
+        stage1_iter = self._get_stage1_iterator(stage1_plan)
+
+        return ParallelJob(self.conf, stage1_iter, None)
 
     def _create_stage1_plan(self):
         # Analyze the config and check there are any artifacts from a previous run.

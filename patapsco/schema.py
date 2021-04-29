@@ -1,4 +1,23 @@
+import enum
+
 from .config import BaseConfig, BaseUncheckedConfig, PathConfig, Optional, Union
+
+
+class PipelineMode(str, enum.Enum):
+    STREAMING = 'streaming'
+    BATCH = 'batch'
+
+
+class Tasks(enum.Enum):
+    """Tasks that make up the system pipelines"""
+    DOCUMENTS = enum.auto()
+    INDEX = enum.auto()
+    TOPICS = enum.auto()
+    QUERIES = enum.auto()
+    RETRIEVE = enum.auto()
+    RERANK = enum.auto()
+    SCORE = enum.auto()
+
 
 """""""""""""""""
 Text Processing
@@ -174,6 +193,7 @@ class RunConfig(BaseConfig):
     """Configuration for a run of Patapsco"""
     name: str
     path: Optional[str]  # base path for run output by default created based on name
+    parallel: Optional[str]  # MP or QSUB if running in parallel
     stage1: StageConfig = StageConfig()
     stage2: StageConfig = StageConfig()
 

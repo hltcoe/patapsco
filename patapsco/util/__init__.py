@@ -151,7 +151,11 @@ class SlicedIterator(InputIterator):
 
     def __len__(self):
         original_length = len(self.original_iterator)
-        return min(original_length, self.stop) - self.start
+        start = self.start if self.start else 0
+        if not self.stop:
+            return original_length - start
+        else:
+            return min(original_length, self.stop) - start
 
     def __str__(self):
         return str(self.original_iterator)
