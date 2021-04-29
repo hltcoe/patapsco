@@ -1,9 +1,10 @@
+import pathlib
 import tempfile
 
 import pytest
 
 from patapsco.index import MockIndexer
-from patapsco.builder import *
+from patapsco.job import *
 from patapsco.schema import *
 
 

@@ -3,7 +3,7 @@ import logging.handlers
 import pathlib
 
 from .__version__ import __version__
-from .builder import JobBuilder
+from .job import JobBuilder
 from .helpers import ConfigPreprocessor
 
 LOGGER = logging.getLogger(__name__)
