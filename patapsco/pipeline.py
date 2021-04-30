@@ -173,6 +173,13 @@ class MultiplexTask(Task):
                 ConfigService.write_config_file(self.config_path, self.artifact_config)
             touch_complete(self.dir)
 
+    def run_reduce(self):
+        if hasattr(self, 'dir'):
+            dirs = sorted(list(self.dir.glob('part*')))
+            for name, task in self.tasks.items():
+                task_dirs = [path / name for path in dirs]
+                task.reduce(task_dirs)
+
     @property
     def name(self):
         return f"Multiplex({list(self.tasks.values())[0].name})"
