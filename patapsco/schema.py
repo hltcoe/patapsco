@@ -8,15 +8,15 @@ class PipelineMode(str, enum.Enum):
     BATCH = 'batch'
 
 
-class Tasks(enum.Enum):
+class Tasks(str, enum.Enum):
     """Tasks that make up the system pipelines"""
-    DOCUMENTS = enum.auto()
-    INDEX = enum.auto()
-    TOPICS = enum.auto()
-    QUERIES = enum.auto()
-    RETRIEVE = enum.auto()
-    RERANK = enum.auto()
-    SCORE = enum.auto()
+    DOCUMENTS = 'documents'
+    INDEX = 'index'
+    TOPICS = 'topics'
+    QUERIES = 'queries'
+    RETRIEVE = 'retrieve'
+    RERANK = 'rerank'
+    SCORE = 'score'
 
 
 """""""""""""""""
