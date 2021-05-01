@@ -113,18 +113,19 @@ class ConfigPreprocessor:
 class ArtifactHelper:
     """Utilities for working with artifacts"""
 
-    TASKS = ['documents', 'index', 'topics', 'queries', 'retrieve', 'rerank', 'score']
-
     def __init__(self):
-        self.contributors = {}
-        contributors = list(self.TASKS)
-        for task in Tasks:
-            contributors.pop(0)
-            self.contributors[task] = list(contributors)
+        self.excludes = {
+            Tasks.DOCUMENTS: [Tasks.INDEX, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK, Tasks.SCORE],
+            Tasks.INDEX: [Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK, Tasks.SCORE],
+            Tasks.TOPICS: [Tasks.DOCUMENTS, Tasks.INDEX, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK, Tasks.SCORE],
+            Tasks.QUERIES: [Tasks.DOCUMENTS, Tasks.INDEX, Tasks.RETRIEVE, Tasks.RERANK, Tasks.SCORE],
+            Tasks.RETRIEVE: [Tasks.RERANK, Tasks.SCORE],
+            Tasks.RERANK: [Tasks.SCORE]
+        }
 
     def get_config(self, config, task):
         """This excludes the parts of the configuration that were not used to create the artifact."""
-        return config.copy(exclude=set(self.contributors[task]), deep=True)
+        return config.copy(exclude=set(self.excludes[task]), deep=True)
 
     def combine(self, config, path):
         """Loads an artifact configuration and combines it with the base config"""
@@ -138,7 +139,7 @@ class ArtifactHelper:
         except FileNotFoundError:
             raise ConfigError(f"Unable to load artifact config {path}")
         artifact_config = RunnerConfig(**artifact_config_dict)
-        for task in self.TASKS:
+        for task in Tasks:
             if getattr(artifact_config, task):
                 if not getattr(config, task):
                     setattr(config, task, getattr(artifact_config, task))
