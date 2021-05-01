@@ -19,6 +19,8 @@ class BaseConfig(pydantic.BaseModel):
 
     This uses dataclasses and includes validation of parameters.
     """
+    comment: Optional[str]
+
     class Config:
         extra = pydantic.Extra.forbid
 
