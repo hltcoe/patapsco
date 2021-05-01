@@ -1,7 +1,16 @@
-import glob
 import pathlib
 
-from ..error import BadDataError, ConfigError
+from ..error import ConfigError
+
+
+def path_append(path, subdirectory):
+    """Append a subdirectory to a path
+
+    Args:
+        path (str or Path): base path
+        subdirectory (str): directory to add to path
+    """
+    return str(pathlib.Path(path) / subdirectory)
 
 
 def validate_encoding(encoding):
@@ -38,60 +47,20 @@ def is_complete(path):
     return file.exists()
 
 
-class GlobFileGenerator:
-    """
-    You have a function that returns a generator given a file.
-    You have one or more globs that match files.
-    You want to seamlessly iterator over the function across the files that match.
-    Use GlobFileGenerator.
-    """
+def count_lines(path, encoding='utf8'):
+    """Count lines in a text file"""
+    count = 0
+    with open(path, 'r', encoding=encoding) as fp:
+        for _ in fp:
+            count += 1
+    return count
 
-    def __init__(self, globs, func, *args, **kwargs):
-        """
-        Args:
-            globs (list or str): array of glob strings or single glob string
-            func (callable): parsing function returns a generator
-            *args: variable length arguments for the parsing function
-            **kwargs: keyword arguments for the parsing function
-        """
-        if isinstance(globs, str):
-            globs = [globs]
-        self.globs = iter(globs)
-        self.parsing_func = func
-        self.args = args
-        self.kwargs = kwargs
 
-        self.pattern = None
-        self.first_use_of_gen = True
-        paths = self._next_glob()
-        if not paths:
-            raise ConfigError(f"No files match pattern '{self.pattern}'")
-        self.paths = iter(paths)
-        self.gen = self._next_generator()
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        try:
-            item = next(self.gen)
-            self.first_use_of_gen = False
-            return item
-        except StopIteration:
-            if self.first_use_of_gen:
-                # bad file so we throw an exception
-                raise BadDataError(f"{self.pattern} did not result in any items")
-            try:
-                self.gen = self._next_generator()
-            except StopIteration:
-                self.paths = iter(self._next_glob())
-            return self.__next__()
-
-    def _next_glob(self):
-        self.pattern = next(self.globs)
-        return sorted(glob.glob(self.pattern))
-
-    def _next_generator(self):
-        path = next(self.paths)
-        self.first_use_of_gen = True
-        return self.parsing_func(path, *self.args, **self.kwargs)
+def count_lines_with(string, path, encoding='utf8'):
+    """Count lines in a text file with a particular string"""
+    count = 0
+    with open(path, 'r', encoding=encoding) as fp:
+        for line in fp:
+            if string in line:
+                count += 1
+    return count

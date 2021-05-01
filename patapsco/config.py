@@ -36,6 +36,11 @@ class PathConfig(BaseConfig):
     path: str
 
 
+class OutputConfig(BaseConfig):
+    """Config with an output"""
+    output: PathConfig
+
+
 class ConfigService:
     """Configuration service
 
@@ -100,7 +105,7 @@ class ConfigService:
         else:
             reader_fn = self._read_json_config
         with open(filename, 'r') as fp:
-            LOGGER.info("Loading configuration from %s", filename)
+            LOGGER.debug("Loading configuration from %s", filename)
             conf = reader_fn(fp)
             if self.overrides:
                 ConfigOverrides.process(conf, self.overrides)

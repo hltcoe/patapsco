@@ -2,17 +2,20 @@ import csv
 import dataclasses
 import gzip
 import json
+import logging
 import pathlib
 
 import sqlitedict
 
 from .config import ConfigService
-from .error import ConfigError, ParseError
+from .error import BadDataError, ConfigError, ParseError
 from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import Splitter, TextProcessor
-from .util import trec, ComponentFactory, DataclassJSONEncoder
-from .util.file import GlobFileGenerator, is_complete, touch_complete, validate_encoding
+from .util import trec, DataclassJSONEncoder, InputIterator, ReaderFactory
+from .util.file import count_lines, count_lines_with, path_append, is_complete, touch_complete
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -22,7 +25,7 @@ class Doc:
     text: str
 
 
-class DocumentReaderFactory(ComponentFactory):
+class DocumentReaderFactory(ReaderFactory):
     classes = {
         'sgml': 'SgmlDocumentReader',
         'json': 'Tc4JsonDocumentReader',
@@ -34,103 +37,117 @@ class DocumentReaderFactory(ComponentFactory):
     name = "input document type"
 
 
-class SgmlDocumentReader:
-    """Iterator that reads TREC sgml documents"""
+class SgmlDocumentReader(InputIterator):
+    """Iterator that reads a TREC sgml document"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, trec.parse_sgml_documents, config.encoding)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        doc = next(self.docs)
-        return Doc(doc[0], self.lang, doc[1])
-
-
-class Tc4JsonDocumentReader:
-    """Read JSONL documents to start a pipeline"""
-
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, self.parse, config.encoding)
+    def __init__(self, path, encoding, lang):
+        self.path = path
+        self.encoding = encoding
+        self.lang = lang
+        self.docs_iter = iter(trec.parse_sgml_documents(path, encoding))
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        doc = next(self.docs)
+        doc = next(self.docs_iter)
         return Doc(doc[0], self.lang, doc[1])
 
-    @staticmethod
-    def parse(path, encoding='utf8'):
+    def __len__(self):
+        return count_lines_with('<DOC>', self.path, self.encoding)
+
+
+class Tc4JsonDocumentReader(InputIterator):
+    """Read documents from a JSONL file to start a pipeline"""
+
+    def __init__(self, path, encoding, lang):
+        """
+        Args:
+            path (str): Path to file to parse
+            encoding (str): Encoding of file
+            lang (str): Language of documents in file
+        """
+        self.path = path
+        self.encoding = encoding
+        self.lang = lang
         open_func = gzip.open if path.endswith('.gz') else open
-        with open_func(path, 'rt', encoding=encoding) as fp:
-            for line in fp:
-                try:
-                    data = json.loads(line.strip())
-                except json.decoder.JSONDecodeError as e:
-                    raise ParseError(f"Problem parsing json from {path}: {e}")
-                try:
-                    yield data['id'], ' '.join([data['title'].strip(), data['text'].strip()])
-                except KeyError as e:
-                    raise ParseError(f"Missing field {e} in json docs element: {data}")
-
-
-class TsvDocumentReader:
-    """Iterator that reads TSV documents like from MSMARCO"""
-
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, self.parse, config.encoding)
+        self.fp = open_func(path, 'rt', encoding=encoding)
+        self.count = 0
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        doc = next(self.docs)
-        return Doc(doc[0], self.lang, doc[1])
+        self.count += 1
+        line = self.fp.readline()
+        if not line:
+            self.fp.close()
+            raise StopIteration()
+        try:
+            data = json.loads(line.strip())
+            return Doc(data['id'], self.lang, ' '.join([data['title'].strip(), data['text'].strip()]))
+        except json.decoder.JSONDecodeError as e:
+            raise ParseError(f"Problem parsing json from {self.path} on line {self.count}: {e}")
+        except KeyError as e:
+            raise ParseError(f"Missing field {e} in json element in {self.path} on line {self.count}")
 
-    @staticmethod
-    def parse(path, encoding='utf8'):
+    def __len__(self):
+        return count_lines(self.path, self.encoding)
+
+
+class TsvDocumentReader(InputIterator):
+    """Iterator that reads TSV documents from MSMARCO Passages"""
+
+    def __init__(self, path, encoding, lang):
+        self.path = path
+        self.encoding = encoding
+        self.lang = lang
         open_func = gzip.open if path.endswith('.gz') else open
-        with open_func(path, 'rt', encoding=encoding) as fp:
-            reader = csv.reader(fp, delimiter='\t')
-            for line in reader:
-                yield line[0], line[1].strip()
+        self.fp = open_func(path, 'rt', encoding=encoding)
+        self.reader = csv.reader(self.fp, delimiter='\t')
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            row = next(self.reader)
+            return Doc(row[0], self.lang, row[1])
+        except StopIteration:
+            self.fp.close()
+            raise
+
+    def __len__(self):
+        return count_lines(self.path, self.encoding)
 
 
-class HamshahriDocumentReader:
+class HamshahriDocumentReader(InputIterator):
     """Iterator that reads CLEF Farsi documents"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.docs = GlobFileGenerator(config.path, trec.parse_hamshahri_documents, config.encoding)
+    def __init__(self, path, encoding, lang):
+        self.path = path
+        self.encoding = encoding
+        self.lang = lang
+        self.docs_iter = iter(trec.parse_hamshahri_documents(path, encoding))
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        doc = next(self.docs)
+        doc = next(self.docs_iter)
         return Doc(doc[0], self.lang, doc[1])
+
+    def __len__(self):
+        return count_lines_with('.DID', self.path, self.encoding)
 
 
 class DocWriter(Task):
-    """Write documents to a json file"""
+    """Write documents to a json file using internal format"""
 
     def __init__(self, config, artifact_config):
-        super().__init__()
-        self.dir = pathlib.Path(config.output.path)
-        self.dir.mkdir(parents=True)
-        path = self.dir / 'documents.jsonl'
+        super().__init__(artifact_config, config.output.path)
+        path = self.base / 'documents.jsonl'
         self.file = open(path, 'w')
-        self.config = artifact_config
-        self.config_path = self.dir / 'config.yml'
 
     def process(self, doc):
         """
@@ -144,18 +161,25 @@ class DocWriter(Task):
         return doc
 
     def end(self):
+        super().end()
         self.file.close()
-        if self.config:
-            ConfigService.write_config_file(self.config_path, self.config)
-        touch_complete(self.dir)
+
+    def reduce(self, dirs):
+        for base in dirs:
+            path = path_append(base, 'documents.jsonl')
+            with open(path) as fp:
+                for line in fp:
+                    self.file.write(line)
 
 
-class DocReader:
+class DocReader(InputIterator):
     """Iterator over documents written by DocWriter"""
 
     def __init__(self, path):
-        path = pathlib.Path(path) / 'documents.jsonl'
-        self.file = open(path, 'r')
+        self.path = pathlib.Path(path)
+        if self.path.is_dir():
+            self.path = self.path / 'documents.jsonl'
+        self.file = open(self.path, 'r')
 
     def __iter__(self):
         return self
@@ -167,6 +191,9 @@ class DocReader:
             raise StopIteration
         data = json.loads(line)
         return Doc(**data)
+
+    def __len__(self):
+        return count_lines(self.path)
 
 
 class DocumentDatabase(sqlitedict.SqliteDict):
@@ -182,14 +209,14 @@ class DocumentDatabase(sqlitedict.SqliteDict):
     def __init__(self, path, config, readonly=False, *args, **kwargs):
         kwargs['autocommit'] = True
         self.readonly = readonly
-        self.dir = pathlib.Path(path)
-        self.path = self.dir / "docs.db"
+        self.base = pathlib.Path(path)
+        self.path = self.base / "docs.db"
         if readonly and not self.path.exists():
             raise ConfigError(f"Document database does not exist: {self.path}")
-        if not self.dir.exists():
-            self.dir.mkdir(parents=True)
+        if not self.base.exists():
+            self.base.mkdir(parents=True)
         self.config = config
-        self.config_path = self.dir / 'config.yml'
+        self.config_path = self.base / 'config.yml'
         super().__init__(str(self.path), *args, **kwargs)
 
     def __setitem__(self, key, value):
@@ -197,10 +224,24 @@ class DocumentDatabase(sqlitedict.SqliteDict):
             return
         super().__setitem__(key, value)
 
+    def __getitem__(self, key):
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            raise BadDataError(f"Unable to retrieve doc {key} from the database")
+
     def end(self):
         if not self.readonly:
             ConfigService.write_config_file(self.config_path, self.config)
-            touch_complete(self.dir)
+            touch_complete(self.base)
+
+    def reduce(self):
+        dirs = sorted(list(self.base.glob('part*')))
+        for base in dirs:
+            path = path_append(base, 'docs.db')
+            db = sqlitedict.SqliteDict(str(path))
+            for doc_id in db:
+                self[doc_id] = db[doc_id]
 
 
 class DocumentDatabaseFactory:
@@ -259,6 +300,9 @@ class DocumentProcessor(Task, TextProcessor):
 
     def end(self):
         self.db.end()
+
+    def run_reduce(self):
+        self.db.reduce()
 
     @property
     def name(self):
