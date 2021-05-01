@@ -40,7 +40,7 @@ class DocumentReaderFactory(ReaderFactory):
 class SgmlDocumentReader(InputIterator):
     """Iterator that reads a TREC sgml document"""
 
-    def __init__(self, path, encoding, lang):
+    def __init__(self, path, encoding, lang, **kwargs):
         self.path = path
         self.encoding = encoding
         self.lang = lang
@@ -60,7 +60,7 @@ class SgmlDocumentReader(InputIterator):
 class Tc4JsonDocumentReader(InputIterator):
     """Read documents from a JSONL file to start a pipeline"""
 
-    def __init__(self, path, encoding, lang):
+    def __init__(self, path, encoding, lang, **kwargs):
         """
         Args:
             path (str): Path to file to parse
@@ -98,7 +98,7 @@ class Tc4JsonDocumentReader(InputIterator):
 class TsvDocumentReader(InputIterator):
     """Iterator that reads TSV documents from MSMARCO Passages"""
 
-    def __init__(self, path, encoding, lang):
+    def __init__(self, path, encoding, lang, **kwargs):
         self.path = path
         self.encoding = encoding
         self.lang = lang
@@ -124,7 +124,7 @@ class TsvDocumentReader(InputIterator):
 class HamshahriDocumentReader(InputIterator):
     """Iterator that reads CLEF Farsi documents"""
 
-    def __init__(self, path, encoding, lang):
+    def __init__(self, path, encoding, lang, **kwargs):
         self.path = path
         self.encoding = encoding
         self.lang = lang

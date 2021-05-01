@@ -83,7 +83,7 @@ class TopicProcessor(Task):
 class SgmlTopicReader(InputIterator):
     """Iterator over topics from trec sgml"""
 
-    def __init__(self, path, encoding, lang, prefix, strip_non_digits):
+    def __init__(self, path, encoding, lang, prefix, strip_non_digits, **kwargs):
         self.path = path
         self.encoding = encoding
         self.lang = lang
