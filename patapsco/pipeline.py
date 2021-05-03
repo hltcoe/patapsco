@@ -148,7 +148,8 @@ class MultiplexTask(Task):
                 if task_config.output:
                     self.dir = pathlib.Path(config.output.path)
                     task_config.output.path = str(pathlib.Path(task_config.output.path) / split)
-                self.tasks[split] = create_fn(task_config, artifact_config, *args, **kwargs)
+                task_artifact_config = self._update_artifact_config(artifact_config, split)
+                self.tasks[split] = create_fn(task_config, task_artifact_config, *args, **kwargs)
             self.artifact_config = artifact_config
             self.config_path = self.dir / 'config.yml'
             # we save the splits for components downstream to access
@@ -182,6 +183,19 @@ class MultiplexTask(Task):
 
     def __str__(self):
         return f"Multiplex({list(self.tasks.values())[0]})"
+
+    @staticmethod
+    def _update_artifact_config(artifact_config, split):
+        conf = artifact_config.copy(deep=True)
+        try:
+            conf.documents.process.splits = [split]
+        except AttributeError:
+            pass
+        try:
+            conf.queries.process.splits = [split]
+        except AttributeError:
+            pass
+        return conf
 
 
 class Pipeline(abc.ABC):
