@@ -280,6 +280,9 @@ class JobBuilder:
         stage1_plan = []
         stage2_plan = []
 
+        if is_complete(self.conf.run.path):
+            raise ConfigError('Run is already complete. Delete the output directory to rerun.')
+
         if self.conf.run.stage1:
             stage1_plan = self._create_stage1_plan()
             if stage1_plan:
@@ -400,9 +403,8 @@ class JobBuilder:
             if not self.is_task_complete(self.conf.retrieve):
                 stage2.append(Tasks.RETRIEVE)
         if self.conf.rerank:
-            if self.is_task_complete(self.conf.rerank):
-                raise ConfigError('Rerank is already complete. Delete its output directory to rerun reranking.')
-            stage2.append(Tasks.RERANK)
+            if not self.is_task_complete(self.conf.rerank):
+                stage2.append(Tasks.RERANK)
         if self.conf.score:
             if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:
                 raise ConfigError("Scorer can only run if either retrieve or rerank is configured.")
@@ -473,7 +475,11 @@ class JobBuilder:
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
             db = DocumentDatabaseFactory.create(self.conf.rerank.input.db.path, readonly=True)
             tasks.append(RerankFactory.create(self.conf.rerank, db))
-            tasks.append(TrecResultsWriter(self.conf.rerank, artifact_conf))
+            if self.conf.rerank.output:
+                tasks.append(JsonResultsWriter(self.conf.rerank, artifact_conf))
+
+        if Tasks.RETRIEVE in plan or Tasks.RERANK in plan:
+            tasks.append(TrecResultsWriter(self.conf))
 
         if Tasks.SCORE in plan:
             qrels = QrelsReaderFactory.create(self.conf.score.input).read()
