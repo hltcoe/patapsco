@@ -219,10 +219,15 @@ class ConfigService:
     def _import_configs(self, conf, filename):
         """Load the configs to import and merge into main conf"""
         base_dir = pathlib.Path(filename).parent
-        for file in conf['imports']:
+        imports = conf['imports']
+        del conf['imports']
+        for file in imports:
             filename = base_dir / file
             partial_conf = self.read_config_file(filename)
             merge_dicts(conf, partial_conf)
+            # handle imports that have imports
+            if 'imports' in conf:
+                self._import_configs(conf, filename)
 
 
 class AttrDict(dict):
