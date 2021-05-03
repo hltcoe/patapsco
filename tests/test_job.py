@@ -60,7 +60,7 @@ class TestJobBuilder:
         )
 
     def test_create_plan_with_no_stages(self):
-        conf = RunnerConfig(run=RunConfig(name='test'))
+        conf = RunnerConfig(run=RunConfig(name='test', path=str(self.temp_dir)))
         builder = JobBuilder(conf)
         with pytest.raises(ConfigError, match='No tasks are configured to run'):
             builder.build()
@@ -131,12 +131,6 @@ class TestJobBuilder:
         assert Tasks.QUERIES not in stage2_plan
         assert Tasks.RETRIEVE not in stage2_plan
         assert Tasks.RERANK in stage2_plan
-
-    def test_create_plan_with_complete_rerank(self):
-        conf = self.create_config('rerank_complete')
-        builder = JobBuilder(conf)
-        with pytest.raises(ConfigError, match="Rerank is already complete. Delete its output directory to rerun reranking."):
-            builder._create_stage2_plan()
 
     def test_create_plan_with_no_rerank_retrieval(self):
         conf = self.create_config('test')

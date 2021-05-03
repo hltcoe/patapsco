@@ -31,14 +31,18 @@ class Results:
 class TrecResultsWriter(Task):
     """Write results to a file in TREC format"""
 
-    def __init__(self, config, artifact_config):
+    def __init__(self, config):
         """
         Args:
-            config (BaseConfig): Config object with output.path.
-            artifact_config (BaseConfig): Config used to create this artifact.
+            config (RunnerConfig): Config for the run.
         """
-        super().__init__(artifact_config, config.output.path)
+        super().__init__()
+        self.base = pathlib.Path(config.run.path)
+        self.artifact_config = config
         self.path = self.base / 'results.txt'
+        self.file = None
+
+    def begin(self):
         self.file = open(self.path, 'w')
 
     def process(self, results):
@@ -51,8 +55,8 @@ class TrecResultsWriter(Task):
         return results
 
     def end(self):
-        super().end()
         self.file.close()
+        super().end()
 
     def reduce(self, dirs):
         for base in dirs:
