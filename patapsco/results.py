@@ -89,6 +89,9 @@ class TrecResultsReader:
     def __next__(self):
         return next(self.results)
 
+    def __str__(self):
+        return self.__class__.__name__
+
 
 class JsonResultsWriter(Task):
     """Write results to a json file"""
@@ -141,3 +144,6 @@ class JsonResultsReader:
         data = json.loads(line)
         results = [Result(**result) for result in data['results']]
         return Results(Query(**data['query']), data['system'], results)
+
+    def __str__(self):
+        return self.__class__.__name__

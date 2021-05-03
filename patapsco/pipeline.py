@@ -180,9 +180,8 @@ class MultiplexTask(Task):
                 task_dirs = [path / name for path in dirs]
                 task.reduce(task_dirs)
 
-    @property
-    def name(self):
-        return f"Multiplex({list(self.tasks.values())[0].name})"
+    def __str__(self):
+        return f"Multiplex({list(self.tasks.values())[0]})"
 
 
 class Pipeline(abc.ABC):

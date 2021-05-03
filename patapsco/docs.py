@@ -304,9 +304,8 @@ class DocumentProcessor(Task, TextProcessor):
     def run_reduce(self):
         self.db.reduce()
 
-    @property
-    def name(self):
+    def __str__(self):
         if self.splitter:
-            return f"{super()} | Splitter"
+            return f"{super().__str__()} | Splitter"
         else:
-            return str(super())
+            return super().__str__()
