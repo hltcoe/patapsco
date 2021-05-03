@@ -1,4 +1,5 @@
 import io
+import pathlib
 
 import pytest
 import yaml
@@ -382,3 +383,12 @@ def test_inheritance_nested_key():
     config.ConfigInheritance.process(conf)
     assert conf['x']['y']['color'] == 'red'
     assert conf['x']['y']['size'] == 'large'
+
+
+def test_imports():
+    directory = pathlib.Path(__file__).parent / 'config_files'
+    main_filename = directory / 'main.yml'
+    conf = config.ConfigService().read_config_file(main_filename)
+    assert conf['run']['name'] == "English test run"
+    assert conf['documents']['input']['format'] == 'json'
+    assert conf['index']['name'] == 'lucene'

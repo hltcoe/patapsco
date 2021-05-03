@@ -1,0 +1,12 @@
+documents:
+  input:
+    format: json
+    lang: en
+    encoding: utf8
+    path: sample/en_mini_dataset.jsonl
+  process:
+    normalize: true
+    tokenize:
+      name: whitespace
+    lowercase: true
+    stem: off
