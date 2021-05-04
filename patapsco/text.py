@@ -9,7 +9,7 @@ from .util import ComponentFactory
 
 class TokenizerFactory(ComponentFactory):
     classes = {
-        'stanza': 'StanzaTozenizer',
+        'stanza': 'StanzaTokenizer',
         'whitespace': 'WhiteSpaceTokenizer',
     }
     config_class = TokenizeConfig
