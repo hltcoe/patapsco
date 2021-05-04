@@ -1,10 +1,16 @@
+import contextlib
+import io
+import logging
 import pathlib
+
 import stanza
 
 from .error import ConfigError
 from .pipeline import MultiplexItem
 from .schema import TokenizeConfig, StemConfig
 from .util import ComponentFactory
+
+LOGGER = logging.getLogger(__name__)
 
 
 class TokenizerFactory(ComponentFactory):
@@ -55,10 +61,16 @@ class WhiteSpaceTokenizer(Tokenizer):
 
 
 class StanzaTokenizer(Tokenizer):
+    """Tokenizer that uses Stanford's stanza library"""
+
     def __init__(self, config, lang):
         super().__init__(config, lang)
-        stanza.download(self.lang)
-        self.nlp = stanza.Pipeline(self.lang, processors='tokenize')
+        self._setup_logging()
+        buffer = io.StringIO()
+        with contextlib.redirect_stderr(buffer):
+            stanza.download(self.lang)
+            self.nlp = stanza.Pipeline(self.lang, processors='tokenize')
+        LOGGER.debug(buffer.getvalue())
 
     def tokenize(self, text):
         doc = self.nlp(text)
@@ -67,6 +79,15 @@ class StanzaTokenizer(Tokenizer):
             for word in sentence.words:
                 tokens.append(word.text)
         return tokens
+
+    @staticmethod
+    def _setup_logging():
+        stanza_logger = logging.getLogger('stanza')
+        patapsco_logger = logging.getLogger('patapsco')
+        stanza_logger.setLevel(patapsco_logger.level)
+        stanza_logger.handlers = []
+        for handler in patapsco_logger.handlers:
+            stanza_logger.addHandler(handler)
 
 
 class StopWordsRemoval:
