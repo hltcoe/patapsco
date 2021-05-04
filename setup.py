@@ -25,7 +25,7 @@ setuptools.setup(
         "pytrec_eval",
         "pyyaml",
         "sqlitedict",
-        "stanza>=1.0.1",
+        "stanza>=1.2.0",
     ],
     extras_require={
         "dev": ["pytest", "flake8", "autopep8"]

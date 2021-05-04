@@ -41,7 +41,7 @@ class Tokenizer:
 
     def __init__(self, config, lang):
         self.config = config
-        self.lang = lang
+        self.lang = lang.lower()
 
     def tokenize(self, text):
         """Tokenize text
@@ -65,11 +65,17 @@ class StanzaTokenizer(Tokenizer):
 
     def __init__(self, config, lang):
         super().__init__(config, lang)
+        if self.lang == 'zh':
+            self.lang = 'zh-hans'
         self._setup_logging()
         buffer = io.StringIO()
         with contextlib.redirect_stderr(buffer):
             stanza.download(self.lang)
-            self.nlp = stanza.Pipeline(self.lang, processors='tokenize')
+            if self.lang == 'zh-hans':
+                processors = {'tokenize': 'jieba'}
+            else:
+                processors = 'tokenize'
+            self.nlp = stanza.Pipeline(self.lang, processors=processors)
         LOGGER.debug(buffer.getvalue())
 
     def tokenize(self, text):
