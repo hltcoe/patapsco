@@ -67,9 +67,15 @@ class Scorer(Task):
         return results
 
     def end(self):
-        evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, self.metrics)
-        # scores is a dictionary of query_id -> {metric1: score, metric2: score ...}
+        measures = {s for s in self.metrics}
+        if "ndcg'" in measures or "ndcg_prime" in measures:
+            ndcg_prime_results = self.calc_ndcg_prime()
+            measures.discard("ndcg'")
+            measures.discard("ndcg_prime")
+        evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, measures)
         scores = evaluator.evaluate(self.run)
+        for q, results_dict in scores.items():
+            scores[q].update(ndcg_prime_results[q])
         if scores:
             mean_scores = {}
             metrics = list(list(scores.values())[0].keys())
@@ -95,7 +101,5 @@ class Scorer(Task):
         rename = evaluator.evaluate(modified_run)
         res = {}
         for elt in rename.items():
-            res[elt[0]] = {'ndcg_prime': elt[1]['ndcg']}
-        for q, results_dict in res.items():
-            LOGGER.info(f"{q} = {results_dict}")
+            res[elt[0]] = {"ndcg'": elt[1]['ndcg']}
         return res
