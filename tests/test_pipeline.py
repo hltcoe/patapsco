@@ -16,6 +16,7 @@ class MultiplyTask(Task):
 
 class CollectorTask(Task):
     def __init__(self):
+        super().__init__()
         self.items = []
 
     def process(self, item):
@@ -32,8 +33,7 @@ class NumberGenerator:
     def __next__(self):
         return next(self.docs)
 
-    @property
-    def name(self):
+    def __str__(self):
         return 'NumberGenerator'
 
 

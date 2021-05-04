@@ -24,6 +24,7 @@ setuptools.setup(
         "pydantic",
         "pytrec_eval",
         "pyyaml",
+        "scriptnorm",
         "sqlitedict",
         "stanza>=1.2.0",
     ],

@@ -55,7 +55,7 @@ def get_sgml_field(tag):
         return None
 
 
-def parse_sgml_topics(path, sgml_prefix=None, encoding='utf8'):
+def parse_sgml_topics(path, encoding='utf8', sgml_prefix=None):
     """Parse from SGML"""
     if not sgml_prefix:
         sgml_prefix = ''

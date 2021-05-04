@@ -9,7 +9,7 @@ from .config import ConfigService
 from .pipeline import Task
 from .topics import Query
 from .util import DataclassJSONEncoder
-from .util.file import touch_complete
+from .util.file import path_append, touch_complete
 
 
 @dataclasses.dataclass
@@ -31,19 +31,19 @@ class Results:
 class TrecResultsWriter(Task):
     """Write results to a file in TREC format"""
 
-    def __init__(self, config, artifact_config):
+    def __init__(self, config):
         """
         Args:
-            config (BaseConfig): Config object with output.path.
-            artifact_config (BaseConfig): Config used to create this artifact.
+            config (RunnerConfig): Config for the run.
         """
         super().__init__()
-        self.dir = pathlib.Path(config.output.path)
-        self.dir.mkdir(parents=True)
-        self.path = self.dir / 'results.txt'
+        self.base = pathlib.Path(config.run.path)
+        self.artifact_config = config
+        self.path = self.base / 'results.txt'
+        self.file = None
+
+    def begin(self):
         self.file = open(self.path, 'w')
-        self.config = artifact_config
-        self.config_path = self.dir / 'config.yml'
 
     def process(self, results):
         """
@@ -56,8 +56,14 @@ class TrecResultsWriter(Task):
 
     def end(self):
         self.file.close()
-        ConfigService.write_config_file(self.config_path, self.config)
-        touch_complete(self.dir)
+        super().end()
+
+    def reduce(self, dirs):
+        for base in dirs:
+            path = path_append(base, 'results.txt')
+            with open(path) as fp:
+                for line in fp:
+                    self.file.write(line)
 
 
 class TrecResultsReader:
@@ -87,6 +93,9 @@ class TrecResultsReader:
     def __next__(self):
         return next(self.results)
 
+    def __str__(self):
+        return self.__class__.__name__
+
 
 class JsonResultsWriter(Task):
     """Write results to a json file"""
@@ -94,16 +103,12 @@ class JsonResultsWriter(Task):
     def __init__(self, config, artifact_config):
         """
         Args:
-            config (BaseConfig): Config object with output.path.
+            config (OutputConfig): Config object with output.path.
             artifact_config (BaseConfig): Config used to generate this artifact.
         """
-        super().__init__()
-        self.dir = pathlib.Path(config.output.path)
-        self.dir.mkdir(parents=True)
-        self.path = self.dir / 'results.jsonl'
+        super().__init__(artifact_config, config.output.path)
+        self.path = self.base / 'results.jsonl'
         self.file = open(self.path, 'w')
-        self.config = artifact_config
-        self.config_path = self.dir / 'config.yml'
 
     def process(self, results):
         """
@@ -114,9 +119,15 @@ class JsonResultsWriter(Task):
         return results
 
     def end(self):
+        super().end()
         self.file.close()
-        ConfigService.write_config_file(self.config_path, self.config)
-        touch_complete(self.dir)
+
+    def reduce(self, dirs):
+        for base in dirs:
+            path = path_append(base, 'results.jsonl')
+            with open(path) as fp:
+                for line in fp:
+                    self.file.write(line)
 
 
 class JsonResultsReader:
@@ -137,3 +148,6 @@ class JsonResultsReader:
         data = json.loads(line)
         results = [Result(**result) for result in data['results']]
         return Results(Query(**data['query']), data['system'], results)
+
+    def __str__(self):
+        return self.__class__.__name__

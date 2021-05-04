@@ -1,4 +1,4 @@
-import itertools
+import collections
 import json
 import logging
 import pathlib
@@ -58,7 +58,7 @@ class Joiner(Task):
         super().__init__()
 
     def process(self, results):
-        """Join multiplexed results
+        """Join multiplexed results of a single query
 
         Args:
             results (MultiplexItem)
@@ -66,15 +66,20 @@ class Joiner(Task):
         Returns:
             Results
         """
-        # TODO how to combine - probably union - but how to treat scores and ranks?
-        # TODO which query to pass
-        # get the first key/value pair and get the value
+        # get the first key/value pair and get the value (Results object)
         first_results = next(iter(results.items()))[1]
         query = first_results.query
         system = first_results.system
-        results = [res.results for key, res in results.items()]
-        results = list(itertools.chain(*results))
-        return Results(query, system, results)
+
+        # add scores, rerank, and pass as single list
+        output = collections.defaultdict(int)
+        for _, r in results.items():
+            for result in r.results:
+                output[result.doc_id] += result.score
+        output = dict(sorted(output.items(), key=lambda item: item[1], reverse=True))
+        output = zip(output.items(), range(len(output)))
+        output = [Result(doc_id, rank, score) for (doc_id, score), rank in output]
+        return Results(query, system, output)
 
 
 class MockRetriever(Task):

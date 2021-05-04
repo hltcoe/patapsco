@@ -1,4 +1,23 @@
+import enum
+
 from .config import BaseConfig, BaseUncheckedConfig, PathConfig, Optional, Union
+
+
+class PipelineMode(str, enum.Enum):
+    STREAMING = 'streaming'
+    BATCH = 'batch'
+
+
+class Tasks(str, enum.Enum):
+    """Tasks that make up the system pipelines"""
+    DOCUMENTS = 'documents'
+    INDEX = 'index'
+    TOPICS = 'topics'
+    QUERIES = 'queries'
+    RETRIEVE = 'retrieve'
+    RERANK = 'rerank'
+    SCORE = 'score'
+
 
 """""""""""""""""
 Text Processing
@@ -164,15 +183,19 @@ Main
 class StageConfig(BaseConfig):
     """Configuration for one of the stages"""
     mode: str = "streaming"
-    batch_size: int = 0  # the default is a single batch
+    batch_size: Optional[int]  # default is a single batch
+    # start and stop are intended for parallel processing
+    start: Optional[int]  # O-based index of start position in input (inclusive)
+    stop: Optional[int]  # O-based index of stop position in input (exclusive)
 
 
 class RunConfig(BaseConfig):
     """Configuration for a run of Patapsco"""
     name: str
     path: Optional[str]  # base path for run output by default created based on name
-    stage1: StageConfig = StageConfig()
-    stage2: StageConfig = StageConfig()
+    parallel: Optional[str]  # MP or QSUB if running in parallel
+    stage1: Union[bool, StageConfig] = StageConfig()
+    stage2: Union[bool, StageConfig] = StageConfig()
 
 
 class RunnerConfig(BaseConfig):

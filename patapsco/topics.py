@@ -3,13 +3,13 @@ import dataclasses
 import json
 import pathlib
 
-from .config import BaseConfig, ConfigService, Optional
+from .config import BaseConfig, Optional
 from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import TopicsInputConfig
 from .text import Splitter, TextProcessor
-from .util import trec, ComponentFactory, DataclassJSONEncoder
-from .util.file import GlobFileGenerator, touch_complete, validate_encoding
+from .util import trec, DataclassJSONEncoder, InputIterator, ReaderFactory
+from .util.file import count_lines, count_lines_with, path_append
 
 
 @dataclasses.dataclass
@@ -28,12 +28,12 @@ class Query:
     text: str
 
 
-class TopicReaderFactory(ComponentFactory):
+class TopicReaderFactory(ReaderFactory):
     classes = {
         'sgml': 'SgmlTopicReader',
         'xml': 'XmlTopicReader',
-        'json': 'JsonTopicReader',
-        'jsonl': 'JsonTopicReader',
+        'json': 'Tc4JsonTopicReader',
+        'jsonl': 'Tc4JsonTopicReader',
         'msmarco': 'TsvTopicReader'
     }
     config_class = TopicsInputConfig
@@ -80,15 +80,15 @@ class TopicProcessor(Task):
             raise ConfigError(f"Unrecognized topic field: {e}")
 
 
-class SgmlTopicReader:
+class SgmlTopicReader(InputIterator):
     """Iterator over topics from trec sgml"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.strip_non_digits = config.strip_non_digits
-        prefix = config.prefix
-        self.topics = GlobFileGenerator(config.path, trec.parse_sgml_topics, prefix, config.encoding)
+    def __init__(self, path, encoding, lang, prefix, strip_non_digits, **kwargs):
+        self.path = path
+        self.encoding = encoding
+        self.lang = lang
+        self.strip_non_digits = strip_non_digits
+        self.topics = iter(topic for topic in trec.parse_sgml_topics(path, encoding, prefix))
 
     def __iter__(self):
         return self
@@ -98,15 +98,19 @@ class SgmlTopicReader:
         identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
         return Topic(identifier, self.lang, topic[1], topic[2], topic[3])
 
+    def __len__(self):
+        return count_lines_with('<top>', self.path, self.encoding)
 
-class XmlTopicReader:
+
+class XmlTopicReader(InputIterator):
     """Iterator over topics from trec xml"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.strip_non_digits = config.strip_non_digits
-        self.topics = GlobFileGenerator(config.path, trec.parse_xml_topics, config.encoding)
+    def __init__(self, path, encoding, lang, strip_non_digits, **kwargs):
+        self.path = path
+        self.encoding = encoding
+        self.lang = lang
+        self.strip_non_digits = strip_non_digits
+        self.topics = iter(topic for topic in trec.parse_xml_topics(path, encoding))
 
     def __iter__(self):
         return self
@@ -116,45 +120,59 @@ class XmlTopicReader:
         identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
         return Topic(identifier, topic[1], topic[2], topic[3], topic[4])
 
+    def __len__(self):
+        return count_lines_with('<topic', self.path, self.encoding)
 
-class JsonTopicReader:
+
+class Tc4JsonTopicReader(InputIterator):
     """Iterator over topics from jsonl file """
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.topics = GlobFileGenerator(config.path, self.parse, config.encoding)
+    def __init__(self, path, encoding, lang, **kwargs):
+        """
+        Args:
+            path (str): Path to topics file.
+            encoding (str): File encoding.
+            lang (str): Language of the topics.
+            **kwargs (dict): Unused
+        """
+        self.path = path
+        self.encoding = encoding
+        self.lang = lang
+        self.topics = iter(self.parse(path, encoding))
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        topic = next(self.topics)
-        return Topic(topic[0], self.lang, topic[1], topic[2], None)
+        return next(self.topics)
 
-    @staticmethod
-    def parse(path, encoding='utf8'):
+    def __len__(self):
+        return count_lines(self.path, self.encoding)
+
+    def construct(self, data):
+        try:
+            title = data['topic_name'].strip()
+            desc = data['topic_description'].strip()
+            return Topic(data['topic_id'], self.lang, title, desc, None)
+        except KeyError as e:
+            raise ParseError(f"Missing field {e} in json docs element: {data}")
+
+    def parse(self, path, encoding='utf8'):
         with open(path, 'r', encoding=encoding) as fp:
-            for line in fp:
-                try:
-                    data = json.loads(line.strip())
-                except json.decoder.JSONDecodeError as e:
-                    raise ParseError(f"Problem parsing json from {path}: {e}")
-                try:
-                    title = data['topic_name'].strip()
-                    desc = data['topic_description'].strip()
-                    yield data['topic_id'], title, desc
-                except KeyError as e:
-                    raise ParseError(f"Missing field {e} in json docs element: {data}")
+            try:
+                return [self.construct(json.loads(data)) for data in fp]
+            except json.decoder.JSONDecodeError as e:
+                raise ParseError(f"Problem parsing json from {path}: {e}")
 
 
-class TsvTopicReader:
-    """Iterator over topics from tsv file """
+class TsvTopicReader(InputIterator):
+    """Iterator over topics from tsv file like MSMARCO"""
 
-    def __init__(self, config):
-        validate_encoding(config.encoding)
-        self.lang = config.lang
-        self.topics = GlobFileGenerator(config.path, self.parse, config.encoding)
+    def __init__(self, path, encoding, lang, **kwargs):
+        self.path = path
+        self.encoding = encoding
+        self.lang = lang
+        self.topics = iter(topic for topic in self.parse(path, encoding))
 
     def __iter__(self):
         return self
@@ -162,6 +180,9 @@ class TsvTopicReader:
     def __next__(self):
         topic = next(self.topics)
         return Topic(topic[0], self.lang, topic[1], None, None)
+
+    def __len__(self):
+        return count_lines(self.path, self.encoding)
 
     @staticmethod
     def parse(path, encoding='utf8'):
@@ -172,21 +193,17 @@ class TsvTopicReader:
 
 
 class QueryWriter(Task):
-    """Write queries to a jsonl file"""
+    """Write queries to a jsonl file using internal format"""
 
     def __init__(self, config, artifact_config):
         """
         Args:
-            config (BaseConfig): Config that includes output.path.
+            config (OutputConfig): Config that includes output.path.
             artifact_config (BaseConfig or None): Config that resulted in this artifact
         """
-        super().__init__()
-        self.dir = pathlib.Path(config.output.path)
-        self.dir.mkdir(parents=True)
-        path = self.dir / 'queries.jsonl'
+        super().__init__(artifact_config, config.output.path)
+        path = self.base / 'queries.jsonl'
         self.file = open(path, 'w')
-        self.config = artifact_config
-        self.config_path = self.dir / 'config.yml'
 
     def process(self, query):
         """
@@ -200,20 +217,25 @@ class QueryWriter(Task):
         return query
 
     def end(self):
+        super().end()
         self.file.close()
-        if self.config:
-            ConfigService.write_config_file(self.config_path, self.config)
-        touch_complete(self.dir)
+
+    def reduce(self, dirs):
+        for base in dirs:
+            path = path_append(base, 'queries.jsonl')
+            with open(path) as fp:
+                for line in fp:
+                    self.file.write(line)
 
 
-class QueryReader:
+class QueryReader(InputIterator):
     """Iterator over queries from jsonl file """
 
     def __init__(self, path):
-        path = pathlib.Path(path)
-        if path.is_dir():
-            path = path / 'queries.jsonl'
-        with open(path) as fp:
+        self.path = pathlib.Path(path)
+        if self.path.is_dir():
+            self.path = self.path / 'queries.jsonl'
+        with open(self.path) as fp:
             self.data = fp.readlines()
 
     def __iter__(self):
@@ -224,6 +246,9 @@ class QueryReader:
             return Query(**json.loads(self.data.pop(0)))
         except IndexError:
             raise StopIteration()
+
+    def __len__(self):
+        return count_lines(self.path)
 
     def peek(self):
         return Query(**json.loads(self.data[0]))

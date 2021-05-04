@@ -45,15 +45,15 @@ def test_parse_msmarco_topics():
 def test_parse_json_topics():
     directory = pathlib.Path(__file__).parent / 'json_files'
     path = directory / 'topics.jsonl'
-    topic_iter = JsonTopicReader.parse(str(path.absolute()))
+    topic_iter = Tc4JsonTopicReader(str(path.absolute()), 'utf8', 'en')
     topic = next(topic_iter)
-    assert topic[0] == '001'
-    assert topic[1] == 'Test 1'
-    assert topic[2] == 'First test'
+    assert topic.id == '001'
+    assert topic.title == 'Test 1'
+    assert topic.desc == 'First test'
     topic = next(topic_iter)
-    assert topic[0] == '002'
-    assert topic[1] == 'Test 2'
-    assert topic[2] == 'Second test'
+    assert topic.id == '002'
+    assert topic.title == 'Test 2'
+    assert topic.desc == 'Second test'
     with pytest.raises(StopIteration):
         next(topic_iter)
 

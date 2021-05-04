@@ -4,8 +4,7 @@ import pytrec_eval
 
 from .pipeline import Task
 from .schema import ScoreInputConfig
-from .util import ComponentFactory, trec
-from .util.file import GlobFileGenerator
+from .util import ComponentFactory, GlobIterator, trec
 
 LOGGER = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class TrecQrelsReader:
 
     def __init__(self, config):
         self.path = config.path
-        self.qrels_iter = GlobFileGenerator(config.path, trec.parse_qrels)
+        self.qrels_iter = GlobIterator(config.path, trec.parse_qrels)
 
     def read(self):
         """
@@ -72,3 +71,23 @@ class Scorer(Task):
         res = evaluator.evaluate(self.run)
         for q, results_dict in res.items():
             LOGGER.info(f"{q} = {results_dict}")
+
+    def calc_ndcg_prime(self):
+        """ Calculate nDCG': for every query, remove document ids that do not
+        belong to the set of judged documents for that query, and run nDCG
+        over the modified run
+        """
+        evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, {'ndcg'})
+        modified_run = collections.defaultdict(dict)
+
+        for query_id in self.run:
+            for doc_id in self.run[query_id]:
+                if doc_id in self.qrels[query_id].keys():
+                    modified_run[query_id][doc_id] = self.run[query_id][doc_id]
+        rename = evaluator.evaluate(modified_run)
+        res = {}
+        for elt in rename.items():
+            res[elt[0]] = {'ndcg_prime': elt[1]['ndcg']}
+        for q, results_dict in res.items():
+            LOGGER.info(f"{q} = {results_dict}")
+        return res

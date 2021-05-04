@@ -3,6 +3,7 @@ import io
 import logging
 import pathlib
 
+import scriptnorm
 import stanza
 
 from .error import ConfigError
@@ -30,10 +31,10 @@ class StemmerFactory(ComponentFactory):
 
 class Normalizer:
     def __init__(self, lang):
-        pass
+        self.lang = lang
 
     def normalize(self, text):
-        return text
+        return scriptnorm.process(self.lang, text)
 
 
 class Tokenizer:

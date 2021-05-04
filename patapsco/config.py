@@ -19,6 +19,8 @@ class BaseConfig(pydantic.BaseModel):
 
     This uses dataclasses and includes validation of parameters.
     """
+    comment: Optional[str]
+
     class Config:
         extra = pydantic.Extra.forbid
 
@@ -32,6 +34,11 @@ class BaseUncheckedConfig(BaseConfig):
 class PathConfig(BaseConfig):
     """Simple config with only a path variable"""
     path: str
+
+
+class OutputConfig(BaseConfig):
+    """Config with an output"""
+    output: PathConfig
 
 
 class ConfigService:
@@ -98,8 +105,10 @@ class ConfigService:
         else:
             reader_fn = self._read_json_config
         with open(filename, 'r') as fp:
-            LOGGER.info("Loading configuration from %s", filename)
+            LOGGER.debug("Loading configuration from %s", filename)
             conf = reader_fn(fp)
+            if 'imports' in conf:
+                self._import_configs(conf, filename)
             if self.overrides:
                 ConfigOverrides.process(conf, self.overrides)
             if self.inheritance:
@@ -206,6 +215,19 @@ class ConfigService:
             data (dict): data to write as YAML
         """
         json.dump(data, file, indent=4, sort_keys=True)
+
+    def _import_configs(self, conf, filename):
+        """Load the configs to import and merge into main conf"""
+        base_dir = pathlib.Path(filename).parent
+        imports = conf['imports']
+        del conf['imports']
+        for file in imports:
+            filename = base_dir / file
+            partial_conf = self.read_config_file(filename)
+            merge_dicts(conf, partial_conf)
+            # handle imports that have imports
+            if 'imports' in conf:
+                self._import_configs(conf, filename)
 
 
 class AttrDict(dict):
@@ -449,7 +471,7 @@ class ConfigInheritance:
                     except KeyError:
                         raise ConfigError(f"Cannot inherit from {value['inherit']} as it does not exist")
                     new_conf = copy.deepcopy(parent)
-                    cls._merge(new_conf, config[key])
+                    merge_dicts(new_conf, config[key])
                     config[key] = new_conf
                     del config[key]['inherit']
             elif isinstance(value, list):
@@ -462,12 +484,12 @@ class ConfigInheritance:
         d = FlatDict(top_config)
         return d[parent_key]
 
-    @classmethod
-    def _merge(cls, d1, d2):
-        # if d1[k] is not a dict and d2[k] is, d1[k] is overwritten with d2[k]
-        # if d1[k] is a dict and d2[k] is not, d1[k] is overwritten with d2[k]
-        for k, v in d2.items():
-            if k in d1 and isinstance(d1[k], dict) and isinstance(d2[k], dict):
-                cls._merge(d1[k], d2[k])
-            else:
-                d1[k] = d2[k]
+
+def merge_dicts(d1, d2):
+    # if d1[k] is not a dict and d2[k] is, d1[k] is overwritten with d2[k]
+    # if d1[k] is a dict and d2[k] is not, d1[k] is overwritten with d2[k]
+    for k, v in d2.items():
+        if k in d1 and isinstance(d1[k], dict) and isinstance(d2[k], dict):
+            merge_dicts(d1[k], d2[k])
+        else:
+            d1[k] = d2[k]
