@@ -62,6 +62,11 @@ To run the unit tests, run:
 pytest
 ```
 
+Some tests load models and are normally skipped. To run those:
+```
+pytest --runslow
+```
+
 ### Code Style
 The code should conform to the PEP8 style except for leniency on line length.
 

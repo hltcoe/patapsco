@@ -26,6 +26,7 @@ setuptools.setup(
         "pyyaml",
         "scriptnorm",
         "sqlitedict",
+        "stanza>=1.2.0",
     ],
     extras_require={
         "dev": ["pytest", "flake8", "autopep8"]
