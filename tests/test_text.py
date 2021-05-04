@@ -17,8 +17,30 @@ def test_stop_words_english_case():
     assert text == ['test']
 
 
-@pytest.mark.skip(reason="Slow test")
-def test_tokenizer_english():
+@pytest.mark.slow
+def test_stanza_tokenizer_arabic():
+    tokenizer = StanzaTokenizer(config=None, lang='ar')
+    tokens = tokenizer.tokenize("في أسرتي ثلاثة أفراد.")
+    assert tokens == ['في', 'أسرتي', 'ثلاثة', 'أفراد', '.']
+
+
+@pytest.mark.slow
+def test_stanza_tokenizer_english():
     tokenizer = StanzaTokenizer(config=None, lang='en')
     tokens = tokenizer.tokenize("Mary had a little lamb.")
     assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.']
+
+
+@pytest.mark.slow
+def test_stanza_tokenizer_farsi():
+    tokenizer = StanzaTokenizer(config=None, lang='fa')
+    tokens = tokenizer.tokenize("شما بليز رو به فارسی چی میگین؟")
+    assert tokens == ['شما', 'بليز', 'رو', 'به', 'فارسی', 'چی', 'میگین', '؟']
+
+
+@pytest.mark.slow
+def test_stanza_tokenizer_russian():
+    tokenizer = StanzaTokenizer(config=None, lang='ru')
+    tokens = tokenizer.tokenize("Я хотел бы пива.")
+    # Does the Russian model not handle punctuation well or did we hit on a bad sentence
+    assert tokens == ['Я', 'хотел', 'бы', 'пива.']
