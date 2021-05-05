@@ -1,7 +1,12 @@
 # Patapsco - the SCALE 2021 Pipeline
 
 ## Requirements
-Patapsco requires Python 3.6+
+Patapsco requires Python 3.6+ and Java 11+
+
+To check your Java version:
+```
+javac --version
+```
 
 ## Install
 
