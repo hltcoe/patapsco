@@ -20,7 +20,7 @@ source venv/bin/activate
 ```
 Install Patapsco and its dependencies:
 ```
-pip install .
+pip install --editable .
 ```
 
 #### With conda
