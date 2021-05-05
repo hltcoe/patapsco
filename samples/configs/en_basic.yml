@@ -17,7 +17,7 @@ documents:
   comment: Mini English dataset
 
 index:
-  name: anserini
+  name: lucene
 
 topics:
   input:

@@ -4,6 +4,10 @@ import logging
 import pathlib
 import random
 
+import pyserini.analysis
+import pyserini.search
+import jnius
+
 from .pipeline import Task, MultiplexTask
 from .results import Result, Results
 from .schema import RetrieveConfig
@@ -14,7 +18,8 @@ LOGGER = logging.getLogger(__name__)
 
 class RetrieverFactory(ComponentFactory):
     classes = {
-        'bm25': 'MockRetriever',
+        'bm25': 'PyseriniRetriever',
+        'mock': 'MockRetriever',
     }
     config_class = RetrieveConfig
 
@@ -110,3 +115,36 @@ class MockRetriever(Task):
         with open(self.path, 'r') as fp:
             self.doc_ids = [line.strip() for line in fp]
         LOGGER.debug("Loaded index from %s", self.path)
+
+
+# TDOD can remove when newest version of pyserini is released
+JWhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
+
+
+class PyseriniRetriever(Task):
+
+    def __init__(self, config):
+        super().__init__()
+        self.number = config.number
+        self.index_dir = str(config.input.index.path)
+        self.searcher = None
+
+    def begin(self):
+        self.searcher = pyserini.search.SimpleSearcher(self.index_dir)
+        self.searcher.set_analyzer(JWhitespaceAnalyzer())
+
+    def process(self, query):
+        """Retrieve a ranked list of documents
+
+        Args:
+            query (Query)
+
+        Returns:
+            Results
+        """
+        hits = self.searcher.search(query.text, k=self.number)
+        results = [Result(hit.docid, rank, hit.score) for rank, hit in enumerate(hits)]
+        return Results(query, str(self), results)
+
+    def end(self):
+        self.searcher.close()
