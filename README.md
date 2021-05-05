@@ -4,24 +4,43 @@
 Patapsco requires Python 3.6+
 
 ## Install
-It is best to create a virtual environment using Python's venv module or conda.
-After creating and activating the environment, install patapsco:
+
+### Create a Python virtual environment using venv or conda.
+
+#### With Python's venv module
+Create and activate the virtual environment:
+```
+python3 -m venv venv
+source venv/bin/activate
+```
+Install Patapsco and its dependencies:
+```
+pip install .
+```
+
+#### With conda
+Create and activate the conda environment:
+```
+conda env create --file environment.yml
+conda activate scale2021
+```
+Install Patapsco:
 ```
 pip install .
 ```
 
 ## Design
 Patapsco consists of two pipelines:
-  - Stage 1: creates one or more index from the documents
+  - Stage 1: creates an index from the documents
   - Stage 2: retrieves results for queries from the indexes and reranks the results
 
 A pipeline consists of a sequence of tasks.
   - Stage 1 tasks: 
-    - text processing of documents 
-    - indexing.
+    - text processing of documents (character normalization, tokenization, etc.)
+    - indexing
   - Stage 2 tasks: 
     - extract query from topic
-    - text processing of query
+    - text processing of query (same as document processing)
     - retrieval of results
     - reranking of results
     - scoring
@@ -48,7 +67,7 @@ patapsco samples/configs/en_basic.yml
 
 ## Submitting Results
 A run's output file plus the configuration used to generate the run can be submitted at the website: 
-https://scale21.org
+https://scale21.org (not ready yet)
 
 ## Development
 Developers should install Patapsco in editable mode along with development dependencies:

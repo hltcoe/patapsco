@@ -1,0 +1,16 @@
+name: scale2021
+channels:
+  - stanfordnlp
+dependencies:
+  - python>=3.6
+  - beautifulsoup4
+  - more-itertools
+  - numpy
+  - pyyaml
+  - stanza>=1.2.0
+  - pip
+  - pip:
+    - pydantic==1.8.1
+    - pytrec_eval
+    - scriptnorm
+    - sqlitedict

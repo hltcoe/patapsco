@@ -21,12 +21,12 @@ setuptools.setup(
         "beautifulsoup4",
         "more-itertools",
         "numpy",
-        "pydantic",
+        "pydantic>=1.8.1",
         "pytrec_eval",
         "pyyaml",
         "scriptnorm",
         "sqlitedict",
-        "stanza>=1.2.0",
+        "stanza==1.2.0",
     ],
     extras_require={
         "dev": ["pytest", "flake8", "autopep8"]

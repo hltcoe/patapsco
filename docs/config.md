@@ -26,7 +26,7 @@ Defines properties of the document task including input, text processing, and ou
     format: jsonl
     lang: en
     encoding: utf8
-    path: /exp/scale21/some path
+    path: /exp/scale21/some_path
 ```
 
 **process**: defines the text processing of the documents including 
@@ -47,3 +47,5 @@ script normalization, tokenization, lowercasing, stopword removal, and stemming/
   output:
     path: processed-docs
 ```
+
+to be continued...
