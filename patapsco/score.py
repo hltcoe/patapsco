@@ -69,8 +69,13 @@ class Scorer(Task):
         measures = {s for s in self.config.metrics}
         evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, measures)
         res = evaluator.evaluate(self.run)
+        avgs = collections.defaultdict(list)
         for q, results_dict in res.items():
-            LOGGER.info(f"{q} = {results_dict}")
+            for metric, score in results_dict.items():
+                avgs[metric].append(score)
+        averages = {metric: sum(scores) / len(scores) for
+                    metric, scores in avgs.items()}
+        LOGGER.info(f"Average scores over {len(res.keys())} queries: {averages}")
 
     def calc_ndcg_prime(self):
         """ Calculate nDCG': for every query, remove document ids that do not
