@@ -36,7 +36,7 @@ class TrecQrelsReader:
 
 
 class Scorer(Task):
-    """Scorer module"""
+    """Use pytrec_eval to calculate scores"""
 
     def __init__(self, config, qrels):
         """
@@ -46,9 +46,9 @@ class Scorer(Task):
         """
         super().__init__()
         self.config = config
-        self.config.metrics = [m.replace('@', '_').capitalize()
-                               if m[:2] == 'p@' else m.replace('@', '_')
-                               for m in self.config.metrics]
+        self.metrics = [m.replace('@', '_').capitalize()
+                        if m[:2] == 'p@' else m.replace('@', '_')
+                        for m in self.config.metrics]
         self.qrels = qrels
         self.run = collections.defaultdict(dict)
 
@@ -66,16 +66,18 @@ class Scorer(Task):
         return results
 
     def end(self):
-        measures = {s for s in self.config.metrics}
-        evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, measures)
-        res = evaluator.evaluate(self.run)
-        avgs = collections.defaultdict(list)
-        for q, results_dict in res.items():
-            for metric, score in results_dict.items():
-                avgs[metric].append(score)
-        averages = {metric: sum(scores) / len(scores) for
-                    metric, scores in avgs.items()}
-        LOGGER.info(f"Average scores over {len(res.keys())} queries: {averages}")
+        evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, self.metrics)
+        # scores is a dictionary of query_id -> {metric1: score, metric2: score ...}
+        scores = evaluator.evaluate(self.run)
+        if scores:
+            mean_scores = {}
+            metrics = list(list(scores.values())[0].keys())
+            for key in metrics:
+                mean_scores[key] = sum(data[key] for data in scores.values()) / len(scores)
+            scores_string = ", ".join(f"{m}: {s:.3f}" for m, s in mean_scores.items())
+            LOGGER.info(f"Average scores over {len(scores.keys())} queries: {scores_string}")
+        elif self.run and self.qrels:
+            LOGGER.warning("There is a likely mismatch between query ids and qrels")
 
     def calc_ndcg_prime(self):
         """ Calculate nDCG': for every query, remove document ids that do not
