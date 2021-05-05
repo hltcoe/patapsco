@@ -22,6 +22,7 @@ setuptools.setup(
         "more-itertools",
         "numpy",
         "pydantic",
+        "pyserini",
         "pytrec_eval",
         "pyyaml",
         "scriptnorm",
