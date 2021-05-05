@@ -1,4 +1,12 @@
+import pkg_resources
 import setuptools
+import sys
+
+try:
+    pkg_resources.require(['pip >= 20.3.1'])
+except pkg_resources.VersionConflict as e:
+    print("Error: " + e.report() + ". Please run: pip install -U pip")
+    sys.exit(-1)
 
 with open("patapsco/__version__.py") as fp:
     ns = {}
