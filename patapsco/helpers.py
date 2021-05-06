@@ -89,7 +89,10 @@ class ConfigHelper:
             if isinstance(obj.path, list):
                 obj.path = [str(pathlib.Path(path).absolute()) for path in obj.path]
             else:
-                obj.path = str(pathlib.Path(obj.path).absolute())
+                # make path absolute if not relative to root run directory
+                path = pathlib.Path(obj.path).absolute()
+                if path.exists():
+                    obj.path = str(path)
         except AttributeError:
             pass
 
