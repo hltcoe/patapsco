@@ -2,18 +2,18 @@ run:
   name: Testing
   path: tests/build_files/output/docs_complete/
 
+database:
+  output: db
+
 documents:
   input:
     format: json
     lang: en
     encoding: utf8
     path: tests/build_files/input/docs.jsonl
-  db:
-    path: tests/build_files/output/docs_complete/db/
   process:
     normalize: true
     lowercase: true
     tokenize:
       name: whitespace
-  output:
-    path: tests/build_files/output/docs_complete/docs/
+  output: docs

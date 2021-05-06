@@ -36,8 +36,7 @@ retrieve:
   number: 5
 
 rerank:
-  name: pacrr
-  embedding: bert
+  name: mock
 
 score:
   input:

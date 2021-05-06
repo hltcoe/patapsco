@@ -3,11 +3,11 @@ import jnius
 
 from .pipeline import Task
 from .schema import IndexConfig
-from .util import ComponentFactory
+from .util import TaskFactory
 from .util.file import path_append
 
 
-class IndexerFactory(ComponentFactory):
+class IndexerFactory(TaskFactory):
     classes = {
         'lucene': 'LuceneIndexer',
         'mock': 'MockIndexer',
@@ -21,13 +21,14 @@ class MockIndexer(Task):
     It writes the doc IDs to a file for later use.
     """
 
-    def __init__(self, index_config, artifact_config):
+    def __init__(self, run_path, index_config, artifact_config):
         """
         Args:
+            run_path (str): Root directory of the run.
             index_config (IndexConfig)
             artifact_config (RunnerConfig)
         """
-        super().__init__(artifact_config, index_config.output.path)
+        super().__init__(run_path, artifact_config, index_config.output)
         path = self.base / 'index.txt'
         self.file = open(path, 'w')
 
@@ -70,14 +71,15 @@ JIndexWriterConfig = jnius.autoclass('org.apache.lucene.index.IndexWriterConfig'
 class LuceneIndexer(Task):
     """Lucene inverted index"""
 
-    def __init__(self, index_config, artifact_config):
+    def __init__(self, run_path, index_config, artifact_config):
         """
         Args:
+            run_path (str): Root directory of the run.
             index_config (IndexConfig)
             artifact_config (RunnerConfig)
         """
-        super().__init__(artifact_config, index_config.output.path)
-        self.dir = JFSDirectory.open(JPaths.get(str(index_config.output.path)))
+        super().__init__(run_path, artifact_config, index_config.output)
+        self.dir = JFSDirectory.open(JPaths.get(str(self.base)))
         self.writer = JIndexWriter(self.dir, JIndexWriterConfig(JWhitespaceAnalyzer()))
 
     def process(self, doc):

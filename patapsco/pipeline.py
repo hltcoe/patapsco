@@ -18,15 +18,17 @@ class Task(abc.ABC):
     See Pipeline for how to construct a pipeline of tasks.
     """
 
-    def __init__(self, artifact_config=None, base=None):
+    def __init__(self, run_path=None, artifact_config=None, base=None):
         """
         Args:
+            run_path (str): Root directory of the run.
             artifact_config (BaseConfig): Config for all tasks up to this task.
-            base (Path): Path to base directory of task.
+            base (Path): Relative path to directory of task from run root.
         """
         self.artifact_config = artifact_config
-        if base:
-            base = pathlib.Path(base)
+        self.run_path = pathlib.Path(run_path) if run_path else None
+        if base is not None:
+            base = self.run_path / base
             base.mkdir(parents=True, exist_ok=True)
         self.base = base
 
@@ -81,7 +83,7 @@ class Task(abc.ABC):
 class TimedTask(Task):
     """Task with a built in timer that wraps another task"""
     def __init__(self, task):
-        super().__init__(task.base)
+        super().__init__()
         self.task = task
         self.timer = Timer()
 
@@ -143,18 +145,20 @@ class MultiplexTask(Task):
             self.tasks = splits
         else:
             self.tasks = {}
+            if config.output:
+                self.dir = pathlib.Path(config.output)
             for split in splits:
                 task_config = config.copy(deep=True)
                 if task_config.output:
-                    self.dir = pathlib.Path(config.output.path)
-                    task_config.output.path = str(pathlib.Path(task_config.output.path) / split)
+                    task_config.output = str(pathlib.Path(task_config.output) / split)
                 task_artifact_config = self._update_artifact_config(artifact_config, split)
-                self.tasks[split] = create_fn(task_config, task_artifact_config, *args, **kwargs)
+                self.tasks[split] = create_fn(artifact_config.run.path, task_config, task_artifact_config, *args, **kwargs)
             self.artifact_config = artifact_config
-            self.config_path = self.dir / 'config.yml'
-            # we save the splits for components downstream to access
-            with open(self.dir / '.multiplex', 'w') as fp:
-                json.dump(splits, fp)
+            if config.output:
+                self.config_path = self.dir / 'config.yml'
+                # we save the splits for components downstream to access
+                with open(self.dir / '.multiplex', 'w') as fp:
+                    json.dump(splits, fp)
 
     def process(self, item):
         new_item = MultiplexItem()

@@ -11,9 +11,10 @@ def test_at_symbol_mapping():
         input=ScoreInputConfig(path="test"),
         metrics=['map', 'P@20'] 
     )
-    scorer = Scorer(config, qrels=None)
+    scorer = Scorer("test", config, qrels=None)
     assert scorer.config.metrics[0] == "map"
     assert scorer.config.metrics[1] == "P_20"    
+
 
 @pytest.mark.skip(reason="not ready")
 def test_ndcg_prime():

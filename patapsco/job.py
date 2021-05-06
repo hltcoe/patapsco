@@ -224,15 +224,15 @@ class ParallelJob(Job):
     def _update_stage1_output_paths(conf, part):
         # configs may not have all tasks so we ignore errors
         try:
-            conf.documents.db.path = path_append(conf.documents.db.path, part)
+            conf.database.output = path_append(conf.documents.db, part)
         except AttributeError:
             pass
         try:
-            conf.documents.output.path = path_append(conf.documents.output.path, part)
+            conf.documents.output = path_append(conf.documents, part)
         except AttributeError:
             pass
         try:
-            conf.index.output.path = path_append(conf.index.output.path, part)
+            conf.index.output = path_append(conf.index.output, part)
         except AttributeError:
             pass
 
@@ -240,19 +240,19 @@ class ParallelJob(Job):
     def _update_stage2_output_paths(conf, part):
         # configs may not have all tasks so we ignore errors
         try:
-            conf.topics.output.path = path_append(conf.topics.output.path, part)
+            conf.topics.output = path_append(conf.topics.output, part)
         except AttributeError:
             pass
         try:
-            conf.queries.output.path = path_append(conf.queries.output.path, part)
+            conf.queries.output = path_append(conf.queries.output, part)
         except AttributeError:
             pass
         try:
-            conf.retrieve.output.path = path_append(conf.retrieve.output.path, part)
+            conf.retrieve.output = path_append(conf.retrieve.output, part)
         except AttributeError:
             pass
         try:
-            conf.rerank.output.path = path_append(conf.rerank.output.path, part)
+            conf.rerank.output = path_append(conf.rerank.output, part)
         except AttributeError:
             pass
 
@@ -271,6 +271,7 @@ class JobBuilder:
             conf (RunnerConfig): Configuration for the runner.
         """
         self.conf = conf
+        self.run_path = pathlib.Path(conf.run.path)
         self.artifact_helper = ArtifactHelper()
         self.doc_lang = None
         self.query_lang = None
@@ -330,7 +331,7 @@ class JobBuilder:
         else:
             # documents already processed so locate them to create the iterator and update config
             iterator = self._setup_input(DocReader, 'index.input.documents.path',
-                                         'documents.output.path', 'index not configured with documents')
+                                         'documents.output', 'index not configured with documents')
         stage_conf = self.conf.run.stage1
         return SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
 
@@ -338,23 +339,25 @@ class JobBuilder:
         # Stage 1 is generally: read docs, process them, build index.
         # For each task, we clear previous data from a failed run if it exists.
         # Then we build the tasks from the plan and configuration.
+        run_path = self.conf.run.path
         tasks = []
 
         if Tasks.DOCUMENTS in plan:
             # doc reader -> doc processor with doc db -> optional doc writer
             self.docs_lang = self.standardize_language(self.conf.documents.input)
-            self.clear_output(self.conf.documents, clear_db=True)
+            self.clear_output(self.conf.documents)
+            self.clear_output(self.conf.database)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
-            db = DocumentDatabaseFactory.create(self.conf.documents.db.path, artifact_conf)
-            tasks.append(DocumentProcessor(self.conf.documents.process, self.docs_lang, db))
+            db = DocumentDatabaseFactory.create(run_path, self.conf.database.output, artifact_conf)
+            tasks.append(DocumentProcessor(run_path, self.conf.documents.process, self.docs_lang, db))
             # add doc writer if user requesting that we save processed docs
-            if self.conf.documents.output and self.conf.documents.output.path:
+            if self.conf.documents.output:
                 if self.conf.documents.process.splits:
                     # if we are splitting the documents output, multiplex the doc writer
                     tasks.append(MultiplexTask(self.conf.documents.process.splits, DocWriter,
                                                self.conf.documents, artifact_conf))
                 else:
-                    tasks.append(DocWriter(self.conf.documents, artifact_conf))
+                    tasks.append(DocWriter(run_path, self.conf.documents, artifact_conf))
 
         if Tasks.INDEX in plan:
             # indexer or processed doc reader -> indexer
@@ -365,7 +368,7 @@ class JobBuilder:
                 tasks.append(MultiplexTask(self.conf.documents.process.splits, IndexerFactory.create,
                                            self.conf.index, artifact_conf))
             else:
-                tasks.append(IndexerFactory.create(self.conf.index, artifact_conf))
+                tasks.append(IndexerFactory.create(run_path, self.conf.index, artifact_conf))
 
         return tasks
 
@@ -418,15 +421,15 @@ class JobBuilder:
         if Tasks.TOPICS in plan:
             iterator = TopicReaderFactory.create(self.conf.topics.input)
         elif Tasks.QUERIES in plan:
-            iterator = self._setup_input(QueryReader, 'queries.input.path', 'topics.output.path',
+            iterator = self._setup_input(QueryReader, 'queries.input.path', 'topics.output',
                                          'query processor not configured with input')
             query = iterator.peek()
             self.query_lang = query.lang
         elif Tasks.RETRIEVE in plan:
-            iterator = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output.path',
+            iterator = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output',
                                          'retrieve not configured with queries')
         else:
-            iterator = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output.path',
+            iterator = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output',
                                          'rerank not configured with retrieve results')
         stage_conf = self.conf.run.stage2
         return SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
@@ -435,6 +438,7 @@ class JobBuilder:
         # Stage 2 is generally: read topics, extract query, process them, retrieve results, rerank them, score.
         # For each task, we clear previous data from a failed run if it exists.
         # Then we build the tasks from the plan and configuration.
+        run_path = self.conf.run.path
         tasks = []
 
         if Tasks.TOPICS in plan:
@@ -442,21 +446,21 @@ class JobBuilder:
             self.query_lang = self.standardize_language(self.conf.topics.input)
             self.clear_output(self.conf.topics)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.TOPICS)
-            tasks.append(TopicProcessor(self.conf.topics))
+            tasks.append(TopicProcessor(run_path, self.conf.topics))
             if self.conf.topics.output:
-                tasks.append(QueryWriter(self.conf.topics, artifact_conf))
+                tasks.append(QueryWriter(run_path, self.conf.topics, artifact_conf))
 
         if Tasks.QUERIES in plan:
             # optional query reader -> query processor -> optional query writer
             self.clear_output(self.conf.queries)
-            tasks.append(QueryProcessor(self.conf.queries.process, self.query_lang))
+            tasks.append(QueryProcessor(run_path, self.conf.queries.process, self.query_lang))
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.QUERIES)
             if self.conf.queries.output:
                 if self.conf.queries.process.splits:
                     tasks.append(MultiplexTask(self.conf.queries.process.splits, QueryWriter,
                                                self.conf.queries, artifact_conf))
                 else:
-                    tasks.append(QueryWriter(self.conf.queries, artifact_conf))
+                    tasks.append(QueryWriter(run_path, self.conf.queries, artifact_conf))
 
         if Tasks.RETRIEVE in plan:
             self.clear_output(self.conf.retrieve)
@@ -464,26 +468,26 @@ class JobBuilder:
                 # copy in the configuration that created the index (this path is always set in the ConfigPreprocessor)
                 self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RETRIEVE)
-            tasks.append(RetrieverFactory.create(self.conf.retrieve))
+            tasks.append(RetrieverFactory.create(run_path, self.conf.retrieve))
             if self.conf.queries.process.splits:
                 tasks.append(Joiner())
             if self.conf.retrieve.output:
-                tasks.append(JsonResultsWriter(self.conf.retrieve, artifact_conf))
+                tasks.append(JsonResultsWriter(run_path, self.conf.retrieve, artifact_conf))
 
         if Tasks.RERANK in plan:
             self.clear_output(self.conf.rerank)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
-            db = DocumentDatabaseFactory.create(self.conf.rerank.input.db.path, readonly=True)
-            tasks.append(RerankFactory.create(self.conf.rerank, db))
+            db = DocumentDatabaseFactory.create(run_path, self.conf.rerank.input.db.path, readonly=True)
+            tasks.append(RerankFactory.create(run_path, self.conf.rerank, db))
             if self.conf.rerank.output:
-                tasks.append(JsonResultsWriter(self.conf.rerank, artifact_conf))
+                tasks.append(JsonResultsWriter(run_path, self.conf.rerank, artifact_conf))
 
         if Tasks.RETRIEVE in plan or Tasks.RERANK in plan:
             tasks.append(TrecResultsWriter(self.conf))
 
         if Tasks.SCORE in plan:
             qrels = QrelsReaderFactory.create(self.conf.score.input).read()
-            tasks.append(Scorer(self.conf.score, qrels))
+            tasks.append(Scorer(run_path, self.conf.score, qrels))
 
         return tasks
 
@@ -521,8 +525,9 @@ class JobBuilder:
             while fields:
                 field = fields.pop(0)
                 obj = getattr(obj, field)
-            self.artifact_helper.combine(self.conf, obj)
-            return cls(obj)
+            path = pathlib.Path(self.run_path / obj)
+            self.artifact_helper.combine(self.conf, path)
+            return cls(path)
         except AttributeError:
             obj = self.conf
             fields = output_path.split('.')
@@ -530,30 +535,29 @@ class JobBuilder:
                 while fields:
                     field = fields.pop(0)
                     obj = getattr(obj, field)
-                self.artifact_helper.combine(self.conf, obj)
-                return cls(obj)
+                path = pathlib.Path(self.run_path / obj)
+                self.artifact_helper.combine(self.conf, path)
+                return cls(path)
             except AttributeError:
                 raise ConfigError(error_msg)
 
-    @staticmethod
-    def is_task_complete(task_conf):
+    def is_task_complete(self, task_conf):
         """Checks whether the task is already complete"""
-        if task_conf is None:
+        if task_conf is None or not task_conf.output:
             return False
-        return task_conf.output and is_complete(task_conf.output.path)
+        path = self.run_path / task_conf.output
+        return is_complete(path)
 
-    @staticmethod
-    def clear_output(task_conf, clear_db=False):
+    def clear_output(self, task_conf):
         """Delete the output directory if previous run did not complete
 
         Args:
             task_conf (BaseConfig): Configuration for a task.
-            clear_db (bool): Whether to also clear the database.
         """
-        if task_conf.output and pathlib.Path(task_conf.output.path).exists():
-            delete_dir(task_conf.output.path)
-        if clear_db and not is_complete(task_conf.db.path) and pathlib.Path(task_conf.db.path).exists():
-            delete_dir(task_conf.db.path)
+        if task_conf.output:
+            path = self.run_path / task_conf.output
+            if path.exists():
+                delete_dir(path)
 
     @staticmethod
     def standardize_language(input_config):

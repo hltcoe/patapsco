@@ -100,13 +100,14 @@ class TrecResultsReader:
 class JsonResultsWriter(Task):
     """Write results to a json file"""
 
-    def __init__(self, config, artifact_config):
+    def __init__(self, run_path, config, artifact_config):
         """
         Args:
-            config (OutputConfig): Config object with output.path.
+            run_path (str): Root directory of the run.
+            config (BaseConfig): Config object with output.
             artifact_config (BaseConfig): Config used to generate this artifact.
         """
-        super().__init__(artifact_config, config.output.path)
+        super().__init__(run_path, artifact_config, config.output)
         self.path = self.base / 'results.jsonl'
         self.file = open(self.path, 'w')
 
