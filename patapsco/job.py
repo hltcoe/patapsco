@@ -392,7 +392,6 @@ class JobBuilder:
         # Analyze the config and check there are any artifacts from a previous run.
         # A plan consists of a list of Tasks to be constructed into a pipeline.
         stage2 = []
-        # TODO need to confirm that the db is also built
         retrieve_complete = self.conf.retrieve and self.is_task_complete(self.conf.retrieve)
         if self.conf.topics:
             # add topics task if it is not complete, the queries are not available and the retrieve task is not complete
@@ -412,6 +411,13 @@ class JobBuilder:
             if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:
                 raise ConfigError("Scorer can only run if either retrieve or rerank is configured.")
             stage2.append(Tasks.SCORE)
+
+        # confirm that we're not missing tasks
+        if Tasks.TOPICS in stage2 and Tasks.RETRIEVE in stage2 and Tasks.QUERIES not in stage2:
+            raise ConfigError("Missing configuration for queries")
+        if Tasks.QUERIES in stage2 and Tasks.RERANK in stage2 and Tasks.RETRIEVE not in stage2:
+            raise ConfigError("Missing configuration for retrieve")
+
         return stage2
 
     def _get_stage2_iterator(self, plan):
