@@ -158,6 +158,7 @@ class PyseriniRetriever(Task):
             Results
         """
         hits = self.searcher.search(query.text, k=self.number)
+        LOGGER.debug(f"Retrieved {len(hits)} documents for {query.id}: {query.text}")
         results = [Result(hit.docid, rank, hit.score) for rank, hit in enumerate(hits)]
         return Results(query, str(self), results)
 

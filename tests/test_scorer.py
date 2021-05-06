@@ -12,8 +12,8 @@ def test_at_symbol_mapping():
         metrics=['map', 'P@20'] 
     )
     scorer = Scorer("test", config, qrels=None)
-    assert scorer.config.metrics[0] == "map"
-    assert scorer.config.metrics[1] == "P_20"    
+    assert scorer.metrics[0] == "map"
+    assert scorer.metrics[1] == "P_20"
 
 
 @pytest.mark.skip(reason="not ready")
