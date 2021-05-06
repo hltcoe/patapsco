@@ -355,7 +355,7 @@ class JobBuilder:
                 if self.conf.documents.process.splits:
                     # if we are splitting the documents output, multiplex the doc writer
                     tasks.append(MultiplexTask(self.conf.documents.process.splits, DocWriter,
-                                               self.conf.documents, artifact_conf))
+                                               run_path, self.conf.documents, artifact_conf))
                 else:
                     tasks.append(DocWriter(run_path, self.conf.documents, artifact_conf))
 
@@ -366,7 +366,7 @@ class JobBuilder:
             if self.conf.documents.process.splits:
                 # if we are splitting the documents output, multiplex the indexer
                 tasks.append(MultiplexTask(self.conf.documents.process.splits, IndexerFactory.create,
-                                           self.conf.index, artifact_conf))
+                                           run_path, self.conf.index, artifact_conf))
             else:
                 tasks.append(IndexerFactory.create(run_path, self.conf.index, artifact_conf))
 
@@ -464,7 +464,7 @@ class JobBuilder:
             if self.conf.queries.output:
                 if self.conf.queries.process.splits:
                     tasks.append(MultiplexTask(self.conf.queries.process.splits, QueryWriter,
-                                               self.conf.queries, artifact_conf))
+                                               run_path, self.conf.queries, artifact_conf))
                 else:
                     tasks.append(QueryWriter(run_path, self.conf.queries, artifact_conf))
 

@@ -132,11 +132,12 @@ class MultiplexItem:
 class MultiplexTask(Task):
     """Accepts a MultiplexItem and wraps the tasks for each item in it"""
 
-    def __init__(self, splits, create_fn, config, artifact_config, *args, **kwargs):
+    def __init__(self, splits, create_fn=None, run_path=None, config=None, artifact_config=None, *args, **kwargs):
         """
         Args:
             splits (list of str or dict of tasks): List of split identifiers or list of Tasks to be multiplexed.
             create_fn (callable): Function to create a task per split.
+            run_path (str): Root directory of the run.
             config (BaseConfig): Config for the tasks.
             artifact_config (BaseConfig): Config that resulted in this artifact.
         """
@@ -146,13 +147,13 @@ class MultiplexTask(Task):
         else:
             self.tasks = {}
             if config.output:
-                self.dir = pathlib.Path(config.output)
+                self.dir = pathlib.Path(run_path) / config.output
             for split in splits:
                 task_config = config.copy(deep=True)
                 if task_config.output:
                     task_config.output = str(pathlib.Path(task_config.output) / split)
                 task_artifact_config = self._update_artifact_config(artifact_config, split)
-                self.tasks[split] = create_fn(artifact_config.run.path, task_config, task_artifact_config, *args, **kwargs)
+                self.tasks[split] = create_fn(run_path, task_config, task_artifact_config, *args, **kwargs)
             self.artifact_config = artifact_config
             if config.output:
                 self.config_path = self.dir / 'config.yml'

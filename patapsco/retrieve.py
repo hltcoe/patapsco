@@ -49,7 +49,7 @@ class RetrieverFactory(TaskFactory):
                         copied_config = config.copy(deep=True)
                         copied_config.input.index.path = str(base_path / split)
                         retrievers[split] = super().create(run_path, copied_config, *args, **kwargs)
-                    return MultiplexTask(retrievers, None, None, None)
+                    return MultiplexTask(retrievers)
         else:
             # multiple index paths
             paths = config.input.index.path
@@ -58,7 +58,7 @@ class RetrieverFactory(TaskFactory):
                 copied_config = config.copy(deep=True)
                 copied_config.input.index.path = path
                 retrievers[key] = super().create(run_path, copied_config, *args, **kwargs)
-            return MultiplexTask(retrievers, None, None, None)
+            return MultiplexTask(retrievers)
 
 
 class Joiner(Task):

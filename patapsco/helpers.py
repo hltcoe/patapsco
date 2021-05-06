@@ -62,7 +62,7 @@ class ConfigHelper:
     def _set_output_paths(cls, conf):
         # set output path for components from defaults
         for task in cls.output_defaults.keys():
-            if conf.get(task) and conf.get(task).get('output'):
+            if conf.get(task) and conf.get(task).get('output') is True:
                 conf.get(task).set('output', cls.output_defaults[task])
 
     @classmethod
@@ -88,6 +88,8 @@ class ConfigHelper:
                 obj = getattr(obj, field)
             if isinstance(obj.path, list):
                 obj.path = [str(pathlib.Path(path).absolute()) for path in obj.path]
+            elif isinstance(obj.path, dict):
+                obj.path = {key: str(pathlib.Path(path).absolute()) for key, path in obj.path.items()}
             else:
                 # make path absolute if not relative to root run directory
                 path = pathlib.Path(obj.path).absolute()
