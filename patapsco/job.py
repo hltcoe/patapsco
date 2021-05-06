@@ -224,15 +224,18 @@ class ParallelJob(Job):
     def _update_stage1_output_paths(conf, part):
         # configs may not have all tasks so we ignore errors
         try:
-            conf.database.output = path_append(conf.documents.db, part)
+            if conf.database.output:
+                conf.database.output = path_append(conf.database.output, part)
         except AttributeError:
             pass
         try:
-            conf.documents.output = path_append(conf.documents, part)
+            if conf.documents.output:
+                conf.documents.output = path_append(conf.documents.output, part)
         except AttributeError:
             pass
         try:
-            conf.index.output = path_append(conf.index.output, part)
+            if conf.index.output:
+                conf.index.output = path_append(conf.index.output, part)
         except AttributeError:
             pass
 
@@ -240,19 +243,23 @@ class ParallelJob(Job):
     def _update_stage2_output_paths(conf, part):
         # configs may not have all tasks so we ignore errors
         try:
-            conf.topics.output = path_append(conf.topics.output, part)
+            if conf.topics.output:
+                conf.topics.output = path_append(conf.topics.output, part)
         except AttributeError:
             pass
         try:
-            conf.queries.output = path_append(conf.queries.output, part)
+            if conf.queries.output:
+                conf.queries.output = path_append(conf.queries.output, part)
         except AttributeError:
             pass
         try:
-            conf.retrieve.output = path_append(conf.retrieve.output, part)
+            if conf.retrieve.output:
+                conf.retrieve.output = path_append(conf.retrieve.output, part)
         except AttributeError:
             pass
         try:
-            conf.rerank.output = path_append(conf.rerank.output, part)
+            if conf.rerank.output:
+                conf.rerank.output = path_append(conf.rerank.output, part)
         except AttributeError:
             pass
 
