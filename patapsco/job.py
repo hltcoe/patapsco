@@ -5,6 +5,7 @@ import json
 import logging
 import math
 import pathlib
+import sys
 
 from .config import ConfigService
 from .docs import DocumentProcessor, DocumentReaderFactory, DocumentDatabaseFactory, DocReader, DocWriter
@@ -173,6 +174,7 @@ class ParallelJob(Job):
                 return sum(executor.map(self._fork, jobs))
             except Exception as e:
                 LOGGER.error(f"Parallel job failed with {e}")
+                sys.exit(-1)
 
     @staticmethod
     def _fork(job):
