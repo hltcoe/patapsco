@@ -2,8 +2,10 @@ import pathlib
 
 import pytest
 
+from patapsco.results import TrecResultsReader
 from patapsco.schema import ScoreInputConfig, ScoreConfig
 from patapsco.score import *
+from patapsco.util.trec import parse_qrels
 
 
 def test_at_symbol_mapping():
@@ -16,15 +18,19 @@ def test_at_symbol_mapping():
     assert scorer.metrics[1] == "P_20"
 
 
-@pytest.mark.skip(reason="not ready")
 def test_ndcg_prime():
-    # TODO complete testing for ndcg_prime
+    directory = pathlib.Path(__file__).parent / 'scoring_files'
+    qrels_path = directory / 'qrels.txt'
+    run_path = directory / 'run.txt'
     config = ScoreConfig(
-        input=ScoreInputConfig(path="test"),
-        metrics=["ndcg'"] 
+        input=ScoreInputConfig(path=str(run_path)),
+        metrics=["ndcg'"]
     )
-    # create fake qrels to test ndcg', load them, pass to constructor
-    scorer = Scorer(config, qrels=None)
-    scorer.run = []  # fake results (could be in a file or entered here
+    qrels_iter = parse_qrels(str(qrels_path))
+    qrels = next(qrels_iter)
+    scorer = Scorer("test", config, qrels=qrels)
+    results_iter = TrecResultsReader(str(run_path))
+    for r in results_iter:
+        scorer.process(r)
     results = scorer.calc_ndcg_prime()
-    #assert something
+    assert results['2']["ndcg'"] == 1
