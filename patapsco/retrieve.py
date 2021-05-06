@@ -103,7 +103,7 @@ class MockRetriever(Task):
         """
         super().__init__(run_path)
         self.number = config.number
-        self.path = pathlib.Path(config.input.index.path) / 'index.txt'
+        self.path = pathlib.Path(run_path) / config.input.index.path / 'index.txt'
         self.doc_ids = None
 
     def process(self, query):
