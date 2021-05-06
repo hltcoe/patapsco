@@ -11,7 +11,7 @@ def test_at_symbol_mapping():
         input=ScoreInputConfig(path="test"),
         metrics=['map', 'P@20'] 
     )
-    scorer = Scorer(config, qrels=None)
+    scorer = Scorer("test", config, qrels=None)
     assert scorer.metrics[0] == "map"
     assert scorer.metrics[1] == "P_20"
 

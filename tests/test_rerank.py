@@ -3,11 +3,10 @@ import tempfile
 
 import pytest
 
-from patapsco.config import PathConfig
 from patapsco.docs import Doc
 from patapsco.rerank import *
 from patapsco.results import Result
-from patapsco.schema import RerankInputConfig
+from patapsco.schema import PathConfig, RerankInputConfig
 from patapsco.topics import Query
 from patapsco.util.file import delete_dir
 
@@ -35,14 +34,14 @@ class TestShellReranker:
             input=RerankInputConfig(db=self.path_config, results=None),
             name='shell',
             script=script,
-            output=self.path_config,
+            output=self.temp_dir,
             **kwargs
         )
 
     def test_shell_reranker_with_success(self):
         script = str(self.directory / 'success.sh')
         config = self.create_config(script)
-        reranker = ShellReranker(config=config, db=MockDB())
+        reranker = ShellReranker(run_path='', config=config, db=MockDB())
         items = [Results(Query('1', 'en', 'text'), 'test', [
             Result('aaa', 1, 0.5),
             Result('bbb', 2, 0.4)
@@ -57,7 +56,7 @@ class TestShellReranker:
     def test_shell_reranker_with_fewer_queries_in_output(self):
         script = str(self.directory / 'success.sh')
         config = self.create_config(script)
-        reranker = ShellReranker(config=config, db=MockDB())
+        reranker = ShellReranker(run_path='', config=config, db=MockDB())
         items = [
             Results(Query('1', 'en', 'text'), 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
             Results(Query('2', 'en', 'text2'), 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
@@ -68,7 +67,7 @@ class TestShellReranker:
     def test_shell_reranker_with_error(self):
         script = str(self.directory / 'error.sh')
         config = self.create_config(script)
-        reranker = ShellReranker(config=config, db=MockDB())
+        reranker = ShellReranker(run_path='', config=config, db=MockDB())
         items = [Results(Query('1', 'en', 'text'), 'test', [Result('1', 1, 0.5)])]
         with pytest.raises(PatapscoError):
             reranker.batch_process(items)
@@ -77,12 +76,12 @@ class TestShellReranker:
         script = str(self.directory / 'nothing.sh')
         config = self.create_config(script)
         with pytest.raises(ConfigError):
-            ShellReranker(config=config, db=MockDB())
+            ShellReranker(run_path='', config=config, db=MockDB())
 
     def test_shell_reranker_call_process(self):
         script = str(self.directory / 'success.sh')
         config = self.create_config(script)
-        reranker = ShellReranker(config=config, db=MockDB())
+        reranker = ShellReranker(run_path='', config=config, db=MockDB())
         item = Results(Query('1', 'en', 'text'), 'test', [
             Result('aaa', 1, 0.5),
             Result('bbb', 2, 0.4)
@@ -93,7 +92,7 @@ class TestShellReranker:
     def test_shell_reranker_with_args(self):
         script = str(self.directory / 'args.sh')
         config = self.create_config(script, embedding="mbert")
-        reranker = ShellReranker(config=config, db=MockDB())
+        reranker = ShellReranker(run_path='', config=config, db=MockDB())
         items = [Results(Query('1', 'en', 'text'), 'test', [
             Result('aaa', 1, 0.5),
             Result('bbb', 2, 0.4)

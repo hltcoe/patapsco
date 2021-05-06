@@ -19,26 +19,28 @@ class BaseConfig(pydantic.BaseModel):
 
     This uses dataclasses and includes validation of parameters.
     """
-    comment: Optional[str]
+
+    def get(self, item):
+        return getattr(self, item)
+
+    def set(self, item, value):
+        setattr(self, item, value)
 
     class Config:
         extra = pydantic.Extra.forbid
 
 
-class BaseUncheckedConfig(BaseConfig):
-    """Case config class that supports arbitrary parameters"""
+class SectionConfig(BaseConfig):
+    """Top level section"""
+    comment: Optional[str]
+
+
+class UncheckedSectionConfig(BaseConfig):
+    """Top level section that supports arbitrary parameters"""
+    comment: Optional[str]
+
     class Config:
         extra = pydantic.Extra.allow
-
-
-class PathConfig(BaseConfig):
-    """Simple config with only a path variable"""
-    path: str
-
-
-class OutputConfig(BaseConfig):
-    """Config with an output"""
-    output: PathConfig
 
 
 class ConfigService:

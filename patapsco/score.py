@@ -38,13 +38,14 @@ class TrecQrelsReader:
 class Scorer(Task):
     """Use pytrec_eval to calculate scores"""
 
-    def __init__(self, config, qrels):
+    def __init__(self, run_path, config, qrels):
         """
         Args:
+            run_path (str): Root directory of the run.
             config (ScoreConfig)
             qrels (dict): qrels dictionary
         """
-        super().__init__()
+        super().__init__(run_path, base='')
         self.config = config
         self.metrics = [m.replace('@', '_').capitalize()
                         if m[:2] == 'p@' else m.replace('@', '_')

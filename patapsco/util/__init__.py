@@ -64,6 +64,18 @@ class ReaderFactory(ComponentFactory):
         return GlobIterator(config.path, cls._get_class(config), config.encoding, config.lang, **args)
 
 
+class TaskFactory(ComponentFactory):
+    """Same as ComponentFactory includes the run path"""
+    @classmethod
+    def create(cls, run_path, config, *args, **kwargs):
+        """
+        Args:
+            run_path (str): Root path of the run.
+            config (DocumentsInputConfig or TopicsInputConfig)
+        """
+        return cls._get_class(config)(run_path, config, *args, **kwargs)
+
+
 class DataclassJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if dataclasses.is_dataclass(obj):
@@ -208,7 +220,9 @@ class GlobIterator(InputIterator):
             try:
                 self.gen = self._next_generator()
             except StopIteration:
+                # exhausted the files that match the previous glob, so advance to the next one
                 self.paths = iter(self._next_glob())
+                self.gen = self._next_generator()
             return self.__next__()
 
     def __len__(self):

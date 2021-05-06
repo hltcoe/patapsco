@@ -144,8 +144,8 @@ class HamshahriDocumentReader(InputIterator):
 class DocWriter(Task):
     """Write documents to a json file using internal format"""
 
-    def __init__(self, config, artifact_config):
-        super().__init__(artifact_config, config.output.path)
+    def __init__(self, run_path, config, artifact_config):
+        super().__init__(run_path, artifact_config, config.output)
         path = self.base / 'documents.jsonl'
         self.file = open(path, 'w')
 
@@ -206,16 +206,22 @@ class DocumentDatabase(sqlitedict.SqliteDict):
         print(store['doc_77'])
     """
 
-    def __init__(self, path, config, readonly=False, *args, **kwargs):
+    def __init__(self, base_path, artifact_config, readonly=False, *args, **kwargs):
+        """
+        Args:
+            base_path (Path): Database directory.
+            artifact_config (RunnerConfig): Config that resulted in this database.
+            readonly (bool): Whether to support adding documents.
+        """
         kwargs['autocommit'] = True
         self.readonly = readonly
-        self.base = pathlib.Path(path)
+        self.base = pathlib.Path(base_path)
         self.path = self.base / "docs.db"
         if readonly and not self.path.exists():
             raise ConfigError(f"Document database does not exist: {self.path}")
         if not self.base.exists():
             self.base.mkdir(parents=True)
-        self.config = config
+        self.artifact_config = artifact_config
         self.config_path = self.base / 'config.yml'
         super().__init__(str(self.path), *args, **kwargs)
 
@@ -232,7 +238,7 @@ class DocumentDatabase(sqlitedict.SqliteDict):
 
     def end(self):
         if not self.readonly:
-            ConfigService.write_config_file(self.config_path, self.config)
+            ConfigService.write_config_file(self.config_path, self.artifact_config)
             touch_complete(self.base)
 
     def reduce(self):
@@ -246,24 +252,26 @@ class DocumentDatabase(sqlitedict.SqliteDict):
 
 class DocumentDatabaseFactory:
     @staticmethod
-    def create(path, config=None, readonly=False):
-        if is_complete(path):
+    def create(run_path, output_path, config=None, readonly=False):
+        base_path = pathlib.Path(run_path) / output_path
+        if is_complete(base_path):
             readonly = True
-            config = ConfigService().read_config_file(pathlib.Path(path) / 'config.yml')
-        return DocumentDatabase(path, config, readonly)
+            config = ConfigService().read_config_file(pathlib.Path(base_path) / 'config.yml')
+        return DocumentDatabase(base_path, config, readonly)
 
 
 class DocumentProcessor(Task, TextProcessor):
     """Document Preprocessing"""
 
-    def __init__(self, config, lang, db):
+    def __init__(self, run_path, config, lang, db):
         """
         Args:
+            run_path (str): Root directory of the run.
             config (TextProcessorConfig)
             lang (str): Language code for the documents.
             db (DocumentDatabase): Document db for later retrieval.
         """
-        Task.__init__(self)
+        Task.__init__(self, run_path)
         TextProcessor.__init__(self, config, lang)
         self.splitter = Splitter(config.splits)
         self.db = db

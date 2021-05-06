@@ -1,6 +1,6 @@
 import enum
 
-from .config import BaseConfig, BaseUncheckedConfig, PathConfig, Optional, Union
+from .config import BaseConfig, SectionConfig, UncheckedSectionConfig, Optional, Union
 
 
 class PipelineMode(str, enum.Enum):
@@ -17,6 +17,11 @@ class Tasks(str, enum.Enum):
     RETRIEVE = 'retrieve'
     RERANK = 'rerank'
     SCORE = 'score'
+
+
+class PathConfig(BaseConfig):
+    """Simple config with only a path variable"""
+    path: str
 
 
 """""""""""""""""
@@ -55,12 +60,11 @@ class DocumentsInputConfig(BaseConfig):
     path: Union[str, list]
 
 
-class DocumentsConfig(BaseConfig):
+class DocumentsConfig(SectionConfig):
     """Document processing task configuration"""
     input: DocumentsInputConfig
     process: TextProcessorConfig
-    output: Union[bool, PathConfig]
-    db: PathConfig
+    output: Union[bool, str] = False
 
 
 """""""""""""""""
@@ -78,11 +82,11 @@ class TopicsInputConfig(BaseConfig):
     path: Union[str, list]
 
 
-class TopicsConfig(BaseConfig):
+class TopicsConfig(SectionConfig):
     """Configuration for topics task"""
     input: TopicsInputConfig
     fields: str = "title"  # field1+field2 where field is title, desc, or narr
-    output: Union[bool, PathConfig]
+    output: Union[bool, str] = False
 
 
 class QueriesInputConfig(BaseConfig):
@@ -92,11 +96,20 @@ class QueriesInputConfig(BaseConfig):
     path: Union[str, list]
 
 
-class QueriesConfig(BaseConfig):
+class QueriesConfig(SectionConfig):
     """Configuration for processing queries"""
     input: Optional[QueriesInputConfig]
     process: TextProcessorConfig
-    output: Union[bool, PathConfig]
+    output: Union[bool, str] = True
+
+
+"""""""""""""""""
+Database
+"""""""""""""""""
+
+
+class DatabaseConfig(SectionConfig):
+    output: Union[bool, str] = True
 
 
 """""""""""""""""
@@ -109,11 +122,11 @@ class IndexInputConfig(BaseConfig):
     documents: PathConfig
 
 
-class IndexConfig(BaseConfig):
+class IndexConfig(SectionConfig):
     """Configuration for building an index"""
     input: Optional[IndexInputConfig]
     name: str
-    output: PathConfig
+    output: Union[bool, str] = True
 
 
 """""""""""""""""
@@ -127,16 +140,16 @@ class RetrieveIndexPathConfig(BaseConfig):
 
 class RetrieveInputConfig(BaseConfig):
     """Configuration of optional retrieval inputs"""
-    index: Union[PathConfig, RetrieveIndexPathConfig]
+    index: Union[None, PathConfig, RetrieveIndexPathConfig]
     queries: Optional[PathConfig]
 
 
-class RetrieveConfig(BaseConfig):
+class RetrieveConfig(SectionConfig):
     """Configuration for retrieval"""
     name: str
     number: int = 1000
-    input: RetrieveInputConfig
-    output: Union[bool, PathConfig]
+    input: Optional[RetrieveInputConfig]
+    output: Union[bool, str] = True
 
 
 """""""""""""""""
@@ -146,16 +159,16 @@ Rerank
 
 class RerankInputConfig(BaseConfig):
     """Configuration of optional rerank inputs"""
-    db: PathConfig  # if running both stages, runner will copy this from documents config
+    db: Optional[PathConfig]  # if running both stages, runner will copy this from documents config
     results: Optional[PathConfig]  # set if starting stage2 at reranking
 
 
-class RerankConfig(BaseUncheckedConfig):
+class RerankConfig(UncheckedSectionConfig):
     """Configuration for the rerank task"""
-    input: RerankInputConfig
+    input: Optional[RerankInputConfig]
     name: str
     script: Optional[str]  # for the shell reranker
-    output: PathConfig
+    output: Union[bool, str] = False
 
 
 """""""""""""""""
@@ -169,7 +182,7 @@ class ScoreInputConfig(BaseConfig):
     path: str
 
 
-class ScoreConfig(BaseConfig):
+class ScoreConfig(SectionConfig):
     """Configuration for the scorer module"""
     metrics: list = ['map']
     input: ScoreInputConfig
@@ -201,6 +214,7 @@ class RunConfig(BaseConfig):
 class RunnerConfig(BaseConfig):
     """Configuration for the patapsco runner"""
     run: RunConfig
+    database: DatabaseConfig = DatabaseConfig()
     documents: Optional[DocumentsConfig]
     index: Optional[IndexConfig]
     topics: Optional[TopicsConfig]

@@ -31,30 +31,30 @@ class TestJobBuilder:
             output_directory = self.temp_dir
         return RunnerConfig(
             run=RunConfig(name='run name', path=str(output_directory)),
+            database=DatabaseConfig(output="database"),
             documents=DocumentsConfig(
                 input=DocumentsInputConfig(format="jsonl", lang="en", path=str(input_directory / "docs.jsonl")),
                 process=TextProcessorConfig(tokenize=TokenizeConfig(name="whitespace"), stem=False),
-                db=PathConfig(path=str(self.temp_dir / "db")),
-                output=PathConfig(path=str(output_directory / "docs"))
+                output="docs"
             ),
-            index=IndexConfig(name="mock", output=PathConfig(path=str(output_directory / "index"))),
+            index=IndexConfig(name="mock", output="index"),
             topics=TopicsConfig(
                 input=TopicsInputConfig(format="jsonl", lang="en", path=str(input_directory / "topics.jsonl")),
-                output=PathConfig(path=str(output_directory / "topics"))
+                output="topics"
             ),
             queries=QueriesConfig(
                 process=TextProcessorConfig(tokenize=TokenizeConfig(name="whitespace"), stem=False),
-                output=PathConfig(path=str(output_directory / "queries"))
+                output="queries"
             ),
             retrieve=RetrieveConfig(
                 input=RetrieveInputConfig(index=PathConfig(path="index")),
                 name="test",
-                output=PathConfig(path=str(output_directory / "retrieve"))
+                output="retrieve"
             ),
             rerank=RerankConfig(
                 input=RerankInputConfig(db=PathConfig(path="test")),
                 name="test",
-                output=PathConfig(path=str(output_directory / "rerank"))
+                output="rerank"
             ),
             score=ScoreConfig(input=ScoreInputConfig(format='trec', path=str(input_directory / 'qrels')))
         )
@@ -412,7 +412,7 @@ class TestJobBuilder:
         builder = JobBuilder(conf)
         builder.check_text_processing()
 
-    def test_check_text_processing_mistmatch(self):
+    def test_check_text_processing_mismatch(self):
         conf = self.create_config('test')
         conf.queries.process.lowercase = False
         builder = JobBuilder(conf)

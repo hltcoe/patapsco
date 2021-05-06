@@ -4,7 +4,7 @@ import pathlib
 
 from .__version__ import __version__
 from .job import JobBuilder
-from .helpers import ConfigPreprocessor
+from .helpers import ConfigHelper
 
 LOGGER = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class Runner:
         self.setup_logging(verbose)
         LOGGER.info(f"Patapsco version {__version__}")
         LOGGER.info(f"Configuration: {pathlib.Path(config_filename).absolute()}")
-        conf = ConfigPreprocessor.process(config_filename, overrides)
+        conf = ConfigHelper.load(config_filename, overrides)
         LOGGER.info(f"Writing output to: {pathlib.Path(conf.run.path).absolute()}")
         self.add_file_logging(conf.run.path)
         self.job = JobBuilder(conf).build()

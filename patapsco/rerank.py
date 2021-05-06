@@ -10,14 +10,14 @@ from .error import BadDataError, ConfigError, PatapscoError
 from .pipeline import Task
 from .results import Results, TrecResultsReader
 from .schema import RerankConfig
-from .util import ComponentFactory, DataclassJSONEncoder
+from .util import TaskFactory, DataclassJSONEncoder
 
 LOGGER = logging.getLogger(__name__)
 
 
-class RerankFactory(ComponentFactory):
+class RerankFactory(TaskFactory):
     classes = {
-        'pacrr': 'MockReranker',
+        'mock': 'MockReranker',
         'shell': 'ShellReranker'
     }
     config_class = RerankConfig
@@ -26,13 +26,14 @@ class RerankFactory(ComponentFactory):
 class Reranker(Task):
     """Rerank interface"""
 
-    def __init__(self, config, db):
+    def __init__(self, run_path, config, db):
         """
         Args:
+            run_path (str): Root directory of the run.
             config (RerankConfig): Configuration parameters
             db (DocumentDatabase): Document database
         """
-        super().__init__()
+        super().__init__(run_path)
         self.config = config
         self.db = db
 
@@ -81,11 +82,11 @@ class ShellReranker(Reranker):
     Arbitrary options can be added to the rerank config and will be passed as --key value.
     """
 
-    def __init__(self, config, db):
+    def __init__(self, run_path, config, db):
         if not pathlib.Path(config.script).exists():
             raise ConfigError(f"Reranker shell script does not exist: {config.script}")
-        super().__init__(config, db)
-        self.dir = pathlib.Path(config.output.path) / 'shell'
+        super().__init__(run_path, config, db)
+        self.dir = pathlib.Path(config.output) / 'shell'
         self.dir.mkdir(parents=True, exist_ok=True)
         self.batch = 0
 

@@ -52,12 +52,13 @@ class TopicProcessor(Task):
         'narrative': 'narr'
     }
 
-    def __init__(self, config):
+    def __init__(self, run_path, config):
         """
         Args:
+            run_path (str): Root directory of the run.
             config (TopicsConfig)
         """
-        super().__init__()
+        super().__init__(run_path)
         self.fields = self._extract_fields(config.fields)
 
     def process(self, topic):
@@ -195,13 +196,14 @@ class TsvTopicReader(InputIterator):
 class QueryWriter(Task):
     """Write queries to a jsonl file using internal format"""
 
-    def __init__(self, config, artifact_config):
+    def __init__(self, run_path, config, artifact_config):
         """
         Args:
-            config (OutputConfig): Config that includes output.path.
+            run_path (str): Root directory of the run.
+            config (BaseConfig): Config that includes output.
             artifact_config (BaseConfig or None): Config that resulted in this artifact
         """
-        super().__init__(artifact_config, config.output.path)
+        super().__init__(run_path, artifact_config, config.output)
         path = self.base / 'queries.jsonl'
         self.file = open(path, 'w')
 
@@ -257,13 +259,14 @@ class QueryReader(InputIterator):
 class QueryProcessor(Task, TextProcessor):
     """Query Preprocessing"""
 
-    def __init__(self, config, lang):
+    def __init__(self, run_path, config, lang):
         """
         Args:
+            run_path (str): Root directory of the run.
             config (TextProcessorConfig)
             lang (str)
         """
-        Task.__init__(self)
+        Task.__init__(self, run_path)
         TextProcessor.__init__(self, config, lang)
         self.splitter = Splitter(config.splits)
 

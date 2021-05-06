@@ -11,12 +11,12 @@ import jnius
 from .pipeline import Task, MultiplexTask
 from .results import Result, Results
 from .schema import RetrieveConfig
-from .util import ComponentFactory
+from .util import TaskFactory
 
 LOGGER = logging.getLogger(__name__)
 
 
-class RetrieverFactory(ComponentFactory):
+class RetrieverFactory(TaskFactory):
     classes = {
         'bm25': 'PyseriniRetriever',
         'mock': 'MockRetriever',
@@ -24,7 +24,12 @@ class RetrieverFactory(ComponentFactory):
     config_class = RetrieveConfig
 
     @classmethod
-    def create(cls, config, *args, **kwargs):
+    def create(cls, run_path, config, *args, **kwargs):
+        """
+        Args:
+            run_path (str): Root directory of the run.
+            config (RetrieveConfig)
+        """
         # config.input.index.path can point to:
         #  1. a single path of a single run
         #  2. a single path of a multiplex run
@@ -33,7 +38,7 @@ class RetrieverFactory(ComponentFactory):
             multiplex_path = pathlib.Path(config.input.index.path) / '.multiplex'
             if not multiplex_path.exists():
                 # single index
-                return super().create(config, *args, **kwargs)
+                return super().create(run_path, config, *args, **kwargs)
             else:
                 # multiplex index
                 with open(multiplex_path, 'r') as fp:
@@ -43,8 +48,8 @@ class RetrieverFactory(ComponentFactory):
                     for split in splits:
                         copied_config = config.copy(deep=True)
                         copied_config.input.index.path = str(base_path / split)
-                        retrievers[split] = super().create(copied_config, *args, **kwargs)
-                    return MultiplexTask(retrievers, None, None, None)
+                        retrievers[split] = super().create(run_path, copied_config, *args, **kwargs)
+                    return MultiplexTask(retrievers)
         else:
             # multiple index paths
             paths = config.input.index.path
@@ -52,8 +57,8 @@ class RetrieverFactory(ComponentFactory):
             for key, path in paths.items():
                 copied_config = config.copy(deep=True)
                 copied_config.input.index.path = path
-                retrievers[key] = super().create(copied_config, *args, **kwargs)
-            return MultiplexTask(retrievers, None, None, None)
+                retrievers[key] = super().create(run_path, copied_config, *args, **kwargs)
+            return MultiplexTask(retrievers)
 
 
 class Joiner(Task):
@@ -90,10 +95,15 @@ class Joiner(Task):
 class MockRetriever(Task):
     """Mock retriever for testing and development"""
 
-    def __init__(self, config):
-        super().__init__()
+    def __init__(self, run_path, config):
+        """
+        Args:
+            run_path (str): Root directory of the run.
+            config (RetrieveConfig)
+        """
+        super().__init__(run_path)
         self.number = config.number
-        self.path = pathlib.Path(config.input.index.path) / 'index.txt'
+        self.path = pathlib.Path(run_path) / config.input.index.path / 'index.txt'
         self.doc_ids = None
 
     def process(self, query):
@@ -123,10 +133,15 @@ JWhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.Whitespac
 
 class PyseriniRetriever(Task):
 
-    def __init__(self, config):
-        super().__init__()
+    def __init__(self, run_path, config):
+        """
+        Args:
+            run_path (str): Root directory of the run.
+            config (RetrieveConfig)
+        """
+        super().__init__(run_path)
         self.number = config.number
-        self.index_dir = str(config.input.index.path)
+        self.index_dir = str(pathlib.Path(run_path) / config.input.index.path)
         self.searcher = None
 
     def begin(self):
