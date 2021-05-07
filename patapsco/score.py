@@ -74,8 +74,9 @@ class Scorer(Task):
             measures.discard("ndcg_prime")
         evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, measures)
         scores = evaluator.evaluate(self.run)
-        for q, results_dict in scores.items():
-            scores[q].update(ndcg_prime_results[q])
+        if "ndcg'" in measures or "ndcg_prime" in measures:
+            for q, results_dict in scores.items():
+                scores[q].update(ndcg_prime_results[q])
         if scores:
             mean_scores = {}
             metrics = list(list(scores.values())[0].keys())
