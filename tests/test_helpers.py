@@ -180,3 +180,15 @@ class TestArtifactHelper:
         assert hasattr(conf, 'queries')
         assert hasattr(conf, 'retrieve')
         assert hasattr(conf, 'rerank')
+
+
+class TestLangHelper:
+    def test_uppercase(self):
+        assert LangHelper.standardize("EN") == "en"
+
+    def test_3_letter(self):
+        assert LangHelper.standardize("fas") == "fa"
+
+    def test_unknown_code(self):
+        with pytest.raises(ConfigError):
+            LangHelper.standardize("es")

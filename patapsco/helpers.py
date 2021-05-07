@@ -158,3 +158,38 @@ class ArtifactHelper:
             if getattr(artifact_config, task):
                 if not getattr(config, task):
                     setattr(config, task, getattr(artifact_config, task))
+
+
+class LangHelper:
+    """Utility method for language codes"""
+
+    @staticmethod
+    def standardize(lang):
+        """
+        Args:
+            lang (str): 2 or 3 letter code
+
+        Returns:
+            2 letter language code
+        """
+        # using ISO 639
+        langs = {
+            'ar': 'ar',
+            'ara': 'ar',
+            'arb': 'ar',
+            'en': 'en',
+            'eng': 'en',
+            'fa': 'fa',
+            'fas': 'fa',
+            'per': 'fa',
+            'ru': 'ru',
+            'rus': 'ru',
+            'zh': 'zh',
+            'chi': 'zh',
+            'zho': 'zh'
+        }
+        try:
+            lang = langs[lang.lower()]
+            return lang
+        except KeyError:
+            raise ConfigError(f"Unknown language code: {lang}")
