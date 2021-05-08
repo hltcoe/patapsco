@@ -440,10 +440,12 @@ class JobBuilder:
             iterator = self._setup_input(QueryReader, 'queries.input.path', 'topics.output',
                                          'query processor not configured with input')
             query = iterator.peek()
-            self.query_lang = query.lang
+            self.query_lang = LangHelper.standardize(query.lang)
         elif Tasks.RETRIEVE in plan:
             iterator = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output',
                                          'retrieve not configured with queries')
+            query = iterator.peek()
+            self.query_lang = LangHelper.standardize(query.lang)
         else:
             iterator = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output',
                                          'rerank not configured with retrieve results')
