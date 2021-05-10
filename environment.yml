@@ -10,6 +10,7 @@ dependencies:
   - stanza>=1.2.0
   - pip
   - pip:
+    - jieba
     - pydantic==1.8.1
     - pyserini
     - pytrec_eval
