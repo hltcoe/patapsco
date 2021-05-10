@@ -19,7 +19,25 @@ class TokenizerFactory(ComponentFactory):
         'stanza': 'StanzaTokenizer',
         'whitespace': 'WhiteSpaceTokenizer',
     }
+    model_directory_defaults = {
+        'stanza': '/exp/scale2021/resources/stanza',
+        'whitespace': None
+    }
     config_class = TokenizeConfig
+
+    @classmethod
+    def create(cls, config, *args, **kwargs):
+        """
+        Args:
+            config (TokenizeConfig)
+        """
+        if not config.path:
+            try:
+                config.path = cls.model_directory_defaults[config.name]
+            except KeyError:
+                raise ConfigError(f"Unknown tokenizer: {config.name}")
+        kwargs['model_path'] = config.path
+        return super().create(config, *args, **kwargs)
 
 
 class StemmerFactory(ComponentFactory):
@@ -40,9 +58,10 @@ class Normalizer:
 class Tokenizer:
     """Tokenizer interface"""
 
-    def __init__(self, config, lang):
+    def __init__(self, config, lang, model_path):
         self.config = config
         self.lang = lang.lower()
+        self.model_path = model_path
 
     def tokenize(self, text):
         """Tokenize text
@@ -64,19 +83,22 @@ class WhiteSpaceTokenizer(Tokenizer):
 class StanzaTokenizer(Tokenizer):
     """Tokenizer that uses Stanford's stanza library"""
 
-    def __init__(self, config, lang):
-        super().__init__(config, lang)
+    def __init__(self, config, lang, model_path):
+        super().__init__(config, lang, model_path)
         if self.lang == 'zh':
             self.lang = 'zh-hans'
         self._setup_logging()
         buffer = io.StringIO()
         with contextlib.redirect_stderr(buffer):
-            stanza.download(self.lang)
+            try:
+                stanza.download(self.lang, model_dir=self.model_path)
+            except PermissionError:
+                raise ConfigError(f"Cannot write to {self.model_path}. Maybe tokenize.path needs to be set.")
             if self.lang == 'zh-hans':
                 processors = {'tokenize': 'jieba'}
             else:
                 processors = 'tokenize'
-            self.nlp = stanza.Pipeline(self.lang, processors=processors)
+            self.nlp = stanza.Pipeline(self.lang, processors=processors, dir=self.model_path)
         LOGGER.debug(buffer.getvalue())
 
     def tokenize(self, text):

@@ -4,6 +4,7 @@ import dataclasses
 import glob
 import itertools
 import json
+import logging
 import sys
 import timeit
 
@@ -256,3 +257,18 @@ class GlobIterator(InputIterator):
         for pattern in globs:
             if not glob.glob(pattern):
                 raise ConfigError(f"No files match pattern '{pattern}'")
+
+
+class LoggingFilter(logging.Filter):
+    """Preprocess some logging messages"""
+
+    def filter(self, record):
+        # stanza has some annoying logging that we clean up
+        if record.name == 'stanza':
+            if record.msg.startswith('Loading these models for language'):
+                lines = record.msg.split('\n')
+                lines = [line for line in lines if "====" not in line and "----" not in line and line]
+                lines.pop(1)  # remove table heading
+                msg = lines.pop(0)
+                record.msg = f"{msg} {', '.join(lines)}"
+        return True

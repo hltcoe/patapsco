@@ -35,6 +35,7 @@ class StemConfig(BaseConfig):
 
 class TokenizeConfig(BaseConfig):
     name: str
+    path: Optional[str]  # path to model directory
 
 
 class TextProcessorConfig(BaseConfig):

@@ -3,8 +3,9 @@ import logging.handlers
 import pathlib
 
 from .__version__ import __version__
-from .job import JobBuilder
 from .helpers import ConfigHelper
+from .job import JobBuilder
+from .util import LoggingFilter
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,10 +32,12 @@ class Runner:
         console.setLevel(log_level)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         console.setFormatter(formatter)
+        console.addFilter(LoggingFilter())
         logger.addHandler(console)
         buffer = logging.handlers.MemoryHandler(1024)
         buffer.setLevel(log_level)
         buffer.setFormatter(formatter)
+        buffer.addFilter(LoggingFilter())
         logger.addHandler(buffer)
 
     @staticmethod
