@@ -20,7 +20,7 @@ class TokenizerFactory(ComponentFactory):
         'whitespace': 'WhiteSpaceTokenizer',
     }
     model_directory_defaults = {
-        'stanza': '/exp/scale2021/resources/stanza',
+        'stanza': '/exp/scale21/resources/stanza',
         'whitespace': None
     }
     config_class = TokenizeConfig
