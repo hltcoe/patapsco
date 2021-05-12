@@ -84,6 +84,20 @@ class Scorer(Task):
                 mean_scores[key] = sum(data[key] for data in scores.values()) / len(scores)
             scores_string = ", ".join(f"{m}: {s:.3f}" for m, s in mean_scores.items())
             LOGGER.info(f"Average scores over {len(scores.keys())} queries: {scores_string}")
+            scores_path = self.run_path / 'scores.txt'
+
+            with open(scores_path, 'w') as fp:
+                for q, results_dict in sorted(scores.items()):
+                    for measure, value in sorted(results_dict.items()):
+                        print('{:25s}{:8s}{:.4f}'.format(measure, q, value),
+                              file=fp)
+
+                for measure in sorted(results_dict.keys()):
+                    print('{:25s}{:8s}{:.4f}'.format(measure, 'all',
+                          pytrec_eval.compute_aggregated_measure(
+                              measure, [results_dict[measure]
+                                        for results_dict in scores.values()])), file=fp)
+
         elif self.run and self.qrels:
             LOGGER.warning("There is a likely mismatch between query ids and qrels")
 
