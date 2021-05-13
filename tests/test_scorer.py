@@ -18,6 +18,42 @@ def test_at_symbol_mapping():
     assert scorer.metrics[1] == "P_20"
 
 
+@pytest.mark.skip(reason="TO DO Not ready yet")
+def test_pytrec_eval():
+    directory = pathlib.Path(__file__).parent / 'scoring_files'
+    qrels_path = directory / 'qrels.txt'
+    run_path = directory / 'run.txt'
+    config = ScoreConfig(
+        input=ScoreInputConfig(path=str(run_path)),
+        metrics=['map', 'ndcg', 'recall@100']
+    )
+    qrels_iter = parse_qrels(str(qrels_path))
+    qrels = next(qrels_iter)
+    scorer = Scorer("test", config, qrels=qrels)
+    assert scorer.metrics
+
+
+@pytest.mark.skip(reason="TODO ndcgg doesn't break this")
+def test_unknown_metric():
+    directory = pathlib.Path(__file__).parent / 'scoring_files'
+    qrels_path = directory / 'qrels.txt'
+    run_path = directory / 'run.txt'
+    config = ScoreConfig(
+        input=ScoreInputConfig(path=str(run_path)),
+        metrics=["ndcgg"]
+    )
+    qrels_iter = parse_qrels(str(qrels_path))
+    qrels = next(qrels_iter)
+    scorer = Scorer("test", config, qrels=qrels)
+    results_iter = TrecResultsReader(str(run_path))
+    for r in results_iter:
+        scorer.process(r)
+    results = scorer.calc_ndcg_prime()
+    print(results)
+    assert results['2']["ndcg'"] == 1
+
+
+
 def test_ndcg_prime():
     directory = pathlib.Path(__file__).parent / 'scoring_files'
     qrels_path = directory / 'qrels.txt'
@@ -34,3 +70,6 @@ def test_ndcg_prime():
         scorer.process(r)
     results = scorer.calc_ndcg_prime()
     assert results['2']["ndcg'"] == 1
+
+
+
