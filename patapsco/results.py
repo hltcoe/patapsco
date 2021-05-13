@@ -5,11 +5,10 @@ import json
 import pathlib
 from typing import List, Union
 
-from .config import ConfigService
 from .pipeline import Task
 from .topics import Query
 from .util import DataclassJSONEncoder
-from .util.file import path_append, touch_complete
+from .util.file import path_append
 
 
 @dataclasses.dataclass

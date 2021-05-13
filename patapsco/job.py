@@ -10,7 +10,7 @@ import sys
 from .config import ConfigService
 from .docs import DocumentProcessor, DocumentReaderFactory, DocumentDatabaseFactory, DocReader, DocWriter
 from .error import ConfigError
-from .helpers import ArtifactHelper
+from .helpers import ArtifactHelper, LangHelper
 from .index import IndexerFactory
 from .pipeline import BatchPipeline, MultiplexTask, StreamingPipeline
 from .rerank import RerankFactory
@@ -353,7 +353,8 @@ class JobBuilder:
 
         if Tasks.DOCUMENTS in plan:
             # doc reader -> doc processor with doc db -> optional doc writer
-            self.docs_lang = self.standardize_language(self.conf.documents.input)
+            self.docs_lang = LangHelper.standardize(self.conf.documents.input.lang)
+            self.conf.documents.input.lang = self.docs_lang
             self.clear_output(self.conf.documents)
             self.clear_output(self.conf.database)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
@@ -439,10 +440,12 @@ class JobBuilder:
             iterator = self._setup_input(QueryReader, 'queries.input.path', 'topics.output',
                                          'query processor not configured with input')
             query = iterator.peek()
-            self.query_lang = query.lang
+            self.query_lang = LangHelper.standardize(query.lang)
         elif Tasks.RETRIEVE in plan:
             iterator = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output',
                                          'retrieve not configured with queries')
+            query = iterator.peek()
+            self.query_lang = LangHelper.standardize(query.lang)
         else:
             iterator = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output',
                                          'rerank not configured with retrieve results')
@@ -458,7 +461,8 @@ class JobBuilder:
 
         if Tasks.TOPICS in plan:
             # topic reader -> topic processor -> optional query writer
-            self.query_lang = self.standardize_language(self.conf.topics.input)
+            self.query_lang = LangHelper.standardize(self.conf.topics.input.lang)
+            self.conf.topics.input.lang = self.query_lang
             self.clear_output(self.conf.topics)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.TOPICS)
             tasks.append(TopicProcessor(run_path, self.conf.topics))
@@ -574,32 +578,8 @@ class JobBuilder:
             if path.exists():
                 delete_dir(path)
 
-    @staticmethod
-    def standardize_language(input_config):
-        # using ISO 639
-        langs = {
-            'ar': 'ar',
-            'ara': 'ar',
-            'arb': 'ar',
-            'en': 'en',
-            'eng': 'eng',
-            'fa': 'fa',
-            'fas': 'fa',
-            'per': 'fa',
-            'ru': 'ru',
-            'rus': 'ru',
-            'zh': 'zh',
-            'chi': 'zh',
-            'zho': 'zh'
-        }
-        try:
-            lang = langs[input_config.lang.lower()]
-            input_config.lang = lang
-            return lang
-        except KeyError:
-            raise ConfigError(f"Unknown language code: {input_config.lang}")
-
     def check_sources_of_documents(self):
+        """The docs in the index and database must come from the same source"""
         config_path = pathlib.Path(self.conf.rerank.input.db.path) / 'config.yml'
         try:
             artifact_config_dict = ConfigService().read_config_file(config_path)
@@ -622,6 +602,7 @@ class JobBuilder:
                     raise ConfigError("documents in index do not match documents in database")
 
     def check_text_processing(self):
+        """The docs and queries must have the same text processing"""
         doc = self.conf.documents.process
         query = self.conf.queries.process
         try:
