@@ -4,10 +4,6 @@ import logging
 import pathlib
 import random
 
-import pyserini.analysis
-import pyserini.search
-import jnius
-
 from .pipeline import Task, MultiplexTask
 from .results import Result, Results
 from .schema import RetrieveConfig
@@ -127,8 +123,28 @@ class MockRetriever(Task):
         LOGGER.debug("Loaded index from %s", self.path)
 
 
-# TDOD can remove when newest version of pyserini is released
-JWhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
+class Java:
+    """Wraps JVM access
+
+    This class delays loading the JVM until needed.
+    This prevents issues with multiprocessing where a child process inherits a parent's JVM.
+    """
+    def __init__(self):
+        self.initialized = False
+
+    def __getattr__(self, attr):
+        if not self.initialized:
+            self.initialize()
+        return self.__dict__[attr]
+
+    def initialize(self):
+        self.initialized = True
+        import pyserini.analysis
+        import pyserini.search
+        import jnius
+        # TDOD can remove when newest version of pyserini is released
+        self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
+        self.SimpleSearcher = pyserini.search.SimpleSearcher
 
 
 class PyseriniRetriever(Task):
@@ -142,11 +158,15 @@ class PyseriniRetriever(Task):
         super().__init__(run_path)
         self.number = config.number
         self.index_dir = str(pathlib.Path(run_path) / config.input.index.path)
-        self.searcher = None
+        self._searcher = None
+        self.java = Java()
 
-    def begin(self):
-        self.searcher = pyserini.search.SimpleSearcher(self.index_dir)
-        self.searcher.set_analyzer(JWhitespaceAnalyzer())
+    @property
+    def searcher(self):
+        if not self._searcher:
+            self._searcher = self.java.SimpleSearcher(self.index_dir)
+            self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
+        return self._searcher
 
     def process(self, query):
         """Retrieve a ranked list of documents
