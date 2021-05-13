@@ -8,8 +8,9 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import TopicsInputConfig
 from .text import Splitter, TextProcessor
-from .util import trec, DataclassJSONEncoder, InputIterator, ReaderFactory
+from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
+from .util.formats import parse_xml_topics, parse_sgml_topics
 
 
 @dataclasses.dataclass
@@ -89,7 +90,7 @@ class SgmlTopicReader(InputIterator):
         self.encoding = encoding
         self.lang = lang
         self.strip_non_digits = strip_non_digits
-        self.topics = iter(topic for topic in trec.parse_sgml_topics(path, encoding, prefix))
+        self.topics = iter(topic for topic in parse_sgml_topics(path, encoding, prefix))
 
     def __iter__(self):
         return self
@@ -111,7 +112,7 @@ class XmlTopicReader(InputIterator):
         self.encoding = encoding
         self.lang = lang
         self.strip_non_digits = strip_non_digits
-        self.topics = iter(topic for topic in trec.parse_xml_topics(path, encoding))
+        self.topics = iter(topic for topic in parse_xml_topics(path, encoding))
 
     def __iter__(self):
         return self

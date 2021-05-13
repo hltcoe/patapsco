@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from patapsco.util.trec import *
+from patapsco.util.formats import *
 
 
 def test_parse_sgml_documents():
