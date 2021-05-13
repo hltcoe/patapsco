@@ -1,4 +1,4 @@
-name: scale2021
+name: patapsco
 channels:
   - stanfordnlp
 dependencies:

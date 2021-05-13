@@ -27,7 +27,7 @@ pip install --editable .
 Create and activate the conda environment:
 ```
 conda env create --file environment.yml
-conda activate scale2021
+conda activate patapsco
 ```
 Install Patapsco:
 ```
