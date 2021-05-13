@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 from patapsco import Runner, PatapscoError
 
@@ -15,6 +16,7 @@ def main():
         runner.run()
     except PatapscoError as error:
         print(f"Error: {error}")
+        sys.exit(-1)
 
 
 if __name__ == '__main__':

@@ -5,7 +5,7 @@ import pytest
 from patapsco.results import TrecResultsReader
 from patapsco.schema import ScoreInputConfig, ScoreConfig
 from patapsco.score import *
-from patapsco.util.trec import parse_qrels
+from patapsco.util.formats import parse_qrels
 
 
 def test_at_symbol_mapping():

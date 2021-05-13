@@ -12,8 +12,9 @@ from .error import BadDataError, ConfigError, ParseError
 from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import Splitter, TextProcessor
-from .util import trec, DataclassJSONEncoder, InputIterator, ReaderFactory
+from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append, is_complete, touch_complete
+from .util.formats import parse_sgml_documents, parse_hamshahri_documents
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,8 +29,8 @@ class Doc:
 class DocumentReaderFactory(ReaderFactory):
     classes = {
         'sgml': 'SgmlDocumentReader',
-        'json': 'Tc4JsonDocumentReader',
-        'jsonl': 'Tc4JsonDocumentReader',
+        'json': 'Hc4JsonDocumentReader',
+        'jsonl': 'Hc4JsonDocumentReader',
         'msmarco': 'TsvDocumentReader',
         'clef0809': 'HamshahriDocumentReader'
     }
@@ -44,7 +45,7 @@ class SgmlDocumentReader(InputIterator):
         self.path = path
         self.encoding = encoding
         self.lang = lang
-        self.docs_iter = iter(trec.parse_sgml_documents(path, encoding))
+        self.docs_iter = iter(parse_sgml_documents(path, encoding))
 
     def __iter__(self):
         return self
@@ -57,7 +58,7 @@ class SgmlDocumentReader(InputIterator):
         return count_lines_with('<DOC>', self.path, self.encoding)
 
 
-class Tc4JsonDocumentReader(InputIterator):
+class Hc4JsonDocumentReader(InputIterator):
     """Read documents from a JSONL file to start a pipeline"""
 
     def __init__(self, path, encoding, lang, **kwargs):
@@ -128,7 +129,7 @@ class HamshahriDocumentReader(InputIterator):
         self.path = path
         self.encoding = encoding
         self.lang = lang
-        self.docs_iter = iter(trec.parse_hamshahri_documents(path, encoding))
+        self.docs_iter = iter(parse_hamshahri_documents(path, encoding))
 
     def __iter__(self):
         return self
