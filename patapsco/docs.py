@@ -29,8 +29,8 @@ class Doc:
 class DocumentReaderFactory(ReaderFactory):
     classes = {
         'sgml': 'SgmlDocumentReader',
-        'json': 'Tc4JsonDocumentReader',
-        'jsonl': 'Tc4JsonDocumentReader',
+        'json': 'Hc4JsonDocumentReader',
+        'jsonl': 'Hc4JsonDocumentReader',
         'msmarco': 'TsvDocumentReader',
         'clef0809': 'HamshahriDocumentReader'
     }
@@ -58,7 +58,7 @@ class SgmlDocumentReader(InputIterator):
         return count_lines_with('<DOC>', self.path, self.encoding)
 
 
-class Tc4JsonDocumentReader(InputIterator):
+class Hc4JsonDocumentReader(InputIterator):
     """Read documents from a JSONL file to start a pipeline"""
 
     def __init__(self, path, encoding, lang, **kwargs):

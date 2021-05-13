@@ -45,7 +45,7 @@ def test_parse_msmarco_topics():
 def test_parse_json_topics():
     directory = pathlib.Path(__file__).parent / 'json_files'
     path = directory / 'topics.jsonl'
-    topic_iter = Tc4JsonTopicReader(str(path.absolute()), 'utf8', 'en')
+    topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'en')
     topic = next(topic_iter)
     assert topic.id == '001'
     assert topic.title == 'Test 1'

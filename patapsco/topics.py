@@ -33,8 +33,8 @@ class TopicReaderFactory(ReaderFactory):
     classes = {
         'sgml': 'SgmlTopicReader',
         'xml': 'XmlTopicReader',
-        'json': 'Tc4JsonTopicReader',
-        'jsonl': 'Tc4JsonTopicReader',
+        'json': 'Hc4JsonTopicReader',
+        'jsonl': 'Hc4JsonTopicReader',
         'msmarco': 'TsvTopicReader'
     }
     config_class = TopicsInputConfig
@@ -126,7 +126,7 @@ class XmlTopicReader(InputIterator):
         return count_lines_with('<topic', self.path, self.encoding)
 
 
-class Tc4JsonTopicReader(InputIterator):
+class Hc4JsonTopicReader(InputIterator):
     """Iterator over topics from jsonl file """
 
     def __init__(self, path, encoding, lang, **kwargs):
