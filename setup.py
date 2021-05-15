@@ -27,6 +27,7 @@ setuptools.setup(
     include_package_data=True,
     install_requires=[
         "beautifulsoup4",
+        "ftfy",
         "jieba",
         "more-itertools",
         "numpy",
@@ -34,7 +35,6 @@ setuptools.setup(
         "pyserini",
         "pytrec_eval",
         "pyyaml",
-        "scriptnorm",
         "sqlitedict",
         "stanza==1.2.0",
     ],
