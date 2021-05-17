@@ -1,2 +1,2 @@
-{"topic_name": "Test 1", "topic_description": "First test", "report_url": "https://example.org", "topic_id": "001", "lang_dep": {"cmn": {}, "rus": {}}, "lang": ["cmn", "rus"]}
-{"topic_name": "Test 2", "topic_description": "Second test", "report_url": "https://example.com", "topic_id": "002", "lang_dep": {"cmn": {}, "rus": {}}, "lang": ["cmn", "rus"]}
+{"topic_title": "Test 1", "topic_description": "First test", "report_url": "https://example.org", "topic_id": "001", "lang_dep": {"cmn": {}, "rus": {}}, "lang": ["cmn", "rus"]}
+{"topic_title": "Test 2", "topic_description": "Second test", "report_url": "https://example.com", "topic_id": "002", "lang_dep": {"cmn": {}, "rus": {}}, "lang": ["cmn", "rus"]}
