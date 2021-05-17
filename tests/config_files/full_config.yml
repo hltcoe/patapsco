@@ -29,7 +29,7 @@ queries:
     inherit: documents.process
 
 index:
-  name: anserini
+  name: lucene
 
 retrieve:
   name: bm25

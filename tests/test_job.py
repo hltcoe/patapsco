@@ -3,7 +3,7 @@ import tempfile
 
 import pytest
 
-from patapsco.index import MockIndexer
+from patapsco.index import LuceneIndexer
 from patapsco.job import *
 from patapsco.schema import *
 
@@ -37,7 +37,7 @@ class TestJobBuilder:
                 process=TextProcessorConfig(tokenize=TokenizeConfig(name="whitespace"), stem=False),
                 output="docs"
             ),
-            index=IndexConfig(name="mock", output="index"),
+            index=IndexConfig(name="lucene", output="index"),
             topics=TopicsConfig(
                 input=TopicsInputConfig(format="jsonl", lang="en", path=str(input_directory / "topics.jsonl")),
                 output="topics"
@@ -231,7 +231,7 @@ class TestJobBuilder:
         plan = [Tasks.INDEX]
         builder._get_stage1_iterator(plan)
         tasks = builder._get_stage1_tasks(plan)
-        assert isinstance(tasks[0], MockIndexer)
+        assert isinstance(tasks[0], LuceneIndexer)
 
     def test_build_stage1_with_indexer_gets_docs_from_input(self):
         conf = self.create_config('docs_complete')
@@ -241,7 +241,7 @@ class TestJobBuilder:
         plan = [Tasks.INDEX]
         builder._get_stage1_iterator(plan)
         tasks = builder._get_stage1_tasks(plan)
-        assert isinstance(tasks[0], MockIndexer)
+        assert isinstance(tasks[0], LuceneIndexer)
 
     def test_build_stage1_with_indexer_gets_bad_docs_from_input(self):
         conf = self.create_config('test')
@@ -260,7 +260,7 @@ class TestJobBuilder:
         assert len(tasks) == 3
         assert isinstance(tasks[0], DocumentProcessor)
         assert isinstance(tasks[1], DocWriter)
-        assert isinstance(tasks[2], MockIndexer)
+        assert isinstance(tasks[2], LuceneIndexer)
 
     def test_build_stage1_with_bad_pipeline_mode(self):
         conf = self.create_config('test')

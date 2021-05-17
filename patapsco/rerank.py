@@ -64,7 +64,7 @@ class MockReranker(Reranker):
         except BadDataError as e:
             LOGGER.error(str(e))
         random.shuffle(new_results)
-        return Results(results.query, 'MockReranker', new_results)
+        return Results(results.query, results.doc_lang, 'MockReranker', new_results)
 
 
 class ShellReranker(Reranker):
@@ -151,7 +151,7 @@ class ShellReranker(Reranker):
         results = items[0]
         return results.query.lang
 
-    def _get_doc_lang(self, items):
+    @staticmethod
+    def _get_doc_lang(items):
         results = items[0]
-        doc = self.db[results.results[0].doc_id]
-        return doc.lang
+        return results.doc_lang
