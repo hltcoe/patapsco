@@ -4,6 +4,7 @@ import tempfile
 import pytest
 
 from patapsco.docs import Doc
+from patapsco.error import PatapscoError
 from patapsco.util.file import delete_dir
 from patapsco.index import LuceneIndexer
 from patapsco.retrieve import PyseriniRetriever
@@ -18,14 +19,14 @@ class TestLuceneIndex:
     def teardown_method(self):
         delete_dir(self.temp_dir)
 
-    def test(self):
+    def test_creating_index(self):
         run_directory = self.temp_dir
-        output_directory = pathlib.Path('testIndex')
+        output_directory = 'testIndex'
         lucene_directory = run_directory / output_directory
-        conf = IndexConfig(name='lucene', output=str(output_directory))
+        conf = IndexConfig(name='lucene', output=output_directory)
         li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
         li.begin()
-        li.process(Doc("1234", "unknown", "this is a test"))
+        li.process(Doc("1234", "en", "this is a test"))
         li.end()
         assert lucene_directory.exists()
 
@@ -75,12 +76,17 @@ class TestLuceneIndex:
 
         retriever.end()
 
-    def test_for_errors(self):
-        conf = IndexConfig(name='lucene', output=str('/testIndex'))
-        with pytest.raises(PermissionError):
-            li = LuceneIndexer(run_path= self.temp_dir, index_config=conf, artifact_config=conf)
-        directory = self.temp_dir / 'testIndex'
-        conf = IndexConfig(name='lucene', output=str(directory))
+    def test_no_permission_to_write(self):
+        readonly_dir = self.temp_dir / 'readonly'
+        readonly_dir.mkdir(mode=0o444)
+        conf = IndexConfig(name='lucene', output=str(readonly_dir))
         li = LuceneIndexer(run_path=self.temp_dir, index_config=conf, artifact_config=conf)
-        with pytest.raises(Exception):
+        with pytest.raises(PatapscoError):
+            writer = li.writer
+
+    def test_reduce_with_bad_directory(self):
+        output_dir = 'testIndex'
+        conf = IndexConfig(name='lucene', output=output_dir)
+        li = LuceneIndexer(run_path=self.temp_dir, index_config=conf, artifact_config=conf)
+        with pytest.raises(PatapscoError):
             li.reduce([])

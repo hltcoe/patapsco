@@ -1,3 +1,4 @@
+from .error import PatapscoError
 from .pipeline import Task
 from .schema import IndexConfig
 from .util import TaskFactory
@@ -81,6 +82,7 @@ class Java:
         self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
         self.IndexWriter = jnius.autoclass('org.apache.lucene.index.IndexWriter')
         self.IndexWriterConfig = jnius.autoclass('org.apache.lucene.index.IndexWriterConfig')
+        self.JavaException = jnius.JavaException
 
 
 class LuceneIndexer(Task):
@@ -89,7 +91,7 @@ class LuceneIndexer(Task):
     def __init__(self, run_path, index_config, artifact_config):
         """
         Args:
-            run_path (str): Root directory of the run.
+            run_path (str or Path): Root directory of the run.
             index_config (IndexConfig)
             artifact_config (RunnerConfig)
         """
@@ -101,8 +103,11 @@ class LuceneIndexer(Task):
     @property
     def writer(self):
         if not self._writer:
-            self._dir = self.java.FSDirectory.open(self.java.Paths.get(str(self.base)))
-            self._writer = self.java.IndexWriter(self._dir, self.java.IndexWriterConfig(self.java.WhitespaceAnalyzer()))
+            try:
+                self._dir = self.java.FSDirectory.open(self.java.Paths.get(str(self.base)))
+                self._writer = self.java.IndexWriter(self._dir, self.java.IndexWriterConfig(self.java.WhitespaceAnalyzer()))
+            except self.java.JavaException as e:
+                raise PatapscoError(e)
         return self._writer
 
     def process(self, doc):
@@ -132,6 +137,9 @@ class LuceneIndexer(Task):
 
     def reduce(self, dirs):
         indexes = [self.java.FSDirectory.open(self.java.Paths.get(str(item))) for item in dirs]
-        self.writer.addIndexes(*indexes)
+        try:
+            self.writer.addIndexes(*indexes)
+        except self.java.JavaException as e:
+            raise PatapscoError(f"Reducing parallel index failed with message: {e}")
         [index.close() for index in indexes]
         [delete_dir(item) for item in dirs]
