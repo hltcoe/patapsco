@@ -1,2 +1,2 @@
-{"query": {"id": "001", "lang": "en", "text": "test 1"}, "system": "PyseriniRetriever", "results": [{"doc_id": "aaa", "rank": 1, "score": 0.789}, {"doc_id": "bbb", "rank": 2, "score": 0.654}]}
-{"query": {"id": "002", "lang": "en", "text": "test 2"}, "system": "PyseriniRetriever", "results": [{"doc_id": "bbb", "rank": 1, "score": 0.987}, {"doc_id": "aaa", "rank": 2, "score": 0.876}]}
+{"query": {"id": "001", "lang": "en", "text": "test 1"}, "doc_lang": "en", "system": "PyseriniRetriever", "results": [{"doc_id": "aaa", "rank": 1, "score": 0.789}, {"doc_id": "bbb", "rank": 2, "score": 0.654}]}
+{"query": {"id": "002", "lang": "en", "text": "test 2"}, "doc_lang": "en", "system": "PyseriniRetriever", "results": [{"doc_id": "bbb", "rank": 1, "score": 0.987}, {"doc_id": "aaa", "rank": 2, "score": 0.876}]}

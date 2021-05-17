@@ -74,6 +74,7 @@ class Joiner(Task):
         # get the first key/value pair and get the value (Results object)
         first_results = next(iter(results.items()))[1]
         query = first_results.query
+        doc_lang = first_results.doc_lang
         system = first_results.system
 
         # add scores, rerank, and pass as single list
@@ -84,7 +85,7 @@ class Joiner(Task):
         output = dict(sorted(output.items(), key=lambda item: item[1], reverse=True))
         output = zip(output.items(), range(len(output)))
         output = [Result(doc_id, rank, score) for (doc_id, score), rank in output]
-        return Results(query, system, output)
+        return Results(query, doc_lang, system, output)
 
 
 class Java:
@@ -153,7 +154,7 @@ class PyseriniRetriever(Task):
         hits = self.searcher.search(query.text, k=self.number)
         LOGGER.debug(f"Retrieved {len(hits)} documents for {query.id}: {query.text}")
         results = [Result(hit.docid, rank, hit.score) for rank, hit in enumerate(hits)]
-        return Results(query, str(self), results)
+        return Results(query, self.lang, str(self), results)
 
     def end(self):
         self.searcher.close()
