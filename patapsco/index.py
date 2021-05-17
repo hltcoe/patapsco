@@ -8,49 +8,8 @@ from .util.file import delete_dir, path_append
 class IndexerFactory(TaskFactory):
     classes = {
         'lucene': 'LuceneIndexer',
-        'mock': 'MockIndexer',
     }
     config_class = IndexConfig
-
-
-class MockIndexer(Task):
-    """Mock index for testing
-
-    It writes the doc IDs to a file for later use.
-    """
-
-    def __init__(self, run_path, index_config, artifact_config):
-        """
-        Args:
-            run_path (str): Root directory of the run.
-            index_config (IndexConfig)
-            artifact_config (RunnerConfig)
-        """
-        super().__init__(run_path, artifact_config, index_config.output)
-        path = self.base / 'index.txt'
-        self.file = open(path, 'w')
-
-    def process(self, doc):
-        """
-        Args:
-            doc (Doc)
-
-        Returns:
-            Doc
-        """
-        self.file.write(doc.id + "\n")
-        return doc
-
-    def end(self):
-        super().end()
-        self.file.close()
-
-    def reduce(self, dirs):
-        for base in dirs:
-            path = path_append(base, 'index.txt')
-            with open(path) as fp:
-                for line in fp:
-                    self.file.write(line)
 
 
 class Java:

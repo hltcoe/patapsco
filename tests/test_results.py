@@ -12,7 +12,7 @@ def test_json_results_reader():
     assert results.query.id == '001'
     assert results.query.lang == 'en'
     assert results.query.text == 'test 1'
-    assert results.system == 'MockRetriever'
+    assert results.system == 'PyseriniRetriever'
     assert len(results.results) == 2
     assert results.results[0].doc_id == 'aaa'
     assert results.results[0].rank == 1
@@ -20,7 +20,7 @@ def test_json_results_reader():
     assert results.query.id == '002'
     assert results.query.lang == 'en'
     assert results.query.text == 'test 2'
-    assert results.system == 'MockRetriever'
+    assert results.system == 'PyseriniRetriever'
     assert len(results.results) == 2
     assert results.results[0].doc_id == 'bbb'
     assert results.results[0].rank == 1

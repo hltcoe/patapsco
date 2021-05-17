@@ -15,7 +15,6 @@ LOGGER = logging.getLogger(__name__)
 class RetrieverFactory(TaskFactory):
     classes = {
         'bm25': 'PyseriniRetriever',
-        'mock': 'MockRetriever',
     }
     config_class = RetrieveConfig
 
@@ -88,41 +87,6 @@ class Joiner(Task):
         return Results(query, system, output)
 
 
-class MockRetriever(Task):
-    """Mock retriever for testing and development"""
-
-    def __init__(self, run_path, config):
-        """
-        Args:
-            run_path (str): Root directory of the run.
-            config (RetrieveConfig)
-        """
-        super().__init__(run_path)
-        self.number = config.number
-        self.path = pathlib.Path(run_path) / config.input.index.path / 'index.txt'
-        self.doc_ids = None
-
-    def process(self, query):
-        """Retrieve a ranked list of documents
-
-        Args:
-            query (Query)
-
-        Returns:
-            Results
-        """
-        if not self.doc_ids:
-            self._load()
-        ids = random.sample(self.doc_ids, self.number)
-        results = [Result(doc_id, rank, rank) for rank, doc_id in enumerate(ids)]
-        return Results(query, str(self), results)
-
-    def _load(self):
-        with open(self.path, 'r') as fp:
-            self.doc_ids = [line.strip() for line in fp]
-        LOGGER.debug("Loaded index from %s", self.path)
-
-
 class Java:
     """Wraps JVM access
 
@@ -142,7 +106,7 @@ class Java:
         import pyserini.analysis
         import pyserini.search
         import jnius
-        # TDOD can remove when newest version of pyserini is released
+        # TDOD can remove analyzer when newest version of pyserini is released
         self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
         self.SimpleSearcher = pyserini.search.SimpleSearcher
 
