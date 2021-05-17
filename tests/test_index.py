@@ -5,11 +5,11 @@ import pytest
 
 from patapsco.docs import Doc
 from patapsco.error import PatapscoError
-from patapsco.util.file import delete_dir
 from patapsco.index import LuceneIndexer
 from patapsco.retrieve import PyseriniRetriever
-from patapsco.topics import Query
 from patapsco.schema import IndexConfig, PathConfig, RetrieveConfig, RetrieveInputConfig
+from patapsco.topics import Query
+from patapsco.util.file import delete_dir
 
 
 class TestLuceneIndex:
