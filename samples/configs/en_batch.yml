@@ -29,7 +29,7 @@ topics:
     format: json
     lang: en
     encoding: utf8
-    path: samples/data/en_mini_dataset_topics.jsonl
+    path: samples/data/en_mini_topics.jsonl
   fields: title
 
 queries:
