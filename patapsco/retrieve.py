@@ -2,8 +2,8 @@ import collections
 import json
 import logging
 import pathlib
-import random
 
+from .error import PatapscoError
 from .pipeline import Task, MultiplexTask
 from .results import Result, Results
 from .schema import RetrieveConfig
@@ -112,25 +112,34 @@ class Java:
 
 
 class PyseriniRetriever(Task):
+    """Use Lucene to retrieve documents from an index"""
 
     def __init__(self, run_path, config):
         """
         Args:
-            run_path (str): Root directory of the run.
+            run_path (str or Path): Root directory of the run.
             config (RetrieveConfig)
         """
         super().__init__(run_path)
         self.number = config.number
-        self.index_dir = str(pathlib.Path(run_path) / config.input.index.path)
+        self.index_dir = pathlib.Path(run_path) / config.input.index.path
         self._searcher = None
         self.java = Java()
+        self.lang = None  # documents language
 
     @property
     def searcher(self):
         if not self._searcher:
-            self._searcher = self.java.SimpleSearcher(self.index_dir)
+            self._searcher = self.java.SimpleSearcher(str(self.index_dir))
             self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
         return self._searcher
+
+    def begin(self):
+        try:
+            lang_path = self.index_dir / ".lang"
+            self.lang = lang_path.read_text()
+        except IOError as e:
+            raise PatapscoError(e)
 
     def process(self, query):
         """Retrieve a ranked list of documents
