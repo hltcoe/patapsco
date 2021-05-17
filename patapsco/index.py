@@ -1,6 +1,3 @@
-import pyserini.index
-import jnius
-
 from .pipeline import Task
 from .schema import IndexConfig
 from .util import TaskFactory
@@ -55,17 +52,35 @@ class MockIndexer(Task):
                     self.file.write(line)
 
 
-JDocument = jnius.autoclass('org.apache.lucene.document.Document')
-JStoreEnum = jnius.autoclass('org.apache.lucene.document.Field$Store')
-JBytesRef = jnius.autoclass('org.apache.lucene.util.BytesRef')
-JSortedDocValuesField = jnius.autoclass('org.apache.lucene.document.SortedDocValuesField')
-JStringField = jnius.autoclass('org.apache.lucene.document.StringField')
-JTextField = jnius.autoclass('org.apache.lucene.document.TextField')
-JFSDirectory = jnius.autoclass('org.apache.lucene.store.FSDirectory')
-JPaths = jnius.autoclass('java.nio.file.Paths')
-JWhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
-JIndexWriter = jnius.autoclass('org.apache.lucene.index.IndexWriter')
-JIndexWriterConfig = jnius.autoclass('org.apache.lucene.index.IndexWriterConfig')
+class Java:
+    """Wraps JVM access
+
+    This class delays loading the JVM until needed.
+    This prevents issues with multiprocessing where a child process inherits a parent's JVM.
+    """
+    def __init__(self):
+        self.initialized = False
+
+    def __getattr__(self, attr):
+        if not self.initialized:
+            self.initialize()
+        return self.__dict__[attr]
+
+    def initialize(self):
+        self.initialized = True
+        import pyserini.index  # required to initialize the JVM
+        import jnius
+        self.Document = jnius.autoclass('org.apache.lucene.document.Document')
+        self.StoreEnum = jnius.autoclass('org.apache.lucene.document.Field$Store')
+        self.BytesRef = jnius.autoclass('org.apache.lucene.util.BytesRef')
+        self.SortedDocValuesField = jnius.autoclass('org.apache.lucene.document.SortedDocValuesField')
+        self.StringField = jnius.autoclass('org.apache.lucene.document.StringField')
+        self.TextField = jnius.autoclass('org.apache.lucene.document.TextField')
+        self.FSDirectory = jnius.autoclass('org.apache.lucene.store.FSDirectory')
+        self.Paths = jnius.autoclass('java.nio.file.Paths')
+        self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
+        self.IndexWriter = jnius.autoclass('org.apache.lucene.index.IndexWriter')
+        self.IndexWriterConfig = jnius.autoclass('org.apache.lucene.index.IndexWriterConfig')
 
 
 class LuceneIndexer(Task):
@@ -79,8 +94,16 @@ class LuceneIndexer(Task):
             artifact_config (RunnerConfig)
         """
         super().__init__(run_path, artifact_config, index_config.output)
-        self.dir = JFSDirectory.open(JPaths.get(str(self.base)))
-        self.writer = JIndexWriter(self.dir, JIndexWriterConfig(JWhitespaceAnalyzer()))
+        self._dir = None
+        self._writer = None
+        self.java = Java()
+
+    @property
+    def writer(self):
+        if not self._writer:
+            self._dir = self.java.FSDirectory.open(self.java.Paths.get(str(self.base)))
+            self._writer = self.java.IndexWriter(self._dir, self.java.IndexWriterConfig(self.java.WhitespaceAnalyzer()))
+        return self._writer
 
     def process(self, doc):
         """
@@ -90,17 +113,23 @@ class LuceneIndexer(Task):
         Returns:
             Doc
         """
-        lucene_doc = JDocument()
-        lucene_doc.add(JStringField("id", doc.id, JStoreEnum.YES))
-        lucene_doc.add(JSortedDocValuesField("id", JBytesRef(doc.id.encode())))
-        lucene_doc.add(JTextField("contents", doc.text, JStoreEnum.NO))
+        # delay loading JVM until processing first document
+        lucene_doc = self.java.Document()
+        lucene_doc.add(self.java.StringField("id", doc.id, self.java.StoreEnum.YES))
+        lucene_doc.add(self.java.SortedDocValuesField("id", self.java.BytesRef(doc.id.encode())))
+        lucene_doc.add(self.java.TextField("contents", doc.text, self.java.StoreEnum.NO))
         self.writer.addDocument(lucene_doc)
         return doc
 
     def end(self):
         super().end()
-        self.writer.close()
-        self.dir.close()
+        self.close()
+
+    def close(self):
+        if self._writer:
+            self._writer.close()
+        if self._dir:
+            self._dir.close()
 
     # TODO need to implement combining indexes
     # def reduce(self, dirs):
