@@ -1,7 +1,7 @@
 from .pipeline import Task
 from .schema import IndexConfig
 from .util import TaskFactory
-from .util.file import path_append
+from .util.file import delete_dir, path_append
 
 
 class IndexerFactory(TaskFactory):
@@ -113,7 +113,6 @@ class LuceneIndexer(Task):
         Returns:
             Doc
         """
-        # delay loading JVM until processing first document
         lucene_doc = self.java.Document()
         lucene_doc.add(self.java.StringField("id", doc.id, self.java.StoreEnum.YES))
         lucene_doc.add(self.java.SortedDocValuesField("id", self.java.BytesRef(doc.id.encode())))
@@ -131,5 +130,8 @@ class LuceneIndexer(Task):
         if self._dir:
             self._dir.close()
 
-    # TODO need to implement combining indexes
-    # def reduce(self, dirs):
+    def reduce(self, dirs):
+        indexes = [self.java.FSDirectory.open(self.java.Paths.get(str(item))) for item in dirs]
+        self.writer.addIndexes(*indexes)
+        [index.close() for index in indexes]
+        [delete_dir(item) for item in dirs]
