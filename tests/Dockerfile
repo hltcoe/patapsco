@@ -11,3 +11,8 @@ RUN apt-get update && apt-get install -y gcc g++ default-jdk maven \
     && python -c 'import stanza; stanza.download("en")' \
     && python -c 'import stanza; stanza.download("fa")' \
     && python -c 'import stanza; stanza.download("ru")'
+
+RUN useradd -ms /bin/bash runner
+USER runner
+WORKDIR /home/runner
+ENV PATH="/home/runner/.local/bin:${PATH}"
