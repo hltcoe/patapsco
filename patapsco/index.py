@@ -1,8 +1,12 @@
+import logging
+
 from .error import PatapscoError
 from .pipeline import Task
 from .schema import IndexConfig
 from .util import TaskFactory
-from .util.file import delete_dir, path_append
+from .util.file import delete_dir
+
+LOGGER = logging.getLogger(__name__)
 
 
 class IndexerFactory(TaskFactory):
@@ -58,6 +62,7 @@ class LuceneIndexer(Task):
         self._dir = None
         self._writer = None
         self.java = Java()
+        self.lang = None
 
     @property
     def writer(self):
@@ -77,6 +82,8 @@ class LuceneIndexer(Task):
         Returns:
             Doc
         """
+        if not self.lang:
+            self.lang = doc.lang
         lucene_doc = self.java.Document()
         lucene_doc.add(self.java.StringField("id", doc.id, self.java.StoreEnum.YES))
         lucene_doc.add(self.java.SortedDocValuesField("id", self.java.BytesRef(doc.id.encode())))
@@ -85,16 +92,22 @@ class LuceneIndexer(Task):
         return doc
 
     def end(self):
+        """End a job"""
+        with open(self.base / '.lang', 'w') as fp:
+            fp.write(self.lang)
         super().end()
-        self.close()
+        self._close()
 
-    def close(self):
+    def _close(self):
+        """Close the writer and any related resources"""
         if self._writer:
             self._writer.close()
         if self._dir:
             self._dir.close()
 
     def reduce(self, dirs):
+        """Reduce from multiple parallel indexes to a single index"""
+        LOGGER.debug(f"Reducing to a single lucene index from {', '.join(dirs)}")
         indexes = [self.java.FSDirectory.open(self.java.Paths.get(str(item))) for item in dirs]
         try:
             self.writer.addIndexes(*indexes)

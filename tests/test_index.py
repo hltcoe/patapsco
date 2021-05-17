@@ -29,6 +29,8 @@ class TestLuceneIndex:
         li.process(Doc("1234", "en", "this is a test"))
         li.end()
         assert lucene_directory.exists()
+        lang_file = lucene_directory / ".lang"
+        assert lang_file.read_text() == "en"
 
     def test_two_indexes(self):
         run_directory = self.temp_dir
