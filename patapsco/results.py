@@ -135,7 +135,9 @@ class JsonResultsReader:
     """Iterator over results from a jsonl file """
 
     def __init__(self, path):
-        path = pathlib.Path(path) / 'results.jsonl'
+        path = pathlib.Path(path)
+        if path.is_dir():
+            path = path / 'results.jsonl'
         self.file = open(path, 'r')
 
     def __iter__(self):
