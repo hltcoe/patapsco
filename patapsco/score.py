@@ -115,19 +115,14 @@ class Scorer(Task):
         belong to the set of judged documents for that query, and run nDCG
         over the modified run
         """
-        try:
-            evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, {'ndcg'})
-        except ValueError as e:
-            LOGGER.warning(e)
-            raise ValueError(e)
-        else:
-            modified_run = collections.defaultdict(dict)
-            for query_id in self.run:
-                for doc_id in self.run[query_id]:
-                    if doc_id in self.qrels[query_id].keys():
-                        modified_run[query_id][doc_id] = self.run[query_id][doc_id]
-            rename = evaluator.evaluate(modified_run)
-            res = {}
-            for elt in rename.items():
-                res[elt[0]] = {"ndcg'": elt[1]['ndcg']}
-            return res
+        evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, {'ndcg'})
+        modified_run = collections.defaultdict(dict)
+        for query_id in self.run:
+            for doc_id in self.run[query_id]:
+                if doc_id in self.qrels[query_id].keys():
+                    modified_run[query_id][doc_id] = self.run[query_id][doc_id]
+        rename = evaluator.evaluate(modified_run)
+        res = {}
+        for elt in rename.items():
+            res[elt[0]] = {"ndcg'": elt[1]['ndcg']}
+        return res
