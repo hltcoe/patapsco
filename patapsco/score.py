@@ -79,6 +79,7 @@ class Scorer(Task):
             evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, measures)
         except ValueError as e:
             LOGGER.warning(e)
+            raise ValueError(e)
         else:
             scores = evaluator.evaluate(self.run)
             if ndcg_prime_results:
