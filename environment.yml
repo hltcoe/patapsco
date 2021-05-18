@@ -9,6 +9,7 @@ dependencies:
   - numpy
   - pyyaml
   - spacy>=3.0.0
+  - spacy-pkuseg>=0.0.27,<0.1.0
   - stanza>=1.2.0
   - pip
   - pip:
