@@ -7,11 +7,12 @@ dependencies:
   - more-itertools
   - numpy
   - pyyaml
+  - spacy
   - stanza>=1.2.0
   - pip
   - pip:
     - jieba
-    - pydantic==1.8.1
+    - pydantic>=1.7.1,<1.8.0
     - pyserini
     - pytrec_eval
     - scriptnorm
