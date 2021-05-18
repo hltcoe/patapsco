@@ -1,2 +1,2 @@
-{"query": {"id": "1", "lang": "en", "text": "test 1"}, "system": "Test", "results": [{"doc_id": "doc1", "rank": 1, "score": 0.87}, {"doc_id": "doc2", "rank": 2, "score": 0.45}]}
-{"query": {"id": "2", "lang": "en", "text": "test 2"}, "system": "Test", "results": [{"doc_id": "doc2", "rank": 1, "score": 0.62}, {"doc_id": "doc1", "rank": 2, "score": 0.49}]}
+{"query": {"id": "1", "lang": "en", "text": "test 1"}, "doc_lang": "en", "system": "Test", "results": [{"doc_id": "doc1", "rank": 1, "score": 0.87}, {"doc_id": "doc2", "rank": 2, "score": 0.45}]}
+{"query": {"id": "2", "lang": "en", "text": "test 2"}, "doc_lang": "en", "system": "Test", "results": [{"doc_id": "doc2", "rank": 1, "score": 0.62}, {"doc_id": "doc1", "rank": 2, "score": 0.49}]}
