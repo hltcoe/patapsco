@@ -4,7 +4,9 @@ import logging
 import pathlib
 
 import scriptnorm
+import spacy
 import stanza
+
 
 from .error import ConfigError
 from .pipeline import MultiplexItem
@@ -16,12 +18,14 @@ LOGGER = logging.getLogger(__name__)
 
 class TokenizerFactory(ComponentFactory):
     classes = {
+        'spacy': 'SpaCyTokenizer',
         'stanza': 'StanzaTokenizer',
         'whitespace': 'WhiteSpaceTokenizer',
     }
     model_directory_defaults = {
+        'spacy': '/exp/scale21/resources/spacy',
         'stanza': '/exp/scale21/resources/stanza',
-        'whitespace': None
+        'whitespace': None,
     }
     config_class = TokenizeConfig
 
@@ -117,6 +121,83 @@ class StanzaTokenizer(Tokenizer):
         stanza_logger.handlers = []
         for handler in patapsco_logger.handlers:
             stanza_logger.addHandler(handler)
+
+
+class SpaCyModelLoader:
+    """Load the spaCy model and install if needed"""
+
+    model_info = {
+        'ar': {  # UD multilang model. TOKEN_ACC: 99.29, SENT_F: 86.39
+            'name': 'xx_sent_ud_sm',
+            'version': '3.0.0'
+        },
+        'en': {  # TOKEN_ACC: 99.93, SENT_F: 89.02
+            'name': 'en_core_web_md',
+            'version': '3.0.0',
+        },
+        'fa': {  # UD multilang model. TOKEN_ACC: 99.29, SENT_F: 86.39
+            'name': 'xx_sent_ud_sm',
+            'version': '3.0.0',
+        },
+        'ru': {  # TOKEN_ACC: 99.85, SENT_F: 99.85
+            'name': 'ru_core_news_sm',
+            'version': '3.0.0',
+        },
+        'zh': {  # TOKEN_ACC: 97.88, SENT_F: 75.88
+            'name': 'zh_core_web_md',
+            'version': '3.0.0',
+        }
+    }
+
+    exclude = ['tok2vec', 'morphologizer', 'tagger', 'parser', 'ner', 'attribute_ruler', 'lemmatizer']
+
+    loaders = {}
+
+    @classmethod
+    def get_loader(cls, model_path):
+        # use this so that models are shared across tasks
+        if model_path not in cls.loaders:
+            cls.loaders[model_path] = SpaCyModelLoader(model_path)
+        return cls.loaders[model_path]
+
+    def __init__(self, model_path):
+        self.models = {}
+        self.model_path = pathlib.Path(model_path)
+
+    def load(self, lang):
+        """Load the model (or return cached model)"""
+        if lang in self.models:
+            return self.models[lang]
+
+        if lang not in self.model_info:
+            raise ConfigError(f"Unexpected language for spacy: {lang}")
+        path = self.model_path / f"{self.model_info[lang]['name']}-{self.model_info[lang]['version']}"
+        if path.exists():
+            LOGGER.info(f"Loading the {lang} spacy model")
+            nlp = spacy.load(str(path), exclude=self.exclude)
+        else:
+            # probably not on grid so we try to load locally or download
+            model_name = self.model_info[lang]['name']
+            if not spacy.util.is_package(model_name):
+                # install as a pip package
+                LOGGER.info(f"Downloading the {lang} spacy model. This may take a few minutes...")
+                spacy.cli.download(model_name)
+            LOGGER.info(f"Loading the {lang} spacy model")
+            nlp = spacy.load(model_name, exclude=self.exclude)
+        self.models[lang] = nlp
+        return nlp
+
+
+class SpaCyTokenizer(Tokenizer):
+    """Tokenizer that uses the spaCy package"""
+
+    def __init__(self, config, lang, model_path):
+        super().__init__(config, lang, model_path)
+        self.nlp = SpaCyModelLoader.get_loader(model_path).load(lang)
+
+    def tokenize(self, text):
+        tokens = self.nlp(text)
+        return [str(token) for token in tokens]
 
 
 class StopWordsRemoval:

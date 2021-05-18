@@ -52,3 +52,38 @@ def test_stanza_tokenizer_russian():
     tokens = tokenizer.tokenize("Я хотел бы пива.")
     # Does the Russian model not handle punctuation well or did we hit on a bad sentence
     assert tokens == ['Я', 'хотел', 'бы', 'пива.']
+
+
+class TestSpacy:
+    # if not running on the grid, spacy will use pip to install models
+    model_path = '/exp/scale21/resources/spacy'
+
+    @pytest.mark.slow
+    def test_spacy_tokenizer_arabic(self):
+        tokenizer = SpaCyTokenizer(config=None, lang='ar', model_path=self.model_path)
+        tokens = tokenizer.tokenize("في أسرتي ثلاثة أفراد.")
+        assert tokens == ['في', 'أسرتي', 'ثلاثة', 'أفراد', '.']
+
+    @pytest.mark.slow
+    def test_spacy_tokenizer_chinese(self):
+        tokenizer = SpaCyTokenizer(config=None, lang='zh', model_path=self.model_path)
+        tokens = tokenizer.tokenize("不但要看,而且要帮。")
+        assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
+
+    @pytest.mark.slow
+    def test_spacy_tokenizer_english(self):
+        tokenizer = SpaCyTokenizer(config=None, lang='en', model_path=self.model_path)
+        tokens = tokenizer.tokenize("Mary had a little lamb.")
+        assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.']
+
+    @pytest.mark.slow
+    def test_spacy_tokenizer_farsi(self):
+        tokenizer = SpaCyTokenizer(config=None, lang='fa', model_path=self.model_path)
+        tokens = tokenizer.tokenize("شما بليز رو به فارسی چی میگین؟")
+        assert tokens == ['شما', 'بليز', 'رو', 'به', 'فارسی', 'چی', 'میگین', '؟']
+
+    @pytest.mark.slow
+    def test_spacy_tokenizer_russian(self):
+        tokenizer = SpaCyTokenizer(config=None, lang='ru', model_path=self.model_path)
+        tokens = tokenizer.tokenize("Я хотел бы пива.")
+        assert tokens == ['Я', 'хотел', 'бы', 'пива', '.']
