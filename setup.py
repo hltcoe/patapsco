@@ -35,7 +35,7 @@ setuptools.setup(
         "pytrec_eval",
         "pyyaml",
         "scriptnorm",
-        "spacy",
+        "spacy>=3.0.0",
         "sqlitedict",
         "stanza==1.2.0",
     ],

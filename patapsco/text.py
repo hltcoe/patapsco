@@ -128,7 +128,7 @@ class SpaCyModelLoader:
 
     model_names = {
         'ar': 'xx_sent_ud_sm-3.0.0',  # UD multilang model. TOKEN_ACC: 99.29, SENT_F: 86.39
-        'en': 'en_core_web_md-3.0.0', # TOKEN_ACC: 99.93, SENT_F: 89.02
+        'en': 'en_core_web_md-3.0.0',  # TOKEN_ACC: 99.93, SENT_F: 89.02
         'fa': 'xx_sent_ud_sm-3.0.0',  # UD multilang model. TOKEN_ACC: 99.29, SENT_F: 86.39
         'ru': 'ru_core_news_sm-3.0.0',  # TOKEN_ACC: 99.85, SENT_F: 99.85
         'zh': 'zh_core_web_md-3.0.0',  # TOKEN_ACC: 97.88, SENT_F: 75.88
