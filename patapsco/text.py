@@ -126,12 +126,27 @@ class StanzaTokenizer(Tokenizer):
 class SpaCyModelLoader:
     """Load the spaCy model and install if needed"""
 
-    model_names = {
-        'ar': 'xx_sent_ud_sm-3.0.0',  # UD multilang model. TOKEN_ACC: 99.29, SENT_F: 86.39
-        'en': 'en_core_web_md-3.0.0',  # TOKEN_ACC: 99.93, SENT_F: 89.02
-        'fa': 'xx_sent_ud_sm-3.0.0',  # UD multilang model. TOKEN_ACC: 99.29, SENT_F: 86.39
-        'ru': 'ru_core_news_sm-3.0.0',  # TOKEN_ACC: 99.85, SENT_F: 99.85
-        'zh': 'zh_core_web_md-3.0.0',  # TOKEN_ACC: 97.88, SENT_F: 75.88
+    model_info = {
+        'ar': {  # UD multilang model. TOKEN_ACC: 99.29, SENT_F: 86.39
+            'name': 'xx_sent_ud_sm',
+            'version': '3.0.0'
+        },
+        'en': {  # TOKEN_ACC: 99.93, SENT_F: 89.02
+            'name': 'en_core_web_md',
+            'version': '3.0.0',
+        },
+        'fa': {  # UD multilang model. TOKEN_ACC: 99.29, SENT_F: 86.39
+            'name': 'xx_sent_ud_sm',
+            'version': '3.0.0',
+        },
+        'ru': {  # TOKEN_ACC: 99.85, SENT_F: 99.85
+            'name': 'ru_core_news_sm',
+            'version': '3.0.0',
+        },
+        'zh': {  # TOKEN_ACC: 97.88, SENT_F: 75.88
+            'name': 'zh_core_web_md',
+            'version': '3.0.0',
+        }
     }
 
     exclude = ['tok2vec', 'morphologizer', 'tagger', 'parser', 'ner', 'attribute_ruler', 'lemmatizer']
@@ -154,15 +169,15 @@ class SpaCyModelLoader:
         if lang in self.models:
             return self.models[lang]
 
-        if lang not in self.model_names:
+        if lang not in self.model_info:
             raise ConfigError(f"Unexpected language for spacy: {lang}")
-        path = self.model_path / self.model_names[lang]
+        path = self.model_path / f"{self.model_info[lang]['name']}-{self.model_info[lang]['version']}"
         if path.exists():
             LOGGER.info(f"Loading the {lang} spacy model")
             nlp = spacy.load(str(path), exclude=self.exclude)
         else:
             # probably not on grid so we try to load locally or download
-            model_name = self.model_names[lang]
+            model_name = self.model_info[lang]['name']
             if not spacy.util.is_package(model_name):
                 # install as a pip package
                 LOGGER.info(f"Downloading the {lang} spacy model. This may take a few minutes...")

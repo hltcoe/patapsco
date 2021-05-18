@@ -55,7 +55,8 @@ def test_stanza_tokenizer_russian():
 
 
 class TestSpacy:
-    model_path = '/tmp'
+    # if not running on the grid, spacy will use pip to install models
+    model_path = '/exp/scale21/resources/spacy'
 
     @pytest.mark.slow
     def test_spacy_tokenizer_arabic(self):
