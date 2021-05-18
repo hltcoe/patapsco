@@ -4,8 +4,9 @@ import logging
 import pathlib
 
 import scriptnorm
-import stanza
 import spacy
+import stanza
+
 
 from .error import ConfigError
 from .pipeline import MultiplexItem
@@ -134,7 +135,7 @@ class SpaCyModelLoader:
         'zh': 'zh_core_web_md',  # TOKEN_ACC: 97.88, SENT_F: 75.88
     }
 
-    exclude = ['senter', 'tok2vec', 'morphologizer', 'tagger', 'parser', 'ner', 'attribute_ruler', 'lemmatizer']
+    exclude = ['tok2vec', 'morphologizer', 'tagger', 'parser', 'ner', 'attribute_ruler', 'lemmatizer']
 
     loaders = {}
 

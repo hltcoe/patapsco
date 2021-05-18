@@ -1,5 +1,6 @@
 name: patapsco
 channels:
+  - condaforge
   - stanfordnlp
 dependencies:
   - python>=3.6
@@ -7,7 +8,7 @@ dependencies:
   - more-itertools
   - numpy
   - pyyaml
-  - spacy
+  - spacy>=3.0.0
   - stanza>=1.2.0
   - pip
   - pip:

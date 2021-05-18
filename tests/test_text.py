@@ -54,36 +54,35 @@ def test_stanza_tokenizer_russian():
     assert tokens == ['Я', 'хотел', 'бы', 'пива.']
 
 
-@pytest.mark.slow
-def test_spacy_tokenizer_arabic():
-    tokenizer = SpaCyTokenizer(config=None, lang='ar', model_path='/tmp')
-    tokens = tokenizer.tokenize("في أسرتي ثلاثة أفراد.")
-    assert tokens == ['في', 'أسرتي', 'ثلاثة', 'أفراد', '.']
+class TestSpacy:
+    model_path = '/tmp'
 
+    @pytest.mark.slow
+    def test_spacy_tokenizer_arabic(self):
+        tokenizer = SpaCyTokenizer(config=None, lang='ar', model_path=self.model_path)
+        tokens = tokenizer.tokenize("في أسرتي ثلاثة أفراد.")
+        assert tokens == ['في', 'أسرتي', 'ثلاثة', 'أفراد', '.']
 
-@pytest.mark.slow
-def test_spacy_tokenizer_chinese():
-    tokenizer = SpaCyTokenizer(config=None, lang='zh', model_path='/tmp')
-    tokens = tokenizer.tokenize("不但要看,而且要帮。")
-    assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
+    @pytest.mark.slow
+    def test_spacy_tokenizer_chinese(self):
+        tokenizer = SpaCyTokenizer(config=None, lang='zh', model_path=self.model_path)
+        tokens = tokenizer.tokenize("不但要看,而且要帮。")
+        assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
 
+    @pytest.mark.slow
+    def test_spacy_tokenizer_english(self):
+        tokenizer = SpaCyTokenizer(config=None, lang='en', model_path=self.model_path)
+        tokens = tokenizer.tokenize("Mary had a little lamb.")
+        assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.']
 
-@pytest.mark.slow
-def test_spacy_tokenizer_english():
-    tokenizer = SpaCyTokenizer(config=None, lang='en', model_path='/tmp')
-    tokens = tokenizer.tokenize("Mary had a little lamb.")
-    assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.']
+    @pytest.mark.slow
+    def test_spacy_tokenizer_farsi(self):
+        tokenizer = SpaCyTokenizer(config=None, lang='fa', model_path=self.model_path)
+        tokens = tokenizer.tokenize("شما بليز رو به فارسی چی میگین؟")
+        assert tokens == ['شما', 'بليز', 'رو', 'به', 'فارسی', 'چی', 'میگین', '؟']
 
-
-@pytest.mark.slow
-def test_spacy_tokenizer_farsi():
-    tokenizer = SpaCyTokenizer(config=None, lang='fa', model_path='/tmp')
-    tokens = tokenizer.tokenize("شما بليز رو به فارسی چی میگین؟")
-    assert tokens == ['شما', 'بليز', 'رو', 'به', 'فارسی', 'چی', 'میگین', '؟']
-
-
-@pytest.mark.slow
-def test_spacy_tokenizer_russian():
-    tokenizer = SpaCyTokenizer(config=None, lang='ru', model_path='/tmp')
-    tokens = tokenizer.tokenize("Я хотел бы пива.")
-    assert tokens == ['Я', 'хотел', 'бы', 'пива', '.']
+    @pytest.mark.slow
+    def test_spacy_tokenizer_russian(self):
+        tokenizer = SpaCyTokenizer(config=None, lang='ru', model_path=self.model_path)
+        tokens = tokenizer.tokenize("Я хотел бы пива.")
+        assert tokens == ['Я', 'хотел', 'бы', 'пива', '.']
