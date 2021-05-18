@@ -1,6 +1,6 @@
 name: patapsco
 channels:
-  - condaforge
+  - conda-forge
   - stanfordnlp
 dependencies:
   - python>=3.6
