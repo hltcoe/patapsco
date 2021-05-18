@@ -35,6 +35,15 @@ class TestScorer:
         assert scorer.metrics[0] == "map"
         assert scorer.metrics[1] == "P_20"
 
+    def test_ndcg_prime_standardization(self):
+        scorer = self.create_scorer(['map', "ndcg'"])
+        assert scorer.metrics[0] == "map"
+        assert scorer.metrics[1] == "ndcg_prime"
+
+    def test_unknown_metric(self):
+        with pytest.raises(ConfigError):
+            self.create_scorer(["ndcgg"])
+
     def test_pytrec_eval(self):
         # score the results
         scorer = self.create_scorer(['map', 'ndcg', 'recall@100'])
@@ -49,16 +58,9 @@ class TestScorer:
         assert data[1].split()[0] == 'ndcg'
         assert data[2].split()[0] == 'recall_100'
 
-    def test_unknown_metric(self):
-        scorer = self.create_scorer(["ndcgg"])
-        for r in self.results_iter:
-            scorer.process(r)
-        with pytest.raises(ValueError) as e:
-            scorer.end()
-
     def test_ndcg_prime(self):
         scorer = self.create_scorer(["ndcg'"])
         for r in self.results_iter:
             scorer.process(r)
-        results = scorer.calc_ndcg_prime()
+        results = scorer._calc_ndcg_prime()
         assert results['2']["ndcg'"] == 1

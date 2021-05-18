@@ -49,5 +49,5 @@ score:
     path: samples/data/en_mini_dataset_qrels
   metrics:
     - map
-    - p@20
+    - P@20
     - ndcg
