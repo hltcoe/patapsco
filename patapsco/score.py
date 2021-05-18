@@ -118,6 +118,7 @@ class Scorer(Task):
             evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, {'ndcg'})
         except ValueError as e:
             LOGGER.warning(e)
+            raise ValueError(e)
         else:
             modified_run = collections.defaultdict(dict)
             for query_id in self.run:

@@ -11,13 +11,13 @@ from patapsco.util.trec import parse_qrels
 def test_at_symbol_mapping():
     config = ScoreConfig(
         input=ScoreInputConfig(path="test"),
-        metrics=['map', 'P@20'] 
+        metrics=['map', 'P@20']
     )
     scorer = Scorer("test", config, qrels=None)
     assert scorer.metrics[0] == "map"
     assert scorer.metrics[1] == "P_20"
 
-@pytest.mark.skip(reason="should test open 'test' dir and look at output?")
+
 def test_pytrec_eval():
     directory = pathlib.Path(__file__).parent / 'scoring_files'
     qrels_path = directory / 'qrels.txt'
@@ -33,6 +33,12 @@ def test_pytrec_eval():
     for r in results_iter:
         scorer.process(r)
     scorer.end()
+    results_file = pathlib.Path(__file__).parent / 'test/scores.txt'
+    with open(results_file) as f:
+        lines = f.readlines()
+    assert lines[0].split()[0] == 'map'
+    assert lines[1].split()[0] == 'ndcg'
+    assert lines[2].split()[0] == 'recall_100'
 
 
 def test_unknown_metric():
@@ -49,8 +55,9 @@ def test_unknown_metric():
     results_iter = TrecResultsReader(str(run_path))
     for r in results_iter:
         scorer.process(r)
-    with pytest.raises(Exception) as e:
+    with pytest.raises(ValueError) as e:
         results = scorer.end()
+
 
 def test_ndcg_prime():
     directory = pathlib.Path(__file__).parent / 'scoring_files'
@@ -68,4 +75,3 @@ def test_ndcg_prime():
         scorer.process(r)
     results = scorer.calc_ndcg_prime()
     assert results['2']["ndcg'"] == 1
-
