@@ -169,7 +169,7 @@ def compare_strings(s1, s2):
         # only consider single letter changes
         if tag == 'delete' and i2 - i1 == 1:
             changes.update({f"del {s1[i1:i2]}": 1})
-        elif tag == 'replace' and i2 - i1 == 1 and j2 - j1 == 1:
+        elif tag == 'replace' and i2 - i1 <= 2 and j2 - j1 == 1:
             changes.update({f"{s1[i1:i2]} → {s2[j1:j2]}": 1})
         elif tag == 'insert' and j2 - j1 == 1:
             changes.update({f"ins {s2[j1:j2]}": 1})

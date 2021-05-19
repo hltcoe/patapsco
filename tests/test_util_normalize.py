@@ -3,16 +3,16 @@ from patapsco.util.normalize import *
 
 class TestCompare:
     def test_same(self):
-        results = compare("hello world!", "hello world!")
+        results = compare_strings("hello world!", "hello world!")
         assert len(results) == 0
 
     def test_simple_delete(self):
-        results = compare("hello world!", "hello world")
+        results = compare_strings("hello world!", "hello world")
         assert len(results) == 1
         assert results['del !'] == 1
 
     def test_simple_replace(self):
-        results = compare("\u0043\u0327", "Ç")
+        results = compare_strings("\u0043\u0327", "Ç")
         assert len(results) == 1
         assert results['\u0043\u0327 → \u00c7'] == 1
 
