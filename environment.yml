@@ -5,6 +5,7 @@ channels:
 dependencies:
   - python>=3.6
   - beautifulsoup4
+  - ftfy
   - more-itertools
   - numpy
   - pyyaml
@@ -18,5 +19,4 @@ dependencies:
     - pyserini
     - pytrec_eval
     - sacremoses
-    - scriptnorm
     - sqlitedict

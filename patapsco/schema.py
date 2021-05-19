@@ -29,6 +29,10 @@ Text Processing
 """""""""""""""""
 
 
+class NormalizationConfig(BaseConfig):
+    report: bool = False  # save a report of normalization changes
+
+
 class StemConfig(BaseConfig):
     name: str
 
@@ -40,7 +44,7 @@ class TokenizeConfig(BaseConfig):
 
 class TextProcessorConfig(BaseConfig):
     """Configuration for the text processing"""
-    normalize: bool = True
+    normalize: NormalizationConfig = NormalizationConfig()
     tokenize: TokenizeConfig
     lowercase: bool = True
     stopwords: Union[None, bool, str] = "lucene"

@@ -1,3 +1,4 @@
+import collections
 import csv
 import dataclasses
 import gzip
@@ -15,6 +16,7 @@ from .text import Splitter, TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append, is_complete, touch_complete
 from .util.formats import parse_sgml_documents, parse_hamshahri_documents
+from .util.normalize import compare_strings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -276,6 +278,8 @@ class DocumentProcessor(Task, TextProcessor):
         TextProcessor.__init__(self, config, lang)
         self.splitter = Splitter(config.splits)
         self.db = db
+        self.save_report = config.normalize.report
+        self.diffs = collections.Counter()
 
     def process(self, doc):
         """
@@ -286,9 +290,12 @@ class DocumentProcessor(Task, TextProcessor):
             Doc
         """
         self.splitter.reset()
-        text = doc.text
-        if self.config.normalize:
-            text = self.normalize(text)
+
+        text = original_text = doc.text
+        text = self.normalize(text)
+        if self.save_report:
+            self.diffs += compare_strings(original_text, text)
+
         tokens = self.tokenize(text)
         self.splitter.add('tokenize', Doc(doc.id, doc.lang, ' '.join(tokens)))
         if self.config.lowercase:
@@ -309,6 +316,14 @@ class DocumentProcessor(Task, TextProcessor):
 
     def end(self):
         self.db.end()
+        if self.save_report:
+            self._save_report()
+
+    def _save_report(self):
+        with open(self.run_path / 'normalize_report.txt', 'w') as fp:
+            for change, count in self.diffs.most_common(len(self.diffs)):
+                if "\n" not in change:  # skip newline removal
+                    fp.write(f"{repr(change)}\t{count}\n")
 
     def run_reduce(self):
         self.db.reduce()

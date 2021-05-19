@@ -9,7 +9,6 @@ documents:
     encoding: utf8
     path: sample/en_mini_dataset.jsonl
   process:
-    normalize: true
     tokenize:
       name: whitespace
     lowercase: true

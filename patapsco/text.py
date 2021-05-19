@@ -5,15 +5,14 @@ import logging
 import pathlib
 
 import sacremoses
-import scriptnorm
 import spacy
 import stanza
-
 
 from .error import ConfigError
 from .pipeline import MultiplexItem
 from .schema import TokenizeConfig, StemConfig
 from .util import ComponentFactory
+from .util.normalize import NormalizerFactory
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,14 +52,6 @@ class StemmerFactory(ComponentFactory):
         'mock': 'MockStemmer',
     }
     config_class = StemConfig
-
-
-class Normalizer:
-    def __init__(self, lang):
-        self.lang = lang
-
-    def normalize(self, text):
-        return scriptnorm.process(self.lang, text)
 
 
 class Tokenizer:
@@ -360,7 +351,7 @@ class TextProcessor:
         """
         self.config = config
         self.lang = lang
-        self.normalizer = Normalizer(lang)
+        self.normalizer = NormalizerFactory.create(lang)
         self.tokenizer = TokenizerFactory.create(self.config.tokenize, lang)
         if self.config.stem:
             self.stemmer = StemmerFactory.create(self.config.stem, lang)
