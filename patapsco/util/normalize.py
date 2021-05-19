@@ -177,6 +177,7 @@ def compare(text1, text2):
 
 class NormalizerFactory:
     classes = {
+        'ar': 'ArabicNormalizer',
         'en': 'EnglishNormalizer',
         'fa': 'FarsiNormalizer',
         'ru': 'RussianNormalizer',
@@ -244,6 +245,10 @@ class GenricNormalizer(Normalizer):
         text = self.remove_format_chars(text)
         text = self.combine(text)
         return self.update_spaces(text)
+
+
+class ArabicNormalizer(GenricNormalizer):
+    pass
 
 
 class ChineseNormalizer(GenricNormalizer):
