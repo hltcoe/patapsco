@@ -153,7 +153,7 @@ class Hc4JsonTopicReader(InputIterator):
 
     def construct(self, data):
         try:
-            title = data['topic_name'].strip()
+            title = data['topic_title'].strip()
             desc = data['topic_description'].strip()
             return Topic(data['topic_id'], self.lang, title, desc, None)
         except KeyError as e:

@@ -8,6 +8,11 @@ To check your Java version:
 javac --version
 ```
 
+On the grid, enable Java with:
+```
+module add java
+```
+
 ## Install
 
 ### Create a Python virtual environment using venv or conda.
@@ -17,6 +22,11 @@ Create and activate the virtual environment:
 ```
 python3 -m venv venv
 source venv/bin/activate
+```
+You may need to upgrade your pip:
+```
+pip install -U pip
+pip install -U wheel
 ```
 Install Patapsco and its dependencies:
 ```
@@ -56,7 +66,7 @@ For example, an index created in one run can be used in another.
 
 Patapsco can run partial pipelines.
 For example, a user can run just stage 1 to generate an index.
-Or a user may run only stage 2 and have it start with processed queries.
+Or a user may run only stage 2 and have it start with processed queries and a prebuilt index.
 
 ## Configuration
 Patapsco uses YAML or JSON files for configuration.

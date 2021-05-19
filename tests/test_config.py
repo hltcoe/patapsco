@@ -74,7 +74,7 @@ document_process:
   lowercase: true
 score:
   - map
-  - p@20
+  - P@20
   - ndcg
 """
     conf = config.ConfigService._read_yaml_config(document)
@@ -175,7 +175,7 @@ def test_load_json_config():
     "utf8_normalize": true,
     "lowercase": true
   },
-  "score": ["map", "p@20", "ndcg"]
+  "score": ["map", "P@20", "ndcg"]
 }
 """
     conf = config.ConfigService()._read_json_config(io.StringIO(document))

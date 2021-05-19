@@ -1,5 +1,6 @@
 name: patapsco
 channels:
+  - conda-forge
   - stanfordnlp
 dependencies:
   - python>=3.6
@@ -8,11 +9,14 @@ dependencies:
   - more-itertools
   - numpy
   - pyyaml
+  - spacy>=3.0.0
+  - spacy-pkuseg>=0.0.27,<0.1.0
   - stanza>=1.2.0
   - pip
   - pip:
     - jieba
-    - pydantic==1.8.1
+    - pydantic>=1.7.1,<1.8.0
     - pyserini
     - pytrec_eval
+    - sacremoses
     - sqlitedict

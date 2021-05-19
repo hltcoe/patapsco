@@ -23,6 +23,7 @@ class Result:
 class Results:
     """Results for a query"""
     query: Query
+    doc_lang: str
     system: str
     results: List[Result]
 
@@ -83,7 +84,7 @@ class TrecResultsReader:
                 system = row[5]
                 data[row[0]].append(Result(row[2], int(row[3]), float(row[4])))
         # the trec results file does not contain language or the query text
-        self.results = iter([Results(Query(query_id, lang, None), system, results)
+        self.results = iter([Results(Query(query_id, lang, None), None, system, results)
                              for query_id, results in data.items()])
 
     def __iter__(self):
@@ -134,7 +135,9 @@ class JsonResultsReader:
     """Iterator over results from a jsonl file """
 
     def __init__(self, path):
-        path = pathlib.Path(path) / 'results.jsonl'
+        path = pathlib.Path(path)
+        if path.is_dir():
+            path = path / 'results.jsonl'
         self.file = open(path, 'r')
 
     def __iter__(self):
@@ -147,7 +150,7 @@ class JsonResultsReader:
             raise StopIteration
         data = json.loads(line)
         results = [Result(**result) for result in data['results']]
-        return Results(Query(**data['query']), data['system'], results)
+        return Results(Query(**data['query']), data['doc_lang'], data['system'], results)
 
     def __str__(self):
         return self.__class__.__name__

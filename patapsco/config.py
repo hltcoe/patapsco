@@ -13,6 +13,9 @@ from .error import ConfigError
 
 LOGGER = logging.getLogger(__name__)
 
+# pydantic is removing "fields" as an attribute in 1.8.0 but still has a check for it
+delattr(pydantic.BaseModel, 'fields')
+
 
 class BaseConfig(pydantic.BaseModel):
     """Base class of configuration objects
