@@ -135,3 +135,18 @@ class TestMoses:
         ]
         tokenizer = MosesTokenizer(config=None, lang='ru', model_path=self.model_path)
         assert ans == tokenizer.tokenize(text)
+
+
+class TestNgramTokenizer:
+    # ngram tokenization uses sentence segmentation from spaCy
+    model_path = '/exp/scale21/resources/spacy'
+
+    @pytest.mark.slow
+    def test_stanza_tokenizer_english(self):
+        text = "Roses are red. Violets are blue."
+        ans = [
+            'Roses', 'oses ', 'ses a', 'es ar', 's are', ' are ', 'are r', 're re', 'e red', ' red.',
+            'Viole', 'iolet', 'olets', 'lets ', 'ets a', 'ts ar', 's are', ' are ', 'are b', 're bl', 'e blu', ' blue', 'blue.'
+        ]
+        tokenizer = NgramTokenizer(config=None, lang='en', model_path=self.model_path)
+        assert ans == tokenizer.tokenize(text)

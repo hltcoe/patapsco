@@ -229,6 +229,35 @@ class MosesTokenizer(Tokenizer):
         return list(tokens)
 
 
+class NgramTokenizer(Tokenizer):
+    """Character ngram tokenizer"""
+
+    languages = {
+        'ar': 5,
+        'en': 5,
+        'fa': 5,
+        'ru': 5,
+        'zh': 2
+    }
+
+    def __init__(self, config, lang, model_path):
+        super().__init__(config, lang, model_path)
+        self.n = self.languages[lang]
+        # segment sentences with spaCy before create ngrams
+        self.nlp = SpaCyModelLoader.get_loader(model_path).load(lang)
+        self.nlp.enable_pipe("senter")
+
+    def tokenize(self, text):
+        doc = self.nlp(text)
+        ngrams = itertools.chain.from_iterable(self._get_ngrams(sent) for sent in doc.sents)
+        return [''.join(x) for x in ngrams]
+
+    def _get_ngrams(self, text):
+        # create iterators over characters with an increasing offset and then zip to create ngrams
+        text = str(text)
+        return zip(*(itertools.islice(chars, offset, None) for offset, chars in enumerate(itertools.tee(text, self.n))))
+
+
 class StopWordsRemoval:
     def __init__(self, source, lang):
         filename = lang + ".txt"
