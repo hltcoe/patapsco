@@ -281,8 +281,7 @@ class QueryProcessor(Task, TextProcessor):
         """
         self.splitter.reset()
         text = query.text
-        if self.config.normalize:
-            text = self.normalize(text)
+        text = self.normalize(text)
         tokens = self.tokenize(text)
         self.splitter.add('tokenize', Query(query.id, query.lang, ' '.join(tokens)))
         if self.config.lowercase:

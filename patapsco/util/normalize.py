@@ -157,21 +157,22 @@ import unicodedata
 import ftfy
 
 
-def compare(text1, text2):
+def compare_strings(s1, s2):
     """Compare two strings to determine what has changed
 
     Returns:
         dict of change -> count
     """
     changes = collections.Counter()
-    matcher = difflib.SequenceMatcher(None, text1, text2)
+    matcher = difflib.SequenceMatcher(None, s1, s2)
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == 'delete':
-            changes.update({f"del {text1[i1:i2]}": 1})
-        elif tag == 'replace':
-            changes.update({f"{text1[i1:i2]} → {text2[j1:j2]}": 1})
-        elif tag == 'insert':
-            changes.update({f"ins {text2[j1:j2]}": 1})
+        # only consider single letter changes
+        if tag == 'delete' and i2 - i1 == 1:
+            changes.update({f"del {s1[i1:i2]}": 1})
+        elif tag == 'replace' and i2 - i1 == 1 and j2 - j1 == 1:
+            changes.update({f"{s1[i1:i2]} → {s2[j1:j2]}": 1})
+        elif tag == 'insert' and j2 - j1 == 1:
+            changes.update({f"ins {s2[j1:j2]}": 1})
     return changes
 
 
