@@ -201,10 +201,10 @@ class QueryWriter(Task):
         """
         Args:
             run_path (str): Root directory of the run.
-            config (BaseConfig): Config that includes output.
+            config (TopicsConfig or QueriesConfig): Config that includes output.
             artifact_config (BaseConfig or None): Config that resulted in this artifact
         """
-        super().__init__(run_path, artifact_config, config.output)
+        super().__init__(run_path, artifact_config, base=config.output)
         path = self.base / 'queries.jsonl'
         self.file = open(path, 'w')
 
