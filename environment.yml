@@ -17,5 +17,6 @@ dependencies:
     - pydantic>=1.7.1,<1.8.0
     - pyserini
     - pytrec_eval
+    - sacremoses
     - scriptnorm
     - sqlitedict

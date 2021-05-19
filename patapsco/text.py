@@ -1,8 +1,10 @@
 import contextlib
 import io
+import itertools
 import logging
 import pathlib
 
+import sacremoses
 import scriptnorm
 import spacy
 import stanza
@@ -18,11 +20,13 @@ LOGGER = logging.getLogger(__name__)
 
 class TokenizerFactory(ComponentFactory):
     classes = {
+        'moses': 'MosesTokenizer',
         'spacy': 'SpaCyTokenizer',
         'stanza': 'StanzaTokenizer',
         'whitespace': 'WhiteSpaceTokenizer',
     }
     model_directory_defaults = {
+        'moses': '/exp/scale21/resources/spacy',
         'spacy': '/exp/scale21/resources/spacy',
         'stanza': '/exp/scale21/resources/stanza',
         'whitespace': None,
@@ -198,6 +202,31 @@ class SpaCyTokenizer(Tokenizer):
     def tokenize(self, text):
         tokens = self.nlp(text)
         return [str(token) for token in tokens]
+
+
+class MosesTokenizer(Tokenizer):
+    """Tokenizer that uses sacremoses"""
+
+    languages = {
+        'ar': 'en',
+        'en': 'en',
+        'fa': 'en',
+        'ru': 'ru',
+    }
+
+    def __init__(self, config, lang, model_path):
+        super().__init__(config, lang, model_path)
+        if lang == 'zh':
+            raise ConfigError("MosesTokenizer does not support Chinese.")
+        self.tokenizer = sacremoses.MosesTokenizer(lang=self.languages[lang])
+        # we need to segment sentences with spaCy before running the tokenizer
+        self.nlp = SpaCyModelLoader.get_loader(model_path).load(lang)
+        self.nlp.enable_pipe("senter")
+
+    def tokenize(self, text):
+        doc = self.nlp(text)
+        tokens = itertools.chain.from_iterable(self.tokenizer.tokenize(sent, escape=False) for sent in doc.sents)
+        return list(tokens)
 
 
 class StopWordsRemoval:

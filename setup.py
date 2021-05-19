@@ -34,6 +34,7 @@ setuptools.setup(
         "pyserini",
         "pytrec_eval",
         "pyyaml",
+        "sacremoses",
         "scriptnorm",
         "spacy>=3.0.0",
         "spacy-pkuseg>=0.0.27,<0.1.0",
