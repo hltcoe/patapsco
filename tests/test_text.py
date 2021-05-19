@@ -21,32 +21,32 @@ class TestStanza:
     model_path = str(pathlib.Path.home() / 'stanza_resources')
 
     @pytest.mark.slow
-    def test_stanza_tokenizer_arabic(self):
+    def test_tokenizer_arabic(self):
         tokenizer = StanzaTokenizer(config=None, lang='ar', model_path=self.model_path)
         tokens = tokenizer.tokenize("في أسرتي ثلاثة أفراد.")
         assert tokens == ['في', 'أسرتي', 'ثلاثة', 'أفراد', '.']
 
     @pytest.mark.slow
-    def test_stanza_tokenizer_chinese(self):
+    def test_tokenizer_chinese(self):
         tokenizer = StanzaTokenizer(config=None, lang='zh', model_path=self.model_path)
         tokens = tokenizer.tokenize("不但要看,而且要帮。")
         # jieba is splitting 要看
         assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
 
     @pytest.mark.slow
-    def test_stanza_tokenizer_english(self):
+    def test_tokenizer_english(self):
         tokenizer = StanzaTokenizer(config=None, lang='en', model_path=self.model_path)
         tokens = tokenizer.tokenize("Mary had a little lamb.")
         assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.']
 
     @pytest.mark.slow
-    def test_stanza_tokenizer_farsi(self):
+    def test_tokenizer_farsi(self):
         tokenizer = StanzaTokenizer(config=None, lang='fa', model_path=self.model_path)
         tokens = tokenizer.tokenize("شما بليز رو به فارسی چی میگین؟")
         assert tokens == ['شما', 'بليز', 'رو', 'به', 'فارسی', 'چی', 'میگین', '؟']
 
     @pytest.mark.slow
-    def test_stanza_tokenizer_russian(self):
+    def test_tokenizer_russian(self):
         tokenizer = StanzaTokenizer(config=None, lang='ru', model_path=self.model_path)
         tokens = tokenizer.tokenize("Я хотел бы пива.")
         # Does the Russian model not handle punctuation well or did we hit on a bad sentence
@@ -58,31 +58,31 @@ class TestSpacy:
     model_path = '/exp/scale21/resources/spacy'
 
     @pytest.mark.slow
-    def test_spacy_tokenizer_arabic(self):
+    def test_tokenizer_arabic(self):
         tokenizer = SpaCyTokenizer(config=None, lang='ar', model_path=self.model_path)
         tokens = tokenizer.tokenize("في أسرتي ثلاثة أفراد.")
         assert tokens == ['في', 'أسرتي', 'ثلاثة', 'أفراد', '.']
 
     @pytest.mark.slow
-    def test_spacy_tokenizer_chinese(self):
+    def test_tokenizer_chinese(self):
         tokenizer = SpaCyTokenizer(config=None, lang='zh', model_path=self.model_path)
         tokens = tokenizer.tokenize("不但要看,而且要帮。")
         assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
 
     @pytest.mark.slow
-    def test_spacy_tokenizer_english(self):
+    def test_tokenizer_english(self):
         tokenizer = SpaCyTokenizer(config=None, lang='en', model_path=self.model_path)
         tokens = tokenizer.tokenize("Mary had a little lamb.")
         assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.']
 
     @pytest.mark.slow
-    def test_spacy_tokenizer_farsi(self):
+    def test_tokenizer_farsi(self):
         tokenizer = SpaCyTokenizer(config=None, lang='fa', model_path=self.model_path)
         tokens = tokenizer.tokenize("شما بليز رو به فارسی چی میگین؟")
         assert tokens == ['شما', 'بليز', 'رو', 'به', 'فارسی', 'چی', 'میگین', '؟']
 
     @pytest.mark.slow
-    def test_spacy_tokenizer_russian(self):
+    def test_tokenizer_russian(self):
         tokenizer = SpaCyTokenizer(config=None, lang='ru', model_path=self.model_path)
         tokens = tokenizer.tokenize("Я хотел бы пива.")
         assert tokens == ['Я', 'хотел', 'бы', 'пива', '.']
@@ -93,7 +93,7 @@ class TestMoses:
     model_path = '/exp/scale21/resources/spacy'
 
     @pytest.mark.slow
-    def test_stanza_tokenizer_arabic(self):
+    def test_tokenizer_arabic(self):
         text = "تمول النفقات الجديدة من خلال حساب كلينتون المصرفي الكبير. الحد الأقصى المسموح به للشخص الواحد هو 5000 دولار."
         ans = [
             'تمول', 'النفقات', 'الجديدة', 'من', 'خلال', 'حساب', 'كلينتون', 'المصرفي', 'الكبير', '.',
@@ -102,12 +102,12 @@ class TestMoses:
         tokenizer = MosesTokenizer(config=None, lang='ar', model_path=self.model_path)
         assert ans == tokenizer.tokenize(text)
 
-    def test_stanza_tokenizer_chinese(self):
+    def test_tokenizer_chinese(self):
         with pytest.raises(ConfigError):
             MosesTokenizer(config=None, lang='zh', model_path=self.model_path)
 
     @pytest.mark.slow
-    def test_stanza_tokenizer_english(self):
+    def test_tokenizer_english(self):
         text = "Mary had a little lamb. It's fleece was white as snow."
         ans = [
             'Mary', 'had', 'a', 'little', 'lamb', '.',
@@ -117,18 +117,17 @@ class TestMoses:
         assert ans == tokenizer.tokenize(text)
 
     @pytest.mark.slow
-    def test_stanza_tokenizer_farsi(self):
-        text = "بلیت را پیش‌فروش کنید. این موافقت‌نامه را امضا نخواهم کرد و تا جایی که بتوانم در مقابل آن پایداری می‌کنم."
+    def test_tokenizer_farsi(self):
+        text = "بلیت را پیشفروش کنید. این موافقتنامه را امضا نخواهم کرد و تا جایی که بتوانم در مقابل آن پایداری میکنم."
         ans = [
-            'این', 'موافقت‌نامه', 'را', 'امضا', 'نخواهم', 'کرد', 'و', 'تا', 'جایی', 'که', 'بتوانم', 'در', 'مقابل', 'آن', 'پایداری', 'می‌کنم', '.',
-            'بلیت', 'را', 'پیش‌فروش', 'کنید', '.'
+            'بلیت', 'را', 'پیشفروش', 'کنید', '.',
+            'این', 'موافقتنامه', 'را', 'امضا', 'نخواهم', 'کرد', 'و', 'تا', 'جایی', 'که', 'بتوانم', 'در', 'مقابل', 'آن', 'پایداری', 'میکنم', '.',
         ]
         tokenizer = MosesTokenizer(config=None, lang='fa', model_path=self.model_path)
-        tokens = tokenizer.tokenize("Mary had a little lamb. It's fleece was white as snow.")
-        assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.', 'It', "'s", 'fleece', 'was', 'white', 'as', 'snow', '.']
+        assert ans == tokenizer.tokenize(text)
 
     @pytest.mark.slow
-    def test_stanza_tokenizer_russian(self):
+    def test_tokenizer_russian(self):
         text = "Свидетель рассказал в полиции, что потерпевший напал на подозреваемого в апреле. Нужно провести параллель между играми и нашей повседневной жизнью."
         ans = [
             'Свидетель', 'рассказал', 'в', 'полиции', ',', 'что', 'потерпевший', 'напал', 'на', 'подозреваемого', 'в', 'апреле', '.',
