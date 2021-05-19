@@ -69,7 +69,7 @@ class Scorer(Task):
             raise ConfigError(e)
 
     def process(self, results):
-        """ Accumulate the results and calculate scores at end
+        """Accumulate the results and calculate scores at end
 
         Args:
             results (Results): Results for a query
@@ -104,9 +104,10 @@ class Scorer(Task):
             self._write_scores(scores)
 
     def _calc_ndcg_prime(self):
-        """ Calculate nDCG': for every query, remove document ids that do not
-        belong to the set of judged documents for that query, and run nDCG
-        over the modified run
+        """Calculate nDCG'
+
+        For every query, remove document ids that do not belong to the set of
+        judged documents for that query, and run nDCG over the modified output.
         """
         evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, {'ndcg'})
         modified_run = collections.defaultdict(dict)
@@ -114,11 +115,8 @@ class Scorer(Task):
             for doc_id in self.run[query_id]:
                 if doc_id in self.qrels[query_id].keys():
                     modified_run[query_id][doc_id] = self.run[query_id][doc_id]
-        rename = evaluator.evaluate(modified_run)
-        res = {}
-        for elt in rename.items():
-            res[elt[0]] = {"ndcg'": elt[1]['ndcg']}
-        return res
+        ndcg_scores = evaluator.evaluate(modified_run)
+        return {query: {"ndcg_prime": scores["ndcg"]} for query, scores in ndcg_scores.items()}
 
     def _write_scores(self, scores):
         scores_path = self.run_path / 'scores.txt'

@@ -63,4 +63,4 @@ class TestScorer:
         for r in self.results_iter:
             scorer.process(r)
         results = scorer._calc_ndcg_prime()
-        assert results['2']["ndcg'"] == 1
+        assert results['2']["ndcg_prime"] == 1
