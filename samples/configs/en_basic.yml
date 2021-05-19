@@ -13,8 +13,6 @@ documents:
     tokenize:
       name: whitespace
     lowercase: true
-    stem:
-      name: mock
   comment: Mini English dataset
 
 index:

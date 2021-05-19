@@ -60,7 +60,8 @@ class MockReranker(Reranker):
         # retrieve documents and pop one to exercise db
         try:
             docs = [self.db[result.doc_id] for result in new_results]
-            docs.pop()
+            if docs:
+                docs.pop()
         except BadDataError as e:
             LOGGER.error(str(e))
         random.shuffle(new_results)

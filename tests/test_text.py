@@ -22,32 +22,32 @@ class TestStanza:
 
     @pytest.mark.slow
     def test_tokenizer_arabic(self):
-        tokenizer = StanzaTokenizer(config=None, lang='ar', model_path=self.model_path)
+        tokenizer = StanzaNLP(lang='ar', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("في أسرتي ثلاثة أفراد.")
         assert tokens == ['في', 'أسرتي', 'ثلاثة', 'أفراد', '.']
 
     @pytest.mark.slow
     def test_tokenizer_chinese(self):
-        tokenizer = StanzaTokenizer(config=None, lang='zh', model_path=self.model_path)
+        tokenizer = StanzaNLP(lang='zh', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("不但要看,而且要帮。")
         # jieba is splitting 要看
         assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
 
     @pytest.mark.slow
     def test_tokenizer_english(self):
-        tokenizer = StanzaTokenizer(config=None, lang='en', model_path=self.model_path)
+        tokenizer = StanzaNLP(lang='en', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("Mary had a little lamb.")
         assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.']
 
     @pytest.mark.slow
     def test_tokenizer_farsi(self):
-        tokenizer = StanzaTokenizer(config=None, lang='fa', model_path=self.model_path)
+        tokenizer = StanzaNLP(lang='fa', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("شما بليز رو به فارسی چی میگین؟")
         assert tokens == ['شما', 'بليز', 'رو', 'به', 'فارسی', 'چی', 'میگین', '؟']
 
     @pytest.mark.slow
     def test_tokenizer_russian(self):
-        tokenizer = StanzaTokenizer(config=None, lang='ru', model_path=self.model_path)
+        tokenizer = StanzaNLP(lang='ru', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("Я хотел бы пива.")
         # Does the Russian model not handle punctuation well or did we hit on a bad sentence
         assert tokens == ['Я', 'хотел', 'бы', 'пива.']
@@ -59,31 +59,31 @@ class TestSpacy:
 
     @pytest.mark.slow
     def test_tokenizer_arabic(self):
-        tokenizer = SpaCyTokenizer(config=None, lang='ar', model_path=self.model_path)
+        tokenizer = SpaCyNLP(lang='ar', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("في أسرتي ثلاثة أفراد.")
         assert tokens == ['في', 'أسرتي', 'ثلاثة', 'أفراد', '.']
 
     @pytest.mark.slow
     def test_tokenizer_chinese(self):
-        tokenizer = SpaCyTokenizer(config=None, lang='zh', model_path=self.model_path)
+        tokenizer = SpaCyNLP(lang='zh', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("不但要看,而且要帮。")
         assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
 
     @pytest.mark.slow
     def test_tokenizer_english(self):
-        tokenizer = SpaCyTokenizer(config=None, lang='en', model_path=self.model_path)
+        tokenizer = SpaCyNLP(lang='en', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("Mary had a little lamb.")
         assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.']
 
     @pytest.mark.slow
     def test_tokenizer_farsi(self):
-        tokenizer = SpaCyTokenizer(config=None, lang='fa', model_path=self.model_path)
+        tokenizer = SpaCyNLP(lang='fa', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("شما بليز رو به فارسی چی میگین؟")
         assert tokens == ['شما', 'بليز', 'رو', 'به', 'فارسی', 'چی', 'میگین', '؟']
 
     @pytest.mark.slow
     def test_tokenizer_russian(self):
-        tokenizer = SpaCyTokenizer(config=None, lang='ru', model_path=self.model_path)
+        tokenizer = SpaCyNLP(lang='ru', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("Я хотел бы пива.")
         assert tokens == ['Я', 'хотел', 'бы', 'пива', '.']
 
@@ -99,12 +99,12 @@ class TestMoses:
             'تمول', 'النفقات', 'الجديدة', 'من', 'خلال', 'حساب', 'كلينتون', 'المصرفي', 'الكبير', '.',
             'الحد', 'الأقصى', 'المسموح', 'به', 'للشخص', 'الواحد', 'هو', '5000', 'دولار', '.'
         ]
-        tokenizer = MosesTokenizer(config=None, lang='ar', model_path=self.model_path)
+        tokenizer = MosesTokenizer(lang='ar', model_path=self.model_path)
         assert ans == tokenizer.tokenize(text)
 
     def test_tokenizer_chinese(self):
         with pytest.raises(ConfigError):
-            MosesTokenizer(config=None, lang='zh', model_path=self.model_path)
+            MosesTokenizer(lang='zh', model_path=self.model_path)
 
     @pytest.mark.slow
     def test_tokenizer_english(self):
@@ -113,7 +113,7 @@ class TestMoses:
             'Mary', 'had', 'a', 'little', 'lamb', '.',
             'It', "'s", 'fleece', 'was', 'white', 'as', 'snow', '.'
         ]
-        tokenizer = MosesTokenizer(config=None, lang='en', model_path=self.model_path)
+        tokenizer = MosesTokenizer(lang='en', model_path=self.model_path)
         assert ans == tokenizer.tokenize(text)
 
     @pytest.mark.slow
@@ -123,7 +123,7 @@ class TestMoses:
             'بلیت', 'را', 'پیشفروش', 'کنید', '.',
             'این', 'موافقتنامه', 'را', 'امضا', 'نخواهم', 'کرد', 'و', 'تا', 'جایی', 'که', 'بتوانم', 'در', 'مقابل', 'آن', 'پایداری', 'میکنم', '.',
         ]
-        tokenizer = MosesTokenizer(config=None, lang='fa', model_path=self.model_path)
+        tokenizer = MosesTokenizer(lang='fa', model_path=self.model_path)
         assert ans == tokenizer.tokenize(text)
 
     @pytest.mark.slow
@@ -133,7 +133,7 @@ class TestMoses:
             'Свидетель', 'рассказал', 'в', 'полиции', ',', 'что', 'потерпевший', 'напал', 'на', 'подозреваемого', 'в', 'апреле', '.',
             'Нужно', 'провести', 'параллель', 'между', 'играми', 'и', 'нашей', 'повседневной', 'жизнью', '.',
         ]
-        tokenizer = MosesTokenizer(config=None, lang='ru', model_path=self.model_path)
+        tokenizer = MosesTokenizer(lang='ru', model_path=self.model_path)
         assert ans == tokenizer.tokenize(text)
 
 
@@ -148,5 +148,5 @@ class TestNgramTokenizer:
             'Roses', 'oses ', 'ses a', 'es ar', 's are', ' are ', 'are r', 're re', 'e red', ' red.',
             'Viole', 'iolet', 'olets', 'lets ', 'ets a', 'ts ar', 's are', ' are ', 'are b', 're bl', 'e blu', ' blue', 'blue.'
         ]
-        tokenizer = NgramTokenizer(config=None, lang='en', model_path=self.model_path)
+        tokenizer = NgramTokenizer(lang='en', model_path=self.model_path)
         assert ans == tokenizer.tokenize(text)
