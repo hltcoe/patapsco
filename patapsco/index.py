@@ -1,4 +1,5 @@
 import logging
+import pathlib
 
 from .error import PatapscoError
 from .pipeline import Task
@@ -115,5 +116,5 @@ class LuceneIndexer(Task):
             raise PatapscoError(f"Reducing parallel index failed with message: {e}")
         [index.close() for index in indexes]
         # need to record the documents language in the new index
-        self.lang = (dirs[0] / ".lang").read_text()
+        self.lang = (pathlib.Path(dirs[0]) / ".lang").read_text()
         [delete_dir(item) for item in dirs]
