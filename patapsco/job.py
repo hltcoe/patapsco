@@ -135,7 +135,8 @@ class ParallelJob(Job):
     """
     def __init__(self, conf, stage1, stage2):
         super().__init__(conf, stage1, stage2)
-        self.num_processes = 2
+        self.num_stage1_processes = conf.run.stage1.num_jobs
+        self.num_stage2_processes = conf.run.stage2.num_jobs
         self.stage1_jobs = self.stage2_jobs = None
         if stage1:
             self.stage1_jobs = self._get_stage1_jobs()
@@ -148,7 +149,7 @@ class ParallelJob(Job):
         if self.stage1_jobs:
             LOGGER.info("Stage 1: Starting processing of documents")
             self.stage1.begin()
-            report1 = self.map(self.stage1_jobs)
+            report1 = self.map(self.stage1_jobs, self.num_stage1_processes)
             self.stage1.reduce()
             self.stage1.end()
             LOGGER.info("Stage 1: Ingested %d documents", report1.stage1.count)
@@ -156,19 +157,19 @@ class ParallelJob(Job):
         if self.stage2_jobs:
             LOGGER.info("Stage 2: Starting processing of queries")
             self.stage2.begin()
-            report2 = self.map(self.stage2_jobs)
+            report2 = self.map(self.stage2_jobs, self.num_stage2_processes)
             self.stage2.reduce()
             self.stage2.end()
             LOGGER.info("Stage 2: Processed %d queries", report2.stage2.count)
 
         return report1 + report2
 
-    def map(self, jobs):
+    def map(self, jobs, num_processes):
         """
         Returns:
             Report
         """
-        with concurrent.futures.ProcessPoolExecutor(max_workers=self.num_processes) as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
             # we loop in a try/except to catch errors from the jobs running in separate processes
             try:
                 return sum(executor.map(self._fork, jobs))
@@ -186,13 +187,12 @@ class ParallelJob(Job):
         file.setFormatter(logger.handlers[0].formatter)
         logger.handlers = []
         logger.addHandler(file)
-
         job = JobBuilder(job.conf).build()
         return job.run(sub_job=True)
 
     def _get_stage1_jobs(self):
         num_items = len(self.stage1.iterator)
-        job_size = int(math.ceil(num_items / self.num_processes))
+        job_size = int(math.ceil(num_items / self.num_stage1_processes))
         indices = [(i, i + job_size) for i in range(0, num_items, job_size)]
         stage1_jobs = []
         for part, (start, stop) in enumerate(indices):
@@ -208,7 +208,7 @@ class ParallelJob(Job):
 
     def _get_stage2_jobs(self):
         num_items = len(self.stage2.iterator)
-        job_size = int(math.ceil(num_items / self.num_processes))
+        job_size = int(math.ceil(num_items / self.num_stage2_processes))
         indices = [(i, i + job_size) for i in range(0, num_items, job_size)]
         stage2_jobs = []
         for part, (start, stop) in enumerate(indices):
