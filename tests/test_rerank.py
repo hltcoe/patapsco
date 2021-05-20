@@ -42,7 +42,7 @@ class TestShellReranker:
         script = str(self.directory / 'success.sh')
         config = self.create_config(script)
         reranker = ShellReranker(run_path='', config=config, db=MockDB())
-        items = [Results(Query('1', 'en', 'text'), 'en', 'test', [
+        items = [Results(Query('1', 'en', 'text', 'report'), 'en', 'test', [
             Result('aaa', 1, 0.5),
             Result('bbb', 2, 0.4)
         ])]
@@ -58,8 +58,8 @@ class TestShellReranker:
         config = self.create_config(script)
         reranker = ShellReranker(run_path='', config=config, db=MockDB())
         items = [
-            Results(Query('1', 'en', 'text'), 'en', 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
-            Results(Query('2', 'en', 'text2'), 'en', 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
+            Results(Query('1', 'en', 'text', 'report 1'), 'en', 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
+            Results(Query('2', 'en', 'text2', 'report 2'), 'en', 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
         ]
         with pytest.raises(PatapscoError):
             reranker.batch_process(items)
@@ -68,7 +68,7 @@ class TestShellReranker:
         script = str(self.directory / 'error.sh')
         config = self.create_config(script)
         reranker = ShellReranker(run_path='', config=config, db=MockDB())
-        items = [Results(Query('1', 'en', 'text'), 'en', 'test', [Result('1', 1, 0.5)])]
+        items = [Results(Query('1', 'en', 'text', 'report'), 'en', 'test', [Result('1', 1, 0.5)])]
         with pytest.raises(PatapscoError):
             reranker.batch_process(items)
 
@@ -82,7 +82,7 @@ class TestShellReranker:
         script = str(self.directory / 'success.sh')
         config = self.create_config(script)
         reranker = ShellReranker(run_path='', config=config, db=MockDB())
-        item = Results(Query('1', 'en', 'text'), 'en', 'test', [
+        item = Results(Query('1', 'en', 'text', 'report'), 'en', 'test', [
             Result('aaa', 1, 0.5),
             Result('bbb', 2, 0.4)
         ])
@@ -93,7 +93,7 @@ class TestShellReranker:
         script = str(self.directory / 'args.sh')
         config = self.create_config(script, embedding="mbert")
         reranker = ShellReranker(run_path='', config=config, db=MockDB())
-        items = [Results(Query('1', 'en', 'text'), 'en', 'test', [
+        items = [Results(Query('1', 'en', 'text', 'report'), 'en', 'test', [
             Result('aaa', 1, 0.5),
             Result('bbb', 2, 0.4)
         ])]

@@ -11,12 +11,12 @@ from patapsco.util.file import delete_dir
 
 def test_joining_results():
     item = MultiplexItem()
-    item.add("1", Results(Query("1", "en", "test"), "en", "test system", [
+    item.add("1", Results(Query("1", "en", "test", "report"), "en", "test system", [
         Result("doc1", 0, 9),
         Result("doc2", 1, 5),
         Result("doc3", 2, 2),
     ]))
-    item.add("2", Results(Query("1", "en", "test"), "en", "test system", [
+    item.add("2", Results(Query("1", "en", "test", "report"), "en", "test system", [
         Result("doc4", 0, 7),
         Result("doc2", 1, 5),
         Result("doc3", 2, 1),

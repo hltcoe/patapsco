@@ -6,7 +6,7 @@ documents:
     format: json
     lang: en
     encoding: utf8
-    path: samples/data/en_mini_dataset.jsonl
+    path: samples/data/en_mini_docs.jsonl
   process:
     normalize:
       report: true
@@ -40,7 +40,7 @@ rerank:
 score:
   input:
     format: trec
-    path: samples/data/en_mini_dataset_qrels
+    path: samples/data/en_mini_qrels
   metrics:
     - map
     - P@20
