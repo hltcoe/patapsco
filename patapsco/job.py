@@ -580,7 +580,7 @@ class JobBuilder:
 
     def check_sources_of_documents(self):
         """The docs in the index and database must come from the same source"""
-        config_path = pathlib.Path(self.conf.rerank.input.db.path) / 'config.yml'
+        config_path = pathlib.Path(self.conf.run.path) / self.conf.rerank.input.db.path / 'config.yml'
         try:
             artifact_config_dict = ConfigService().read_config_file(config_path)
         except FileNotFoundError:
