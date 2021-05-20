@@ -18,7 +18,7 @@ class Runner:
         conf = ConfigHelper.load(config_filename, overrides)
         LOGGER.info(f"Writing output to: {pathlib.Path(conf.run.path).absolute()}")
         self.add_file_logging(conf.run.path)
-        self.job = JobBuilder(conf).build()
+        self.job = JobBuilder(conf).build(verbose)
 
     def run(self):
         self.job.run()
