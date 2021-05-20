@@ -10,55 +10,33 @@ import stanza
 
 from .error import ConfigError
 from .pipeline import MultiplexItem
-from .schema import TokenizeConfig, StemConfig
-from .util import ComponentFactory
 from .util.normalize import NormalizerFactory
 
 LOGGER = logging.getLogger(__name__)
 
 
-class TokenizerFactory(ComponentFactory):
-    classes = {
-        'moses': 'MosesTokenizer',
-        'spacy': 'SpaCyTokenizer',
-        'stanza': 'StanzaTokenizer',
-        'whitespace': 'WhiteSpaceTokenizer',
-    }
-    model_directory_defaults = {
-        'moses': '/exp/scale21/resources/spacy',
-        'spacy': '/exp/scale21/resources/spacy',
-        'stanza': '/exp/scale21/resources/stanza',
-        'whitespace': None,
-    }
-    config_class = TokenizeConfig
+class Stemmer:
+    """Stemmer interface"""
 
-    @classmethod
-    def create(cls, config, *args, **kwargs):
-        """
+    def __init__(self, lang):
+        self.lang = lang
+
+    def stem(self, tokens):
+        """Stem the tokens
+
         Args:
-            config (TokenizeConfig)
+            tokens (list of str)
+
+        Returns:
+            list: A list of strings
         """
-        if not config.path:
-            try:
-                config.path = cls.model_directory_defaults[config.name]
-            except KeyError:
-                raise ConfigError(f"Unknown tokenizer: {config.name}")
-        kwargs['model_path'] = config.path
-        return super().create(config, *args, **kwargs)
-
-
-class StemmerFactory(ComponentFactory):
-    classes = {
-        'mock': 'MockStemmer',
-    }
-    config_class = StemConfig
+        pass
 
 
 class Tokenizer:
     """Tokenizer interface"""
 
-    def __init__(self, config, lang, model_path):
-        self.config = config
+    def __init__(self, lang, model_path):
         self.lang = lang.lower()
         self.model_path = model_path
 
@@ -79,11 +57,18 @@ class WhiteSpaceTokenizer(Tokenizer):
         return text.split()
 
 
-class StanzaTokenizer(Tokenizer):
+class StanzaNLP(Tokenizer, Stemmer):
     """Tokenizer that uses Stanford's stanza library"""
 
-    def __init__(self, config, lang, model_path):
-        super().__init__(config, lang, model_path)
+    def __init__(self, lang, model_path, stem):
+        """
+        Args:
+            lang (str): Language code.
+            model_path (str): Path to stanza models.
+            stem (bool): Whether to stem the tokens.
+        """
+        Stemmer.__init__(self, lang)
+        Tokenizer.__init__(self, lang, model_path)
         if self.lang == 'zh':
             self.lang = 'zh-hans'
         self._setup_logging()
@@ -95,17 +80,38 @@ class StanzaTokenizer(Tokenizer):
                 raise ConfigError(f"Cannot write to {self.model_path}. Maybe tokenize.path needs to be set.")
             if self.lang == 'zh-hans':
                 processors = {'tokenize': 'jieba'}
+            elif stem:
+                processors = 'tokenize,lemma'
             else:
                 processors = 'tokenize'
             self.nlp = stanza.Pipeline(self.lang, processors=processors, dir=self.model_path)
+            self.cache = None
         LOGGER.debug(buffer.getvalue())
 
     def tokenize(self, text):
         doc = self.nlp(text)
+        self.cache = doc  # cache the document for the stem method to pick up
         tokens = []
         for sentence in doc.sentences:
             for word in sentence.words:
                 tokens.append(word.text)
+        return tokens
+
+    ARABIC_DIACRITICS = {'\u064b', '\u064c', '\u064d', '\u064e', '\u064f', '\u0650', '\u0651', '\u0652'}
+    diacritic_remove = str.maketrans('', '', ''.join(ARABIC_DIACRITICS))
+
+    def stem(self, tokens):
+        tokens = []
+        for sentence in self.cache.sentences:
+            for token in sentence.words:
+                if token.lemma:
+                    # TODO Persian lemmas sometimes have # characters in them
+                    if self.lang == 'ar':
+                        # Arabic lemmas have full diacritization
+                        token.lemma = token.lemma.translate(self.diacritic_remove)
+                    tokens.append(token.lemma)
+                else:
+                    tokens.append(token.text)
         return tokens
 
     @staticmethod
@@ -118,7 +124,7 @@ class StanzaTokenizer(Tokenizer):
             stanza_logger.addHandler(handler)
 
 
-class SpaCyModelLoader:
+class SpacyModelLoader:
     """Load the spaCy model and install if needed"""
 
     model_info = {
@@ -144,7 +150,8 @@ class SpaCyModelLoader:
         }
     }
 
-    exclude = ['tok2vec', 'morphologizer', 'tagger', 'parser', 'ner', 'attribute_ruler', 'lemmatizer']
+    exclude = ['ner', 'parser']
+    disable = ['tok2vec', 'tagger', 'attribute_ruler', 'lemmatizer', 'morphologizer']
 
     loaders = {}
 
@@ -152,7 +159,7 @@ class SpaCyModelLoader:
     def get_loader(cls, model_path):
         # use this so that models are shared across tasks
         if model_path not in cls.loaders:
-            cls.loaders[model_path] = SpaCyModelLoader(model_path)
+            cls.loaders[model_path] = SpacyModelLoader(model_path)
         return cls.loaders[model_path]
 
     def __init__(self, model_path):
@@ -169,7 +176,7 @@ class SpaCyModelLoader:
         path = self.model_path / f"{self.model_info[lang]['name']}-{self.model_info[lang]['version']}"
         if path.exists():
             LOGGER.info(f"Loading the {lang} spacy model")
-            nlp = spacy.load(str(path), exclude=self.exclude)
+            nlp = spacy.load(str(path), exclude=self.exclude, disable=self.disable)
         else:
             # probably not on grid so we try to load locally or download
             model_name = self.model_info[lang]['name']
@@ -178,21 +185,42 @@ class SpaCyModelLoader:
                 LOGGER.info(f"Downloading the {lang} spacy model. This may take a few minutes...")
                 spacy.cli.download(model_name)
             LOGGER.info(f"Loading the {lang} spacy model")
-            nlp = spacy.load(model_name, exclude=self.exclude)
+            nlp = spacy.load(model_name, exclude=self.exclude, disable=self.disable)
         self.models[lang] = nlp
         return nlp
 
 
-class SpaCyTokenizer(Tokenizer):
+class SpacyNLP(Tokenizer, Stemmer):
     """Tokenizer that uses the spaCy package"""
 
-    def __init__(self, config, lang, model_path):
-        super().__init__(config, lang, model_path)
-        self.nlp = SpaCyModelLoader.get_loader(model_path).load(lang)
+    def __init__(self, lang, model_path, stem):
+        """
+        Args:
+            lang (str): Language code.
+            model_path (str): Path to stored models.
+            stem (bool): Whether to stem the tokens.
+        """
+        Stemmer.__init__(self, lang)
+        Tokenizer.__init__(self, lang, model_path)
+        self.nlp = SpacyModelLoader.get_loader(model_path).load(lang)
+        print(self.nlp.pipeline)
+        self.cache = None
+        if stem:
+            if lang in ['ar', 'fa', 'zh']:
+                raise ConfigError(f"Spacy does not support lemmatization for {lang}")
+            # enable pipeline components that the lemmatizer depends on
+            names = self.nlp.component_names
+            for name in set(names) & {'tok2vec', 'tagger', 'attribute_ruler', 'lemmatizer', 'morphologizer'}:
+                self.nlp.enable_pipe(name)
 
     def tokenize(self, text):
         tokens = self.nlp(text)
+        self.cache = tokens
         return [str(token) for token in tokens]
+
+    def stem(self, tokens):
+        tokens = self.cache
+        return [token.lemma_ if token.lemma_ else token.text for token in tokens]
 
 
 class MosesTokenizer(Tokenizer):
@@ -205,13 +233,18 @@ class MosesTokenizer(Tokenizer):
         'ru': 'ru',
     }
 
-    def __init__(self, config, lang, model_path):
-        super().__init__(config, lang, model_path)
+    def __init__(self, lang, model_path):
+        """
+        Args:
+            lang (str): Language code.
+            model_path (str): Path to spaCy models.
+        """
+        super().__init__(lang, model_path)
         if lang == 'zh':
             raise ConfigError("MosesTokenizer does not support Chinese.")
         self.tokenizer = sacremoses.MosesTokenizer(lang=self.languages[lang])
         # we need to segment sentences with spaCy before running the tokenizer
-        self.nlp = SpaCyModelLoader.get_loader(model_path).load(lang)
+        self.nlp = SpacyModelLoader.get_loader(model_path).load(lang)
         self.nlp.enable_pipe("senter")
 
     def tokenize(self, text):
@@ -231,11 +264,16 @@ class NgramTokenizer(Tokenizer):
         'zh': 2
     }
 
-    def __init__(self, config, lang, model_path):
-        super().__init__(config, lang, model_path)
+    def __init__(self, lang, model_path):
+        """
+        Args:
+            lang (str): Language code.
+            model_path (str): Path to spaCy models.
+        """
+        super().__init__(lang, model_path)
         self.n = self.languages[lang]
         # segment sentences with spaCy before create ngrams
-        self.nlp = SpaCyModelLoader.get_loader(model_path).load(lang)
+        self.nlp = SpacyModelLoader.get_loader(model_path).load(lang)
         self.nlp.enable_pipe("senter")
 
     def tokenize(self, text):
@@ -271,34 +309,6 @@ class StopWordsRemoval:
         else:
             tokens = [token for token in tokens if token not in self.words]
         return tokens
-
-
-class Stemmer:
-    """Stemmer interface"""
-
-    def __init__(self, config, lang):
-        self.config = config
-        self.lang = lang
-
-    def stem(self, tokens):
-        """Stem the tokens
-
-        Args:
-            tokens (list of str)
-
-        Returns:
-            list: A list of strings
-        """
-        pass
-
-
-class MockStemmer(Stemmer):
-    def __init__(self, config, lang):
-        super().__init__(config, lang)
-        self.length = 5
-
-    def stem(self, tokens):
-        return [x[:self.length] for x in tokens]
 
 
 class Splitter:
@@ -342,25 +352,77 @@ class TextProcessor:
     """Normalizes, segments, and performs other standardization on text
 
     Used on both documents and queries.
+
+    Tokenizer and stemmer combinations:
+     - stanza + stanza (ar, en, fa, ru)
+     - jieba + no stemming (zh)
+     - spacy + spacy (ar, en, fa, ru)
+     - spacy + no stemming (zh)
+     - moses + no stemming
+     - ngrams + no stemming
+    TODO add stemmers like Porter that can be used with moses or other tokenizers
     """
     def __init__(self, config, lang):
         """
         Args:
             config (TextProcessorConfig)
-            lang (str)
+            lang (str): Language code
         """
         self.config = config
         self.lang = lang
+        self._validate_config(config, lang)
         self.normalizer = NormalizerFactory.create(lang)
-        self.tokenizer = TokenizerFactory.create(self.config.tokenize, lang)
-        if self.config.stem:
-            self.stemmer = StemmerFactory.create(self.config.stem, lang)
-        else:
-            self.stemmer = None
+        self.tokenizer, self.stemmer = self._create_tokenizer_and_stemmer(config, lang)
         if self.config.stopwords:
             self.stopwords = StopWordsRemoval(self.config.stopwords, lang)
         else:
             self.stopwords = None
+
+    @staticmethod
+    def _validate_config(config, lang):
+        if config.tokenize.name not in ['moses', 'ngram', 'spacy', 'stanza', 'whitespace']:
+            raise ConfigError(f"Unknown tokenizer {config.tokenize.name}")
+        if config.stem and config.tokenize.name in ['moses', 'ngram', 'whitespace']:
+            raise ConfigError(f"Cannot use stemming with the tokenizer {config.tokenize.name}")
+        if config.stem and lang == 'zh':
+            raise ConfigError(f"Cannot use stemming with language {lang}")
+
+    def _create_tokenizer_and_stemmer(self, config, lang):
+        tokenizer_name = config.tokenize.name
+        use_stemmer = bool(config.stem)
+        stemmer = tokenizer = None
+        model_path = self._get_model_path(tokenizer_name, config.tokenize.path)
+
+        if use_stemmer:
+            if tokenizer_name == "spacy":
+                tokenizer = stemmer = SpacyNLP(lang, model_path, stem=True)
+            elif tokenizer_name == "stanza":
+                tokenizer = stemmer = StanzaNLP(lang, model_path, stem=True)
+        else:
+            if tokenizer_name == 'spacy':
+                tokenizer = SpacyNLP(lang, model_path, stem=False)
+            elif tokenizer_name == 'stanza':
+                tokenizer = StanzaNLP(lang, model_path, stem=False)
+            elif tokenizer_name == 'moses':
+                tokenizer = MosesTokenizer(lang, model_path)
+            elif tokenizer_name == 'ngram':
+                tokenizer = NgramTokenizer(lang, model_path)
+            elif tokenizer_name == 'whitespace':
+                tokenizer = WhiteSpaceTokenizer(lang, model_path)
+        return tokenizer, stemmer
+
+    @staticmethod
+    def _get_model_path(name, path):
+        model_directory_defaults = {
+            'ngram': '/exp/scale21/resources/spacy',
+            'moses': '/exp/scale21/resources/spacy',
+            'spacy': '/exp/scale21/resources/spacy',
+            'stanza': '/exp/scale21/resources/stanza',
+            'whitespace': None,
+        }
+        if path:
+            return path
+        return model_directory_defaults[name]
 
     def normalize(self, text):
         return self.normalizer.normalize(text)
