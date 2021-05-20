@@ -20,6 +20,7 @@ class Topic:
     title: str
     desc: Optional[str]
     narr: Optional[str]
+    report: Optional[str]
 
 
 @dataclasses.dataclass
@@ -27,6 +28,7 @@ class Query:
     id: str
     lang: str
     text: str
+    report: Optional[str]
 
 
 class TopicReaderFactory(ReaderFactory):
@@ -71,7 +73,7 @@ class TopicProcessor(Task):
             Query
         """
         text = ' '.join([getattr(topic, f).strip() for f in self.fields])
-        return Query(topic.id, topic.lang, text)
+        return Query(topic.id, topic.lang, text, topic.report)
 
     @classmethod
     def _extract_fields(cls, fields_str):
@@ -98,7 +100,7 @@ class SgmlTopicReader(InputIterator):
     def __next__(self):
         topic = next(self.topics)
         identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
-        return Topic(identifier, self.lang, topic[1], topic[2], topic[3])
+        return Topic(identifier, self.lang, topic[1], topic[2], topic[3], None)
 
     def __len__(self):
         return count_lines_with('<top>', self.path, self.encoding)
@@ -120,7 +122,7 @@ class XmlTopicReader(InputIterator):
     def __next__(self):
         topic = next(self.topics)
         identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
-        return Topic(identifier, topic[1], topic[2], topic[3], topic[4])
+        return Topic(identifier, topic[1], topic[2], topic[3], topic[4], None)
 
     def __len__(self):
         return count_lines_with('<topic', self.path, self.encoding)
@@ -155,7 +157,7 @@ class Hc4JsonTopicReader(InputIterator):
         try:
             title = data['topic_title'].strip()
             desc = data['topic_description'].strip()
-            return Topic(data['topic_id'], self.lang, title, desc, None)
+            return Topic(data['topic_id'], self.lang, title, desc, None, data['report_text'])
         except KeyError as e:
             raise ParseError(f"Missing field {e} in json docs element: {data}")
 
@@ -181,7 +183,7 @@ class TsvTopicReader(InputIterator):
 
     def __next__(self):
         topic = next(self.topics)
-        return Topic(topic[0], self.lang, topic[1], None, None)
+        return Topic(topic[0], self.lang, topic[1], None, None, None)
 
     def __len__(self):
         return count_lines(self.path, self.encoding)
@@ -283,21 +285,21 @@ class QueryProcessor(Task, TextProcessor):
         text = query.text
         text = self.normalize(text)
         tokens = self.tokenize(text)
-        self.splitter.add('tokenize', Query(query.id, query.lang, ' '.join(tokens)))
+        self.splitter.add('tokenize', Query(query.id, query.lang, ' '.join(tokens), query.report))
         if self.config.lowercase:
             tokens = self.lowercase(tokens)
-        self.splitter.add('lowercase', Query(query.id, query.lang, ' '.join(tokens)))
+        self.splitter.add('lowercase', Query(query.id, query.lang, ' '.join(tokens), query.report))
         if self.config.stopwords:
             tokens = self.remove_stop_words(tokens, not self.config.lowercase)
-        self.splitter.add('stopwords', Query(query.id, query.lang, ' '.join(tokens)))
+        self.splitter.add('stopwords', Query(query.id, query.lang, ' '.join(tokens), query.report))
         if self.config.stem:
             tokens = self.stem(tokens)
-        self.splitter.add('stem', Query(query.id, query.lang, ' '.join(tokens)))
+        self.splitter.add('stem', Query(query.id, query.lang, ' '.join(tokens), query.report))
 
         if self.splitter:
             return self.splitter.get()
         else:
-            return Query(query.id, query.lang, ' '.join(tokens))
+            return Query(query.id, query.lang, ' '.join(tokens), query.report)
 
     @property
     def name(self):

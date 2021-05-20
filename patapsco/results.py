@@ -83,8 +83,8 @@ class TrecResultsReader:
             for row in reader:
                 system = row[5]
                 data[row[0]].append(Result(row[2], int(row[3]), float(row[4])))
-        # the trec results file does not contain language or the query text
-        self.results = iter([Results(Query(query_id, lang, None), None, system, results)
+        # the trec results file does not contain query language, text, or report
+        self.results = iter([Results(Query(query_id, lang, '', None), '', system, results)
                              for query_id, results in data.items()])
 
     def __iter__(self):

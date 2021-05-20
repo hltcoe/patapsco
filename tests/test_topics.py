@@ -11,7 +11,7 @@ def test_topic_process():
             self.fields = fields
 
     mock = Mock(['title', 'desc'])
-    topic = Topic('1', 'en', 'title', 'desc', 'narr')
+    topic = Topic('1', 'en', 'title', 'desc', 'narr', 'report')
     query = TopicProcessor.process(mock, topic)
     assert query.text == "title desc"
 
@@ -50,10 +50,12 @@ def test_parse_json_topics():
     assert topic.id == '001'
     assert topic.title == 'Test 1'
     assert topic.desc == 'First test'
+    assert topic.report == 'report 1'
     topic = next(topic_iter)
     assert topic.id == '002'
     assert topic.title == 'Test 2'
     assert topic.desc == 'Second test'
+    assert topic.report == 'report 2'
     with pytest.raises(StopIteration):
         next(topic_iter)
 
@@ -65,9 +67,11 @@ def test_query_reader():
     assert query.id == '001'
     assert query.lang == 'en'
     assert query.text == 'test 1'
+    assert query.report == 'report 1'
     query = next(query_iter)
     assert query.id == '002'
     assert query.lang == 'en'
     assert query.text == 'test 2'
+    assert query.report == 'report 2'
     with pytest.raises(StopIteration):
         next(query_iter)
