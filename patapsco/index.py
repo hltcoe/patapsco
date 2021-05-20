@@ -107,11 +107,13 @@ class LuceneIndexer(Task):
 
     def reduce(self, dirs):
         """Reduce from multiple parallel indexes to a single index"""
-        LOGGER.debug(f"Reducing to a single lucene index from {', '.join(dirs)}")
+        LOGGER.debug("Reducing to a single lucene index from %s", ', '.join(str(x) for x in dirs))
         indexes = [self.java.FSDirectory.open(self.java.Paths.get(str(item))) for item in dirs]
         try:
             self.writer.addIndexes(*indexes)
         except self.java.JavaException as e:
             raise PatapscoError(f"Reducing parallel index failed with message: {e}")
         [index.close() for index in indexes]
+        # need to record the documents language in the new index
+        self.lang = (dirs[0] / ".lang").read_text()
         [delete_dir(item) for item in dirs]
