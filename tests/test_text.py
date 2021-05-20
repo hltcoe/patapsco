@@ -91,33 +91,49 @@ class TestSpacy:
 
     @pytest.mark.slow
     def test_tokenizer_arabic(self):
-        tokenizer = SpaCyNLP(lang='ar', model_path=self.model_path, stem=False)
+        tokenizer = SpacyNLP(lang='ar', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("في أسرتي ثلاثة أفراد.")
         assert tokens == ['في', 'أسرتي', 'ثلاثة', 'أفراد', '.']
 
     @pytest.mark.slow
     def test_tokenizer_chinese(self):
-        tokenizer = SpaCyNLP(lang='zh', model_path=self.model_path, stem=False)
+        tokenizer = SpacyNLP(lang='zh', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("不但要看,而且要帮。")
         assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
 
     @pytest.mark.slow
     def test_tokenizer_english(self):
-        tokenizer = SpaCyNLP(lang='en', model_path=self.model_path, stem=False)
+        tokenizer = SpacyNLP(lang='en', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("Mary had a little lamb.")
         assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.']
 
     @pytest.mark.slow
+    def test_stemmer_english(self):
+        text = 'A witness told police that the victim had attacked the suspect in April.'
+        ans = ['a', "witness", 'tell', 'police', 'that', 'the', 'victim', 'have', 'attack', 'the', 'suspect', 'in', 'April', '.']
+        nlp = SpacyNLP(lang='en', model_path=self.model_path, stem=True)
+        tokens = nlp.tokenize(text)
+        assert ans == nlp.stem(tokens)
+
+    @pytest.mark.slow
     def test_tokenizer_farsi(self):
-        tokenizer = SpaCyNLP(lang='fa', model_path=self.model_path, stem=False)
+        tokenizer = SpacyNLP(lang='fa', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("شما بليز رو به فارسی چی میگین؟")
         assert tokens == ['شما', 'بليز', 'رو', 'به', 'فارسی', 'چی', 'میگین', '؟']
 
     @pytest.mark.slow
     def test_tokenizer_russian(self):
-        tokenizer = SpaCyNLP(lang='ru', model_path=self.model_path, stem=False)
+        tokenizer = SpacyNLP(lang='ru', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("Я хотел бы пива.")
         assert tokens == ['Я', 'хотел', 'бы', 'пива', '.']
+
+    @pytest.mark.slow
+    def test_stemmer_russian(self):
+        text = 'Новые расходы финансируются благодаря крупным суммам на банковском счету Клинтон.'
+        ans = ['новый', 'расход', 'финансироваться', 'благодаря', 'крупный', 'сумма', 'на', 'банковский', 'счёт', 'клинтон', '.']
+        nlp = SpacyNLP(lang='ru', model_path=self.model_path, stem=True)
+        tokens = nlp.tokenize(text)
+        assert ans == nlp.stem(tokens)
 
 
 class TestMoses:

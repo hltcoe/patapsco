@@ -124,7 +124,7 @@ class StanzaNLP(Tokenizer, Stemmer):
             stanza_logger.addHandler(handler)
 
 
-class SpaCyModelLoader:
+class SpacyModelLoader:
     """Load the spaCy model and install if needed"""
 
     model_info = {
@@ -150,7 +150,8 @@ class SpaCyModelLoader:
         }
     }
 
-    exclude = ['tok2vec', 'morphologizer', 'tagger', 'parser', 'ner', 'attribute_ruler', 'lemmatizer']
+    exclude = ['ner', 'parser']
+    disable = ['tok2vec', 'tagger', 'attribute_ruler', 'lemmatizer', 'morphologizer']
 
     loaders = {}
 
@@ -158,7 +159,7 @@ class SpaCyModelLoader:
     def get_loader(cls, model_path):
         # use this so that models are shared across tasks
         if model_path not in cls.loaders:
-            cls.loaders[model_path] = SpaCyModelLoader(model_path)
+            cls.loaders[model_path] = SpacyModelLoader(model_path)
         return cls.loaders[model_path]
 
     def __init__(self, model_path):
@@ -175,7 +176,7 @@ class SpaCyModelLoader:
         path = self.model_path / f"{self.model_info[lang]['name']}-{self.model_info[lang]['version']}"
         if path.exists():
             LOGGER.info(f"Loading the {lang} spacy model")
-            nlp = spacy.load(str(path), exclude=self.exclude)
+            nlp = spacy.load(str(path), exclude=self.exclude, disable=self.disable)
         else:
             # probably not on grid so we try to load locally or download
             model_name = self.model_info[lang]['name']
@@ -184,12 +185,12 @@ class SpaCyModelLoader:
                 LOGGER.info(f"Downloading the {lang} spacy model. This may take a few minutes...")
                 spacy.cli.download(model_name)
             LOGGER.info(f"Loading the {lang} spacy model")
-            nlp = spacy.load(model_name, exclude=self.exclude)
+            nlp = spacy.load(model_name, exclude=self.exclude, disable=self.disable)
         self.models[lang] = nlp
         return nlp
 
 
-class SpaCyNLP(Tokenizer, Stemmer):
+class SpacyNLP(Tokenizer, Stemmer):
     """Tokenizer that uses the spaCy package"""
 
     def __init__(self, lang, model_path, stem):
@@ -201,14 +202,25 @@ class SpaCyNLP(Tokenizer, Stemmer):
         """
         Stemmer.__init__(self, lang)
         Tokenizer.__init__(self, lang, model_path)
-        self.nlp = SpaCyModelLoader.get_loader(model_path).load(lang)
+        self.nlp = SpacyModelLoader.get_loader(model_path).load(lang)
+        print(self.nlp.pipeline)
+        self.cache = None
+        if stem:
+            if lang in ['ar', 'fa', 'zh']:
+                raise ConfigError(f"Spacy does not support lemmatization for {lang}")
+            # enable pipeline components that the lemmatizer depends on
+            names = self.nlp.component_names
+            for name in set(names) & {'tok2vec', 'tagger', 'attribute_ruler', 'lemmatizer', 'morphologizer'}:
+                self.nlp.enable_pipe(name)
 
     def tokenize(self, text):
         tokens = self.nlp(text)
+        self.cache = tokens
         return [str(token) for token in tokens]
 
     def stem(self, tokens):
-        return tokens
+        tokens = self.cache
+        return [token.lemma_ if token.lemma_ else token.text for token in tokens]
 
 
 class MosesTokenizer(Tokenizer):
@@ -232,7 +244,7 @@ class MosesTokenizer(Tokenizer):
             raise ConfigError("MosesTokenizer does not support Chinese.")
         self.tokenizer = sacremoses.MosesTokenizer(lang=self.languages[lang])
         # we need to segment sentences with spaCy before running the tokenizer
-        self.nlp = SpaCyModelLoader.get_loader(model_path).load(lang)
+        self.nlp = SpacyModelLoader.get_loader(model_path).load(lang)
         self.nlp.enable_pipe("senter")
 
     def tokenize(self, text):
@@ -261,7 +273,7 @@ class NgramTokenizer(Tokenizer):
         super().__init__(lang, model_path)
         self.n = self.languages[lang]
         # segment sentences with spaCy before create ngrams
-        self.nlp = SpaCyModelLoader.get_loader(model_path).load(lang)
+        self.nlp = SpacyModelLoader.get_loader(model_path).load(lang)
         self.nlp.enable_pipe("senter")
 
     def tokenize(self, text):
@@ -383,12 +395,12 @@ class TextProcessor:
 
         if use_stemmer:
             if tokenizer_name == "spacy":
-                tokenizer = stemmer = SpaCyNLP(lang, model_path, stem=True)
+                tokenizer = stemmer = SpacyNLP(lang, model_path, stem=True)
             elif tokenizer_name == "stanza":
                 tokenizer = stemmer = StanzaNLP(lang, model_path, stem=True)
         else:
             if tokenizer_name == 'spacy':
-                tokenizer = SpaCyNLP(lang, model_path, stem=False)
+                tokenizer = SpacyNLP(lang, model_path, stem=False)
             elif tokenizer_name == 'stanza':
                 tokenizer = StanzaNLP(lang, model_path, stem=False)
             elif tokenizer_name == 'moses':
