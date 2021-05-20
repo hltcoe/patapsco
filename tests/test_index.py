@@ -38,43 +38,38 @@ class TestLuceneIndex:
         conf = IndexConfig(name='lucene', output=str(output_directory))
         li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
         li.begin()
-        li.process(Doc("1235", "unknown", "this is a another test"))
-        li.writer.close()
+        li.process(Doc("1234", "en", "this is a another test"))
+        li.end()
         assert output_directory.exists()
 
         output_directory = run_directory / pathlib.Path('testIndex') / 'part_1'
         conf = IndexConfig(name='lucene', output=str(output_directory))
         li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
         li.begin()
-        li.process(Doc("1234", "unknown", "this is a test"))
-        li.writer.close()
+        li.process(Doc("5678", "en", "this is a test"))
+        li.end()
         assert output_directory.exists()
 
         output_directory = run_directory / pathlib.Path('testIndex')
         conf = IndexConfig(name='lucene', output=str(output_directory))
         li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
         li.begin()
-        li.process(Doc("1236", "unknown", "this is a third test"))
         li.reduce([str(output_directory / 'part_0'), str(output_directory / 'part_1')])
         li.end()
         assert output_directory.exists()
 
-        retConfig = RetrieveConfig(
+        ret_config = RetrieveConfig(
             input=RetrieveInputConfig(index=PathConfig(path=str(self.temp_dir / "testIndex"))),
             name="test",
             output="retrieve")
-        retriever = PyseriniRetriever(run_path='.', config=retConfig)
+        retriever = PyseriniRetriever(run_path='.', config=ret_config)
         retriever.begin()
         results = retriever.process(Query('123', 'en', 'test'))
-        assert len(results.results) == 3
+        assert len(results.results) == 2
 
         other_results = retriever.process(Query('124', 'en', 'another'))
         assert len(other_results.results) == 1
-        assert other_results.results[0].doc_id == '1235'
-
-        more_results = retriever.process(Query('123', 'en', 'third'))
-        assert len(more_results.results) == 1
-        assert more_results.results[0].doc_id == '1236'
+        assert other_results.results[0].doc_id == '1234'
 
         retriever.end()
 
