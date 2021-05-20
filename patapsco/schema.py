@@ -200,8 +200,9 @@ Main
 
 class StageConfig(BaseConfig):
     """Configuration for one of the stages"""
-    mode: str = "streaming"
-    batch_size: Optional[int]  # default is a single batch
+    mode: str = "streaming"  # streaming or batch
+    batch_size: Optional[int]  # for batch, the default is a single batch
+    num_jobs: int = 2  # number of parallel jobs
     # start and stop are intended for parallel processing
     start: Optional[int]  # O-based index of start position in input (inclusive)
     stop: Optional[int]  # O-based index of stop position in input (exclusive)
