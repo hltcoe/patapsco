@@ -97,11 +97,18 @@ class StanzaNLP(Tokenizer, Stemmer):
                 tokens.append(word.text)
         return tokens
 
+    ARABIC_DIACRITICS = {'\u064b', '\u064c', '\u064d', '\u064e', '\u064f', '\u0650', '\u0651', '\u0652'}
+    diacritic_remove = str.maketrans('', '', ''.join(ARABIC_DIACRITICS))
+
     def stem(self, tokens):
         tokens = []
         for sentence in self.cache.sentences:
             for token in sentence.words:
                 if token.lemma:
+                    # TODO Persian lemmas sometimes have # characters in them
+                    if self.lang == 'ar':
+                        # Arabic lemmas have full diacritization
+                        token.lemma = token.lemma.translate(self.diacritic_remove)
                     tokens.append(token.lemma)
                 else:
                     tokens.append(token.text)

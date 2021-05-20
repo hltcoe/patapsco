@@ -26,6 +26,14 @@ class TestStanza:
         tokens = tokenizer.tokenize("في أسرتي ثلاثة أفراد.")
         assert tokens == ['في', 'أسرتي', 'ثلاثة', 'أفراد', '.']
 
+    @pytest.mark.skip(reason="stanza arabic model struggles - may be problem with foreign words")
+    def test_stemmer_arabic(self):
+        text = 'فيلم جاذبية يتصدر ترشيحات جوائز الأكاديمية البريطانية لفنون الفيلم والتلفزيون.'
+        ans = ['فيلم', 'جاذبية', 'تصدر', 'ترشيح', 'جائزة', 'أكاديمية', 'بريطاني', 'فن', 'فيلم', 'تلفزيون', '.']
+        nlp = StanzaNLP(lang='ar', model_path=self.model_path, stem=True)
+        tokens = nlp.tokenize(text)
+        assert ans == nlp.stem(tokens)
+
     @pytest.mark.slow
     def test_tokenizer_chinese(self):
         tokenizer = StanzaNLP(lang='zh', model_path=self.model_path, stem=False)
@@ -40,10 +48,26 @@ class TestStanza:
         assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.']
 
     @pytest.mark.slow
+    def test_stemmer_english(self):
+        text = 'It\'s fleece was white as snow.'
+        ans = ['it', "'s", 'fleece', 'be', 'white', 'as', 'snow', '.']
+        nlp = StanzaNLP(lang='en', model_path=self.model_path, stem=True)
+        tokens = nlp.tokenize(text)
+        assert ans == nlp.stem(tokens)
+
+    @pytest.mark.slow
     def test_tokenizer_farsi(self):
         tokenizer = StanzaNLP(lang='fa', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("شما بليز رو به فارسی چی میگین؟")
         assert tokens == ['شما', 'بليز', 'رو', 'به', 'فارسی', 'چی', 'میگین', '؟']
+
+    @pytest.mark.slow
+    def test_stemmer_farsi(self):
+        text = 'چگونه می‌توان با جاماسپ در نقشه‌ها پیمایش کرد؟'
+        ans = ['چگونه', '#توان', 'با', 'جاماسپ', 'در', 'نقشه', 'پیمایش', 'کرد#کن', '؟']
+        nlp = StanzaNLP(lang='fa', model_path=self.model_path, stem=True)
+        tokens = nlp.tokenize(text)
+        assert ans == nlp.stem(tokens)
 
     @pytest.mark.slow
     def test_tokenizer_russian(self):
@@ -51,6 +75,14 @@ class TestStanza:
         tokens = tokenizer.tokenize("Я хотел бы пива.")
         # Does the Russian model not handle punctuation well or did we hit on a bad sentence
         assert tokens == ['Я', 'хотел', 'бы', 'пива.']
+
+    @pytest.mark.slow
+    def test_stemmer_russian(self):
+        text = 'Новые расходы финансируются благодаря крупным суммам на банковском счету Клинтон.'
+        ans = ['новый', 'расход', 'финансировать', 'благодаря', 'крупный', 'сумма', 'на', 'банковский', 'счет', 'Клинтон', '.']
+        nlp = StanzaNLP(lang='ru', model_path=self.model_path, stem=True)
+        tokens = nlp.tokenize(text)
+        assert ans == nlp.stem(tokens)
 
 
 class TestSpacy:
