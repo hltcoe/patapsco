@@ -4,6 +4,7 @@ import functools
 import json
 import logging
 import math
+import multiprocessing
 import pathlib
 import sys
 
@@ -19,7 +20,7 @@ from .retrieve import Joiner, RetrieverFactory
 from .schema import RunnerConfig, PipelineMode, Tasks
 from .score import QrelsReaderFactory, Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
-from .util import DataclassJSONEncoder, SlicedIterator, Timer
+from .util import DataclassJSONEncoder, LoggingFilter, SlicedIterator, Timer
 from .util.file import delete_dir, is_complete, path_append
 
 LOGGER = logging.getLogger(__name__)
@@ -133,15 +134,15 @@ class ParallelJob(Job):
 
     This uses concurrent.futures to implement map/reduce over the input iterators.
     """
-    def __init__(self, conf, stage1, stage2):
+    def __init__(self, conf, stage1, stage2, verbose):
         super().__init__(conf, stage1, stage2)
-        self.num_stage1_processes = conf.run.stage1.num_jobs
-        self.num_stage2_processes = conf.run.stage2.num_jobs
+        multiprocessing.set_start_method('spawn')  # so JVM doesn't get copied to child processes
+        self.verbose = verbose
         self.stage1_jobs = self.stage2_jobs = None
         if stage1:
-            self.stage1_jobs = self._get_stage1_jobs()
+            self.stage1_jobs = self._get_stage1_jobs(conf.run.stage1.num_jobs)
         if stage2:
-            self.stage2_jobs = self._get_stage2_jobs()
+            self.stage2_jobs = self._get_stage2_jobs(conf.run.stage2.num_jobs)
 
     def _run(self):
         report1 = Report()
@@ -149,7 +150,7 @@ class ParallelJob(Job):
         if self.stage1_jobs:
             LOGGER.info("Stage 1: Starting processing of documents")
             self.stage1.begin()
-            report1 = self.map(self.stage1_jobs, self.num_stage1_processes)
+            report1 = self.map(self.stage1_jobs, self.verbose)
             self.stage1.reduce()
             self.stage1.end()
             LOGGER.info("Stage 1: Ingested %d documents", report1.stage1.count)
@@ -157,42 +158,50 @@ class ParallelJob(Job):
         if self.stage2_jobs:
             LOGGER.info("Stage 2: Starting processing of queries")
             self.stage2.begin()
-            report2 = self.map(self.stage2_jobs, self.num_stage2_processes)
+            report2 = self.map(self.stage2_jobs, self.verbose)
             self.stage2.reduce()
             self.stage2.end()
             LOGGER.info("Stage 2: Processed %d queries", report2.stage2.count)
 
         return report1 + report2
 
-    def map(self, jobs, num_processes):
+    def map(self, jobs, verbose):
         """
+        Args:
+            jobs (list of ParallelJobDef): Job definitions to be mapped over.
+            verbose (bool): Verbose logging.
         Returns:
             Report
         """
-        with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
+        func = functools.partial(self._fork, verbose=verbose)
+        with concurrent.futures.ProcessPoolExecutor(max_workers=len(jobs)) as executor:
             # we loop in a try/except to catch errors from the jobs running in separate processes
             try:
-                return sum(executor.map(self._fork, jobs))
+                return sum(executor.map(func, jobs))
             except Exception as e:
                 LOGGER.error(f"Parallel job failed with {e}")
                 sys.exit(-1)
 
     @staticmethod
-    def _fork(job):
+    def _fork(job, verbose):
         # only log parallel jobs to their unique log file
-        log_file = path_append(job.conf.run.path, f"patapsco.log.{job.id}")
+        log_level = logging.DEBUG if verbose else logging.INFO
         logger = logging.getLogger('patapsco')
+        logger.setLevel(log_level)
+        log_file = path_append(job.conf.run.path, f"patapsco.{job.id}.log")
         file = logging.FileHandler(log_file)
         file.setLevel(logger.level)
-        file.setFormatter(logger.handlers[0].formatter)
-        logger.handlers = []
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file.setFormatter(formatter)
+        file.addFilter(LoggingFilter())
         logger.addHandler(file)
-        job = JobBuilder(job.conf).build()
+
+        job = JobBuilder(job.conf).build(verbose)
         return job.run(sub_job=True)
 
-    def _get_stage1_jobs(self):
+    def _get_stage1_jobs(self, num_processes):
         num_items = len(self.stage1.iterator)
-        job_size = int(math.ceil(num_items / self.num_stage1_processes))
+        job_size = int(math.ceil(num_items / num_processes))
         indices = [(i, i + job_size) for i in range(0, num_items, job_size)]
         stage1_jobs = []
         for part, (start, stop) in enumerate(indices):
@@ -206,9 +215,9 @@ class ParallelJob(Job):
             stage1_jobs.append(ParallelJobDef(part, conf))
         return stage1_jobs
 
-    def _get_stage2_jobs(self):
+    def _get_stage2_jobs(self, num_processes):
         num_items = len(self.stage2.iterator)
-        job_size = int(math.ceil(num_items / self.num_stage2_processes))
+        job_size = int(math.ceil(num_items / num_processes))
         indices = [(i, i + job_size) for i in range(0, num_items, job_size)]
         stage2_jobs = []
         for part, (start, stop) in enumerate(indices):
@@ -285,7 +294,12 @@ class JobBuilder:
         self.doc_lang = None
         self.query_lang = None
 
-    def build(self):
+    def build(self, verbose):
+        """Build the job(s) for this run
+
+        Args:
+            verbose (bool): Should the logging be verbose.
+        """
         stage1 = stage2 = None
         stage1_plan = []
         stage2_plan = []
@@ -316,7 +330,7 @@ class JobBuilder:
             self.check_text_processing()
 
         if self.conf.run.parallel:
-            return ParallelJob(self.conf, stage1, stage2)
+            return ParallelJob(self.conf, stage1, stage2, verbose)
         else:
             return SerialJob(self.conf, stage1, stage2)
 
