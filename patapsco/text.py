@@ -4,6 +4,7 @@ import itertools
 import logging
 import pathlib
 
+import nltk
 import sacremoses
 import spacy
 import stanza
@@ -31,6 +32,19 @@ class Stemmer:
             list: A list of strings
         """
         pass
+
+
+class PorterStemmer(Stemmer):
+    """Porter stemmer from nltk"""
+
+    def __init__(self, lang):
+        if lang != "en":
+            raise ConfigError("Porter stemmer only supports English")
+        super().__init__(lang)
+        self.stemmer = nltk.stem.porter.PorterStemmer()
+
+    def stem(self, tokens):
+        return [self.stemmer.stem(token) for token in tokens]
 
 
 class Tokenizer:
@@ -353,13 +367,13 @@ class TextProcessor:
     Used on both documents and queries.
 
     Tokenizer and stemmer combinations:
-     - stanza + stanza (ar, en, fa, ru)
+     - stanza + stanza (ar, en, fa, ru), porter (en)
      - jieba + no stemming (zh)
-     - spacy + spacy (ar, en, fa, ru)
-     - spacy + no stemming (zh)
-     - moses + no stemming
+     - spacy + spacy (en, ru), porter (en)
+     - spacy + no stemming (ar, fa, zh)
+     - moses + porter (en)
      - ngrams + no stemming
-    TODO add stemmers like Porter that can be used with moses or other tokenizers
+     - whitespace + porter (en)
     """
     def __init__(self, config, lang):
         """
@@ -379,9 +393,12 @@ class TextProcessor:
 
     @staticmethod
     def _validate_config(config, lang):
+        # TODO need better checks
         if config.tokenize not in ['moses', 'ngram', 'spacy', 'stanza', 'whitespace']:
             raise ConfigError(f"Unknown tokenizer {config.tokenize}")
-        if config.stem and config.tokenize in ['moses', 'ngram', 'whitespace']:
+        if config.stem and config.tokenize == 'ngram':
+            raise ConfigError(f"Cannot use stemming with the ngram tokenizer")
+        if config.stem and config.stem != 'porter' and config.tokenize in ['moses', 'whitespace']:
             raise ConfigError(f"Cannot use stemming with the tokenizer {config.tokenize}")
         if config.stem and lang == 'zh':
             raise ConfigError(f"Cannot use stemming with language {lang}")
@@ -397,6 +414,9 @@ class TextProcessor:
                 tokenizer = stemmer = SpacyNLP(lang, model_path, stem=True)
             elif tokenizer_name == "stanza":
                 tokenizer = stemmer = StanzaNLP(lang, model_path, stem=True)
+            elif config.stem == "porter":
+                tokenizer = WhiteSpaceTokenizer(lang, model_path)
+                stemmer = PorterStemmer(lang)
         else:
             if tokenizer_name == 'spacy':
                 tokenizer = SpacyNLP(lang, model_path, stem=False)

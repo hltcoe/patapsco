@@ -30,6 +30,7 @@ setuptools.setup(
         "ftfy",
         "jieba",
         "more-itertools",
+        "nltk",
         "numpy",
         "pydantic>=1.7.1,<1.8.0",
         "pymorphy2",

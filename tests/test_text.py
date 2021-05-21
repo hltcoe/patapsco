@@ -17,6 +17,13 @@ def test_stop_words_english_case():
     assert text == ['test']
 
 
+def test_porter_stemmer_english():
+    tokens = ['It', 'was', 'a', 'bright', 'cold', 'day', 'in', 'April', ',', 'and', 'the', 'clocks', 'were', 'striking', 'thirteen', '.']
+    ans = ['it', 'wa', 'a', 'bright', 'cold', 'day', 'in', 'april', ',', 'and', 'the', 'clock', 'were', 'strike', 'thirteen', '.']
+    stemmer = PorterStemmer("en")
+    assert ans == stemmer.stem(tokens)
+
+
 class TestStanza:
     model_path = str(pathlib.Path.home() / 'stanza_resources')
 
