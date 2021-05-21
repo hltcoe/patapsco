@@ -307,6 +307,9 @@ class JobBuilder:
         if is_complete(self.conf.run.path):
             raise ConfigError('Run is already complete. Delete the output directory to rerun.')
 
+        if self.conf.run.parallel:
+            LOGGER.info('Parallel job selected.')
+
         if self.conf.run.stage1:
             stage1_plan = self._create_stage1_plan()
             if stage1_plan:
@@ -399,12 +402,14 @@ class JobBuilder:
     def _build_stage1_pipeline(self, iterator, tasks):
         # select pipeline based on stage configuration
         stage_conf = self.conf.run.stage1
+        if self.conf.run.parallel:
+            LOGGER.info(f'Stage 1 has {stage_conf.num_jobs} parallel jobs.')
         if stage_conf.mode == PipelineMode.STREAMING:
-            LOGGER.info("Stage 1 is a streaming pipeline")
+            LOGGER.info("Stage 1 is a streaming pipeline.")
             pipeline_class = StreamingPipeline
         elif stage_conf.mode == PipelineMode.BATCH:
             batch_size_char = str(stage_conf.batch_size) if stage_conf.batch_size else '∞'
-            LOGGER.info("Stage 1 is a batch pipeline selected with batch size of %s", batch_size_char)
+            LOGGER.info("Stage 1 is a batch pipeline selected with batch size of %s.", batch_size_char)
             pipeline_class = functools.partial(BatchPipeline, n=stage_conf.batch_size)
         else:
             raise ConfigError(f"Unrecognized pipeline mode: {stage_conf.mode}")
@@ -527,12 +532,15 @@ class JobBuilder:
     def _build_stage2_pipeline(self, iterator, tasks):
         # select pipeline based on stage configuration
         stage_conf = self.conf.run.stage2
+        if self.conf.run.parallel:
+            LOGGER.info(f'Stage 2 has {stage_conf.num_jobs} parallel jobs.')
+
         if stage_conf.mode == PipelineMode.STREAMING:
-            LOGGER.info("Stage 2 is a streaming pipeline")
+            LOGGER.info("Stage 2 is a streaming pipeline.")
             pipeline_class = StreamingPipeline
         elif stage_conf.mode == PipelineMode.BATCH:
             batch_size_char = str(stage_conf.batch_size) if stage_conf.batch_size else '∞'
-            LOGGER.info("Stage 2 is a batch pipeline selected with batch size of %s", batch_size_char)
+            LOGGER.info("Stage 2 is a batch pipeline selected with batch size of %s.", batch_size_char)
             pipeline_class = functools.partial(BatchPipeline, n=stage_conf.batch_size)
         else:
             raise ConfigError(f"Unrecognized pipeline mode: {stage_conf.mode}")
