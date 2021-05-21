@@ -14,9 +14,7 @@ documents:
     encoding: utf8
     path: samples/data/en_mini_docs.jsonl
   process:
-    tokenize:
-      name: whitespace
-    lowercase: true
+    tokenize: whitespace
 
 index:
   name: lucene

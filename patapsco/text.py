@@ -379,18 +379,18 @@ class TextProcessor:
 
     @staticmethod
     def _validate_config(config, lang):
-        if config.tokenize.name not in ['moses', 'ngram', 'spacy', 'stanza', 'whitespace']:
-            raise ConfigError(f"Unknown tokenizer {config.tokenize.name}")
-        if config.stem and config.tokenize.name in ['moses', 'ngram', 'whitespace']:
-            raise ConfigError(f"Cannot use stemming with the tokenizer {config.tokenize.name}")
+        if config.tokenize not in ['moses', 'ngram', 'spacy', 'stanza', 'whitespace']:
+            raise ConfigError(f"Unknown tokenizer {config.tokenize}")
+        if config.stem and config.tokenize in ['moses', 'ngram', 'whitespace']:
+            raise ConfigError(f"Cannot use stemming with the tokenizer {config.tokenize}")
         if config.stem and lang == 'zh':
             raise ConfigError(f"Cannot use stemming with language {lang}")
 
     def _create_tokenizer_and_stemmer(self, config, lang):
-        tokenizer_name = config.tokenize.name
+        tokenizer_name = config.tokenize
         use_stemmer = bool(config.stem)
         stemmer = tokenizer = None
-        model_path = self._get_model_path(tokenizer_name, config.tokenize.path)
+        model_path = self._get_model_path(tokenizer_name, config.model_path)
 
         if use_stemmer:
             if tokenizer_name == "spacy":

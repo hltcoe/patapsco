@@ -628,10 +628,9 @@ class JobBuilder:
         doc = self.conf.documents.process
         query = self.conf.queries.process
         try:
-            assert doc.normalize == query.normalize
+            assert doc.normalize.lowercase == query.normalize.lowercase
             assert doc.tokenize == query.tokenize
             assert doc.stopwords == query.stopwords
-            assert doc.lowercase == query.lowercase
             assert doc.stem == query.stem
         except AssertionError:
             raise ConfigError("Text processing for documents and queries does not match")

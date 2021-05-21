@@ -286,11 +286,11 @@ class QueryProcessor(Task, TextProcessor):
         text = self.normalize(text)
         tokens = self.tokenize(text)
         self.splitter.add('tokenize', Query(query.id, query.lang, ' '.join(tokens), query.report))
-        if self.config.lowercase:
+        if self.config.normalize.lowercase:
             tokens = self.lowercase(tokens)
         self.splitter.add('lowercase', Query(query.id, query.lang, ' '.join(tokens), query.report))
         if self.config.stopwords:
-            tokens = self.remove_stop_words(tokens, not self.config.lowercase)
+            tokens = self.remove_stop_words(tokens, not self.config.normalize.lowercase)
         self.splitter.add('stopwords', Query(query.id, query.lang, ' '.join(tokens), query.report))
         if self.config.stem:
             tokens = self.stem(tokens)

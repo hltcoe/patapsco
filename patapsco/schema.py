@@ -31,24 +31,16 @@ Text Processing
 
 class NormalizationConfig(BaseConfig):
     report: bool = False  # save a report of normalization changes
-
-
-class StemConfig(BaseConfig):
-    name: str
-
-
-class TokenizeConfig(BaseConfig):
-    name: str
-    path: Optional[str]  # path to model directory
+    lowercase: bool = True
 
 
 class TextProcessorConfig(BaseConfig):
     """Configuration for the text processing"""
+    model_path: Optional[str]  # path to spacy or stanza model directory
     normalize: NormalizationConfig = NormalizationConfig()
-    tokenize: TokenizeConfig
-    lowercase: bool = True
-    stopwords: Union[None, bool, str] = "lucene"
-    stem: Union[bool, StemConfig] = False
+    tokenize: str
+    stopwords: Union[bool, str] = "lucene"
+    stem: Union[bool, str] = False
     splits: Optional[list]
 
 

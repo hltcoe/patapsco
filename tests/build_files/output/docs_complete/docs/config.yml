@@ -12,7 +12,5 @@ documents:
     encoding: utf8
     path: tests/build_files/input/docs.jsonl
   process:
-    lowercase: true
-    tokenize:
-      name: whitespace
+    tokenize: whitespace
   output: docs

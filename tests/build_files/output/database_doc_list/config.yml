@@ -14,7 +14,5 @@ documents:
      - tests/build_files/input/docs.jsonl
      - tests/build_files/input/docs2.jsonl
   process:
-    lowercase: true
-    tokenize:
-      name: whitespace
+    tokenize: whitespace
   output: docs
