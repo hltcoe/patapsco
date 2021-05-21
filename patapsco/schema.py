@@ -212,7 +212,7 @@ class RunConfig(BaseConfig):
     """Configuration for a run of Patapsco"""
     name: str
     path: Optional[str]  # base path for run output by default created based on name
-    parallel: Optional[str]  # MP or QSUB if running in parallel
+    parallel: Optional[str]  # parallel implementation choices: mp, qsub
     stage1: Union[bool, StageConfig] = StageConfig()
     stage2: Union[bool, StageConfig] = StageConfig()
 
