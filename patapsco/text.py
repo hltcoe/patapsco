@@ -203,7 +203,6 @@ class SpacyNLP(Tokenizer, Stemmer):
         Stemmer.__init__(self, lang)
         Tokenizer.__init__(self, lang, model_path)
         self.nlp = SpacyModelLoader.get_loader(model_path).load(lang)
-        print(self.nlp.pipeline)
         self.cache = None
         if stem:
             if lang in ['ar', 'fa', 'zh']:
