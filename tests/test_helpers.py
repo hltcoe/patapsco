@@ -26,7 +26,7 @@ class TestConfigHelper:
             run=RunConfig(name='test'),
             documents=DocumentsConfig(
                 input=DocumentsInputConfig(format='jsonl', lang='en', path='test'),
-                process=TextProcessorConfig(tokenize=TokenizeConfig(name='whitespace')),
+                process=TextProcessorConfig(tokenize='whitespace'),
             ),
             index=IndexConfig(name='mock')
         )
@@ -100,7 +100,7 @@ class TestArtifactHelper:
             database=DatabaseConfig(output="database"),
             documents=DocumentsConfig(
                 input=DocumentsInputConfig(format="jsonl", lang="en", path="test/docs.jsonl"),
-                process=TextProcessorConfig(tokenize=TokenizeConfig(name="whitespace"), stem=False),
+                process=TextProcessorConfig(tokenize="whitespace", stem=False),
                 output="docs"
             ),
             index=IndexConfig(name="mock", output="index"),
@@ -109,7 +109,7 @@ class TestArtifactHelper:
                 output="topics"
             ),
             queries=QueriesConfig(
-                process=TextProcessorConfig(tokenize=TokenizeConfig(name="whitespace"), stem=False),
+                process=TextProcessorConfig(tokenize="whitespace", stem=False),
                 output="queries"
             ),
             retrieve=RetrieveConfig(

@@ -8,9 +8,10 @@ documents:
     encoding: utf8
     path: samples/data/en_mini_docs.jsonl
   process:
-    tokenize:
-      name: whitespace
-    lowercase: true
+    normalize:
+      lowercase: true
+    tokenize: whitespace
+    stem: false
   comment: Mini English dataset
 
 index:

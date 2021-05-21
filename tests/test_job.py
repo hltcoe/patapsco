@@ -34,7 +34,7 @@ class TestJobBuilder:
             database=DatabaseConfig(output="database"),
             documents=DocumentsConfig(
                 input=DocumentsInputConfig(format="jsonl", lang="en", path=str(input_directory / "docs.jsonl")),
-                process=TextProcessorConfig(tokenize=TokenizeConfig(name="whitespace"), stem=False),
+                process=TextProcessorConfig(tokenize="whitespace", stem=False),
                 output="docs"
             ),
             index=IndexConfig(name="lucene", output="index"),
@@ -43,7 +43,7 @@ class TestJobBuilder:
                 output="topics"
             ),
             queries=QueriesConfig(
-                process=TextProcessorConfig(tokenize=TokenizeConfig(name="whitespace"), stem=False),
+                process=TextProcessorConfig(tokenize="whitespace", stem=False),
                 output="queries"
             ),
             retrieve=RetrieveConfig(
@@ -192,7 +192,7 @@ class TestJobBuilder:
 
     def test_build_stage1_with_bad_tokenizer(self):
         conf = self.create_config('test')
-        conf.documents.process.tokenize.name = "nothing"
+        conf.documents.process.tokenize = "nothing"
         builder = JobBuilder(conf)
         plan = [Tasks.DOCUMENTS]
         with pytest.raises(ConfigError):
@@ -414,7 +414,7 @@ class TestJobBuilder:
 
     def test_check_text_processing_mismatch(self):
         conf = self.create_config('test')
-        conf.queries.process.lowercase = False
+        conf.queries.process.normalize.lowercase = False
         builder = JobBuilder(conf)
         with pytest.raises(ConfigError):
             builder.check_text_processing()

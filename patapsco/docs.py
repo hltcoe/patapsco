@@ -298,12 +298,12 @@ class DocumentProcessor(Task, TextProcessor):
 
         tokens = self.tokenize(text)
         self.splitter.add('tokenize', Doc(doc.id, doc.lang, ' '.join(tokens)))
-        if self.config.lowercase:
+        if self.config.normalize.lowercase:
             tokens = self.lowercase(tokens)
         self.splitter.add('lowercase', Doc(doc.id, doc.lang, ' '.join(tokens)))
         self.db[doc.id] = ' '.join(tokens)
         if self.config.stopwords:
-            tokens = self.remove_stop_words(tokens, not self.config.lowercase)
+            tokens = self.remove_stop_words(tokens, not self.config.normalize.lowercase)
         self.splitter.add('stopwords', Doc(doc.id, doc.lang, ' '.join(tokens)))
         if self.config.stem:
             tokens = self.stem(tokens)
