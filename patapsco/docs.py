@@ -270,14 +270,14 @@ class DocumentProcessor(Task, TextProcessor):
         """
         Args:
             run_path (str): Root directory of the run.
-            config (TextProcessorConfig)
+            config (DocumentsConfig)
             lang (str): Language code for the documents.
             db (DocumentDatabase): Document db for later retrieval.
         """
         Task.__init__(self, run_path)
-        TextProcessor.__init__(self, config, lang)
+        TextProcessor.__init__(self, config.process, lang)
         self.db = db
-        self.save_report = config.normalize.report
+        self.save_report = config.process.normalize.report
         self.diffs = collections.Counter()
 
     def process(self, doc):

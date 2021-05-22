@@ -260,6 +260,28 @@ class QueryReader(InputIterator):
         return Query(**json.loads(self.data[0]))
 
 
+class QueryGenerator:
+    def __init__(self, query, text, tokens):
+        self.id = query.id
+        self.lang = query.lang
+        self.text = text
+        self.report = query.report
+        self.original_query = query
+        self.tokens = tokens
+
+    def generate(self):
+        return Query(self.id, self.lang, ' '.join(self.tokens), self.text, self.report)
+
+
+class ProbabilisticStructuredQueryGenerator(QueryGenerator):
+    # TODO load translation table and generate PSQ syntax
+    def __init__(self, query, text, tokens, table_path):
+        super().__init__(query, text, tokens)
+
+    def generate(self):
+        return Query(self.id, self.lang, ' '.join(self.tokens), self.text, self.report)
+
+
 class QueryProcessor(Task, TextProcessor):
     """Query Preprocessing"""
 
@@ -267,11 +289,12 @@ class QueryProcessor(Task, TextProcessor):
         """
         Args:
             run_path (str): Root directory of the run.
-            config (TextProcessorConfig)
+            config (QueriesConfig)
             lang (str): Language code
         """
         Task.__init__(self, run_path)
-        TextProcessor.__init__(self, config, lang)
+        TextProcessor.__init__(self, config.process, lang)
+        self.psq_path = config.psq
 
     def process(self, query):
         """
@@ -283,12 +306,14 @@ class QueryProcessor(Task, TextProcessor):
         """
         text = query.text
         text = self.normalize(text)
-        query_text = text
         tokens = self.tokenize(text)
+        if self.psq_path:
+            generator = ProbabilisticStructuredQueryGenerator(query, text, tokens, self.psq_path)
+        else:
+            generator = QueryGenerator(query, text, tokens)
         if self.config.normalize.lowercase:
-            tokens = self.lowercase(tokens)
-        stopword_indices = self.identify_stop_words(tokens, self.config.normalize.lowercase)
-        tokens = self.stem(tokens)
-        tokens = self.remove_stop_words(tokens, stopword_indices)
-
-        return Query(query.id, query.lang, ' '.join(tokens), query_text, query.report)
+            generator.tokens = self.lowercase(generator.tokens)
+        stopword_indices = self.identify_stop_words(generator.tokens, self.config.normalize.lowercase)
+        generator.tokens = self.stem(generator.tokens)
+        generator.tokens = self.remove_stop_words(generator.tokens, stopword_indices)
+        return generator.generate()
