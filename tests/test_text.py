@@ -19,7 +19,7 @@ def test_stop_words_english_case():
 
 def test_porter_stemmer_english():
     tokens = ['It', 'was', 'a', 'bright', 'cold', 'day', 'in', 'April', ',', 'and', 'the', 'clocks', 'were', 'striking', 'thirteen', '.']
-    ans = ['it', 'wa', 'a', 'bright', 'cold', 'day', 'in', 'april', ',', 'and', 'the', 'clock', 'were', 'strike', 'thirteen', '.']
+    ans = ['It', 'wa', 'a', 'bright', 'cold', 'day', 'in', 'April', ',', 'and', 'the', 'clock', 'were', 'strike', 'thirteen', '.']
     stemmer = PorterStemmer("en")
     assert ans == stemmer.stem(tokens)
 

@@ -44,7 +44,7 @@ class PorterStemmer(Stemmer):
         self.stemmer = nltk.stem.porter.PorterStemmer()
 
     def stem(self, tokens):
-        return [self.stemmer.stem(token) for token in tokens]
+        return [self.stemmer.stem(token, to_lowercase=False) for token in tokens]
 
 
 class Tokenizer:
