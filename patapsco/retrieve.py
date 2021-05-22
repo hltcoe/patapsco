@@ -1,10 +1,8 @@
-import collections
-import json
 import logging
 import pathlib
 
 from .error import PatapscoError
-from .pipeline import Task, MultiplexTask
+from .pipeline import Task
 from .results import Result, Results
 from .schema import RetrieveConfig
 from .util import TaskFactory
@@ -17,75 +15,6 @@ class RetrieverFactory(TaskFactory):
         'bm25': 'PyseriniRetriever',
     }
     config_class = RetrieveConfig
-
-    @classmethod
-    def create(cls, run_path, config, *args, **kwargs):
-        """
-        Args:
-            run_path (str): Root directory of the run.
-            config (RetrieveConfig)
-        """
-        # config.input.index.path can point to:
-        #  1. a single path of a single run
-        #  2. a single path of a multiplex run
-        #  3. multiple paths
-        if isinstance(config.input.index.path, str):
-            multiplex_path = pathlib.Path(config.input.index.path) / '.multiplex'
-            if not multiplex_path.exists():
-                # single index
-                return super().create(run_path, config, *args, **kwargs)
-            else:
-                # multiplex index
-                with open(multiplex_path, 'r') as fp:
-                    splits = json.load(fp)
-                    base_path = pathlib.Path(config.input.index.path)
-                    retrievers = {}
-                    for split in splits:
-                        copied_config = config.copy(deep=True)
-                        copied_config.input.index.path = str(base_path / split)
-                        retrievers[split] = super().create(run_path, copied_config, *args, **kwargs)
-                    return MultiplexTask(retrievers)
-        else:
-            # multiple index paths
-            paths = config.input.index.path
-            retrievers = {}
-            for key, path in paths.items():
-                copied_config = config.copy(deep=True)
-                copied_config.input.index.path = path
-                retrievers[key] = super().create(run_path, copied_config, *args, **kwargs)
-            return MultiplexTask(retrievers)
-
-
-class Joiner(Task):
-    """Join results from multiplexed retrievers"""
-
-    def __init__(self):
-        super().__init__()
-
-    def process(self, results):
-        """Join multiplexed results of a single query
-
-        Args:
-            results (MultiplexItem)
-
-        Returns:
-            Results
-        """
-        # get the first key/value pair and get the value (Results object)
-        first_results = next(iter(results.items()))[1]
-        query = first_results.query
-        doc_lang = first_results.doc_lang
-        system = first_results.system
-
-        # add scores, rerank, and pass as single list
-        output = collections.defaultdict(int)
-        for _, r in results.items():
-            for result in r.results:
-                output[result.doc_id] += result.score
-        output = dict(sorted(output.items(), key=lambda item: item[1], reverse=True))
-        output = zip(output.items(), range(len(output)))
-        output = [Result(doc_id, rank, score) for (doc_id, score), rank in output]
-        return Results(query, doc_lang, system, output)
 
 
 class Java:

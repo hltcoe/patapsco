@@ -13,10 +13,10 @@ from .docs import DocumentProcessor, DocumentReaderFactory, DocumentDatabaseFact
 from .error import ConfigError
 from .helpers import ArtifactHelper
 from .index import IndexerFactory
-from .pipeline import BatchPipeline, MultiplexTask, StreamingPipeline
+from .pipeline import BatchPipeline, StreamingPipeline
 from .rerank import RerankFactory
 from .results import JsonResultsWriter, JsonResultsReader, TrecResultsWriter
-from .retrieve import Joiner, RetrieverFactory
+from .retrieve import RetrieverFactory
 from .schema import RunnerConfig, PipelineMode, Tasks
 from .score import QrelsReaderFactory, Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
@@ -379,23 +379,13 @@ class JobBuilder:
             tasks.append(DocumentProcessor(run_path, self.conf.documents.process, self.docs_lang, db))
             # add doc writer if user requesting that we save processed docs
             if self.conf.documents.output:
-                if self.conf.documents.process.splits:
-                    # if we are splitting the documents output, multiplex the doc writer
-                    tasks.append(MultiplexTask(self.conf.documents.process.splits, DocWriter,
-                                               run_path, self.conf.documents, artifact_conf))
-                else:
-                    tasks.append(DocWriter(run_path, self.conf.documents, artifact_conf))
+                tasks.append(DocWriter(run_path, self.conf.documents, artifact_conf))
 
         if Tasks.INDEX in plan:
             # indexer or processed doc reader -> indexer
             self.clear_output(self.conf.index)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.INDEX)
-            if self.conf.documents.process.splits:
-                # if we are splitting the documents output, multiplex the indexer
-                tasks.append(MultiplexTask(self.conf.documents.process.splits, IndexerFactory.create,
-                                           run_path, self.conf.index, artifact_conf))
-            else:
-                tasks.append(IndexerFactory.create(run_path, self.conf.index, artifact_conf))
+            tasks.append(IndexerFactory.create(run_path, self.conf.index, artifact_conf))
 
         return tasks
 
@@ -494,11 +484,7 @@ class JobBuilder:
             tasks.append(QueryProcessor(run_path, self.conf.queries.process, self.query_lang))
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.QUERIES)
             if self.conf.queries.output:
-                if self.conf.queries.process.splits:
-                    tasks.append(MultiplexTask(self.conf.queries.process.splits, QueryWriter,
-                                               run_path, self.conf.queries, artifact_conf))
-                else:
-                    tasks.append(QueryWriter(run_path, self.conf.queries, artifact_conf))
+                tasks.append(QueryWriter(run_path, self.conf.queries, artifact_conf))
 
         if Tasks.RETRIEVE in plan:
             self.clear_output(self.conf.retrieve)
@@ -507,8 +493,6 @@ class JobBuilder:
                 self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RETRIEVE)
             tasks.append(RetrieverFactory.create(run_path, self.conf.retrieve))
-            if self.conf.queries.process.splits:
-                tasks.append(Joiner())
             if self.conf.retrieve.output:
                 tasks.append(JsonResultsWriter(run_path, self.conf.retrieve, artifact_conf))
 

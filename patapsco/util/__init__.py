@@ -10,7 +10,6 @@ import timeit
 
 import more_itertools
 
-from ..config import BaseConfig
 from ..error import BadDataError, ConfigError
 from .file import validate_encoding
 
