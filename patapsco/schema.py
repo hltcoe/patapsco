@@ -96,6 +96,7 @@ class QueriesConfig(SectionConfig):
     """Configuration for processing queries"""
     input: Optional[QueriesInputConfig]
     process: TextProcessorConfig
+    psq: Optional[str]  # path to translation table for PSQ
     output: Union[bool, str] = True
 
 

@@ -376,7 +376,7 @@ class JobBuilder:
             self.clear_output(self.conf.database)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
             db = DocumentDatabaseFactory.create(run_path, self.conf.database.output, artifact_conf)
-            tasks.append(DocumentProcessor(run_path, self.conf.documents.process, self.docs_lang, db))
+            tasks.append(DocumentProcessor(run_path, self.conf.documents, self.docs_lang, db))
             # add doc writer if user requesting that we save processed docs
             if self.conf.documents.output:
                 tasks.append(DocWriter(run_path, self.conf.documents, artifact_conf))
@@ -481,7 +481,7 @@ class JobBuilder:
         if Tasks.QUERIES in plan:
             # optional query reader -> query processor -> optional query writer
             self.clear_output(self.conf.queries)
-            tasks.append(QueryProcessor(run_path, self.conf.queries.process, self.query_lang))
+            tasks.append(QueryProcessor(run_path, self.conf.queries, self.query_lang))
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.QUERIES)
             if self.conf.queries.output:
                 tasks.append(QueryWriter(run_path, self.conf.queries, artifact_conf))

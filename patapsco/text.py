@@ -320,28 +320,45 @@ class NgramTokenizer(Tokenizer):
         return zip(*(itertools.islice(chars, offset, None) for offset, chars in enumerate(itertools.tee(text, self.n))))
 
 
-class StopWordsRemoval:
+class StopWordsRemover:
     def __init__(self, source, lang):
+        """
+        Args:
+            source (str): Name of the source of stop words.
+            lang (str): Language code.
+        """
         filename = lang + ".txt"
         path = pathlib.Path(__file__).parent / 'resources' / 'stopwords' / source / filename
         with open(path, 'r') as fp:
-            self.words = {word.strip() for word in fp if word[0] != '#'}
+            self.stop_words = {word.strip() for word in fp if word[0] != '#'}
 
-    def remove(self, tokens, is_lower=False):
-        """Remove stop words
+    def identify(self, tokens, is_lower=False):
+        """Identify words to remove
 
         Args:
             tokens (list of str)
             is_lower (bool) Whether the tokens have already been lowercased.
 
         Returns
-            list of str
+            indices of tokens to remove
         """
         if is_lower:
-            tokens = [token for token in tokens if token.lower() not in self.words]
+            tokens = [index for index, token in enumerate(tokens) if token in self.stop_words]
         else:
-            tokens = [token for token in tokens if token not in self.words]
+            tokens = [index for index, token in enumerate(tokens) if token.lower() in self.stop_words]
         return tokens
+
+    def remove(self, tokens, indices):
+        """Remove stop words
+
+        Args:
+            tokens (list of str)
+            indices (list of int)
+
+        Returns
+            list of str
+        """
+        return [token for index, token in enumerate(tokens) if index not in indices]
 
 
 class TokenizerStemmerFactory:
@@ -470,7 +487,7 @@ class TextProcessor:
         self.tokenizer = TokenizerStemmerFactory.create_tokenizer(config, lang)
         self.stemmer = TokenizerStemmerFactory.create_stemmer(config, lang)
         if self.config.stopwords:
-            self.stopword_remover = StopWordsRemoval(self.config.stopwords, lang)
+            self.stopword_remover = StopWordsRemover(self.config.stopwords, lang)
         else:
             self.stopword_remover = None
 
@@ -483,9 +500,15 @@ class TextProcessor:
     def lowercase(self, tokens):
         return [token.lower() for token in tokens]
 
-    def remove_stop_words(self, tokens, is_lower=False):
+    def identify_stop_words(self, tokens, is_lower=False):
         if self.stopword_remover:
-            return self.stopword_remover.remove(tokens, is_lower)
+            return self.stopword_remover.identify(tokens, is_lower)
+        else:
+            return []
+
+    def remove_stop_words(self, tokens, indices):
+        if self.stopword_remover:
+            return self.stopword_remover.remove(tokens, indices)
         else:
             return tokens
 

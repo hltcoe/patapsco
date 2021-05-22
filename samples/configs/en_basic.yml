@@ -11,7 +11,7 @@ documents:
     normalize:
       lowercase: true
     tokenize: whitespace
-    stem: false
+    stem: porter
   comment: Mini English dataset
 
 index:

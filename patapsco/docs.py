@@ -270,14 +270,14 @@ class DocumentProcessor(Task, TextProcessor):
         """
         Args:
             run_path (str): Root directory of the run.
-            config (TextProcessorConfig)
+            config (DocumentsConfig)
             lang (str): Language code for the documents.
             db (DocumentDatabase): Document db for later retrieval.
         """
         Task.__init__(self, run_path)
-        TextProcessor.__init__(self, config, lang)
+        TextProcessor.__init__(self, config.process, lang)
         self.db = db
-        self.save_report = config.normalize.report
+        self.save_report = config.process.normalize.report
         self.diffs = collections.Counter()
 
     def process(self, doc):
@@ -297,10 +297,9 @@ class DocumentProcessor(Task, TextProcessor):
         if self.config.normalize.lowercase:
             tokens = self.lowercase(tokens)
         self.db[doc.id] = ' '.join(tokens)
-        if self.config.stopwords:
-            tokens = self.remove_stop_words(tokens, not self.config.normalize.lowercase)
-        if self.config.stem:
-            tokens = self.stem(tokens)
+        stopword_indices = self.identify_stop_words(tokens, self.config.normalize.lowercase)
+        tokens = self.stem(tokens)
+        tokens = self.remove_stop_words(tokens, stopword_indices)
 
         return Doc(doc.id, doc.lang, ' '.join(tokens))
 
