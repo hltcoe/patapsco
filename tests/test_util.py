@@ -171,3 +171,15 @@ class TestSlicedIterator:
         assert next(it2) == '5'
         with pytest.raises(StopIteration):
             next(it2)
+
+
+class TestLangStandardizer:
+    def test_uppercase(self):
+        assert LangStandardizer.standardize("EN") == "eng"
+
+    def test_3_letter(self):
+        assert LangStandardizer.standardize("fas") == "fas"
+
+    def test_unknown_code(self):
+        with pytest.raises(ConfigError):
+            LangStandardizer.standardize("es")

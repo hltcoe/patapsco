@@ -10,7 +10,7 @@ def test_json_results_reader():
     results_iter = JsonResultsReader(str(directory))
     results = next(results_iter)
     assert results.query.id == '001'
-    assert results.query.lang == 'en'
+    assert results.query.lang == 'eng'
     assert results.query.text == 'test 1'
     assert results.system == 'PyseriniRetriever'
     assert len(results.results) == 2
@@ -18,7 +18,7 @@ def test_json_results_reader():
     assert results.results[0].rank == 1
     results = next(results_iter)
     assert results.query.id == '002'
-    assert results.query.lang == 'en'
+    assert results.query.lang == 'eng'
     assert results.query.text == 'test 2'
     assert results.system == 'PyseriniRetriever'
     assert len(results.results) == 2

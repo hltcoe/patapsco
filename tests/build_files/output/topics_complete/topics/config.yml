@@ -10,7 +10,7 @@ topics:
   input:
     encoding: utf8
     format: json
-    lang: en
+    lang: eng
     path: tests/build_files/input/topics.jsonl
     prefix: EN-
     strip_non_digits: false

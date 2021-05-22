@@ -33,13 +33,13 @@ class TestJobBuilder:
             run=RunConfig(name='run name', path=str(output_directory)),
             database=DatabaseConfig(output="database"),
             documents=DocumentsConfig(
-                input=DocumentsInputConfig(format="jsonl", lang="en", path=str(input_directory / "docs.jsonl")),
+                input=DocumentsInputConfig(format="jsonl", lang="eng", path=str(input_directory / "docs.jsonl")),
                 process=TextProcessorConfig(tokenize="whitespace", stem=False),
                 output="docs"
             ),
             index=IndexConfig(name="lucene", output="index"),
             topics=TopicsConfig(
-                input=TopicsInputConfig(format="jsonl", lang="en", path=str(input_directory / "topics.jsonl")),
+                input=TopicsInputConfig(format="jsonl", lang="eng", path=str(input_directory / "topics.jsonl")),
                 output="topics"
             ),
             queries=QueriesConfig(
@@ -357,7 +357,7 @@ class TestJobBuilder:
         builder._get_stage2_iterator(plan)
         tasks = builder._get_stage2_tasks(plan)
         assert isinstance(tasks[0], QueryProcessor)
-        assert tasks[0].lang == "en"
+        assert tasks[0].lang == "eng"
 
     def test_check_sources_of_documents_standard_config(self):
         conf = self.create_config('test')

@@ -25,7 +25,7 @@ class TestConfigHelper:
         conf = RunnerConfig(
             run=RunConfig(name='test'),
             documents=DocumentsConfig(
-                input=DocumentsInputConfig(format='jsonl', lang='en', path='test'),
+                input=DocumentsInputConfig(format='jsonl', lang='eng', path='test'),
                 process=TextProcessorConfig(tokenize='whitespace'),
             ),
             index=IndexConfig(name='mock')
@@ -99,13 +99,13 @@ class TestArtifactHelper:
             run=RunConfig(name='run name', path='test'),
             database=DatabaseConfig(output="database"),
             documents=DocumentsConfig(
-                input=DocumentsInputConfig(format="jsonl", lang="en", path="test/docs.jsonl"),
+                input=DocumentsInputConfig(format="jsonl", lang="eng", path="test/docs.jsonl"),
                 process=TextProcessorConfig(tokenize="whitespace", stem=False),
                 output="docs"
             ),
             index=IndexConfig(name="mock", output="index"),
             topics=TopicsConfig(
-                input=TopicsInputConfig(format="jsonl", lang="en", path="test/topics.jsonl"),
+                input=TopicsInputConfig(format="jsonl", lang="eng", path="test/topics.jsonl"),
                 output="topics"
             ),
             queries=QueriesConfig(
@@ -180,15 +180,3 @@ class TestArtifactHelper:
         assert hasattr(conf, 'queries')
         assert hasattr(conf, 'retrieve')
         assert hasattr(conf, 'rerank')
-
-
-class TestLangHelper:
-    def test_uppercase(self):
-        assert LangHelper.standardize("EN") == "en"
-
-    def test_3_letter(self):
-        assert LangHelper.standardize("fas") == "fa"
-
-    def test_unknown_code(self):
-        with pytest.raises(ConfigError):
-            LangHelper.standardize("es")

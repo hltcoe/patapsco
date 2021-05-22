@@ -272,3 +272,37 @@ class LoggingFilter(logging.Filter):
                 msg = lines.pop(0)
                 record.msg = f"{msg} {', '.join(lines)}"
         return True
+
+
+class LangStandardizer:
+    """Utility method for language codes"""
+
+    langs = {
+        'ar': 'ara',
+        'ara': 'ara',
+        'arb': 'ara',
+        'en': 'eng',
+        'eng': 'eng',
+        'fa': 'fas',
+        'fas': 'fas',
+        'per': 'fas',
+        'ru': 'rus',
+        'rus': 'rus',
+        'zh': 'zho',
+        'cmn': 'zho',
+        'zho': 'zho',
+    }
+
+    @classmethod
+    def standardize(cls, lang):
+        """
+        Args:
+            lang (str): 2 or 3 letter code
+
+        Returns:
+            ISO 639-3 language code
+        """
+        try:
+            return cls.langs[lang.lower()]
+        except KeyError:
+            raise ConfigError(f"Unknown language code: {lang}")

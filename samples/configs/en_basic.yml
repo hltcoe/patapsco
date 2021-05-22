@@ -4,7 +4,7 @@ run:
 documents:
   input:
     format: json
-    lang: en
+    lang: eng
     encoding: utf8
     path: samples/data/en_mini_docs.jsonl
   process:
@@ -20,7 +20,7 @@ index:
 topics:
   input:
     format: json
-    lang: en
+    lang: eng
     encoding: utf8
     path: samples/data/en_mini_topics.jsonl
   fields: title

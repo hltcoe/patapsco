@@ -11,7 +11,7 @@ def test_topic_process():
             self.fields = fields
 
     mock = Mock(['title', 'desc'])
-    topic = Topic('1', 'en', 'title', 'desc', 'narr', 'report')
+    topic = Topic('1', 'eng', 'title', 'desc', 'narr', 'report')
     query = TopicProcessor.process(mock, topic)
     assert query.text == "title desc"
 
@@ -45,7 +45,7 @@ def test_parse_msmarco_topics():
 def test_parse_json_topics():
     directory = pathlib.Path(__file__).parent / 'json_files'
     path = directory / 'topics.jsonl'
-    topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'en')
+    topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng')
     topic = next(topic_iter)
     assert topic.id == '001'
     assert topic.title == 'Test 1'
@@ -65,12 +65,12 @@ def test_query_reader():
     query_iter = QueryReader(str(directory))
     query = next(query_iter)
     assert query.id == '001'
-    assert query.lang == 'en'
+    assert query.lang == 'eng'
     assert query.text == 'test 1'
     assert query.report == 'report 1'
     query = next(query_iter)
     assert query.id == '002'
-    assert query.lang == 'en'
+    assert query.lang == 'eng'
     assert query.text == 'test 2'
     assert query.report == 'report 2'
     with pytest.raises(StopIteration):

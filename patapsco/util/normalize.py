@@ -178,11 +178,11 @@ def compare_strings(s1, s2):
 
 class NormalizerFactory:
     classes = {
-        'ar': 'ArabicNormalizer',
-        'en': 'EnglishNormalizer',
-        'fa': 'FarsiNormalizer',
-        'ru': 'RussianNormalizer',
-        'zh': 'ChineseNormalizer',
+        'ara': 'ArabicNormalizer',
+        'eng': 'EnglishNormalizer',
+        'fas': 'FarsiNormalizer',
+        'rus': 'RussianNormalizer',
+        'zho': 'ChineseNormalizer',
     }
 
     @classmethod
