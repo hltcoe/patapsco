@@ -287,9 +287,8 @@ class QueryProcessor(Task, TextProcessor):
         tokens = self.tokenize(text)
         if self.config.normalize.lowercase:
             tokens = self.lowercase(tokens)
-        if self.config.stopwords:
-            tokens = self.remove_stop_words(tokens, not self.config.normalize.lowercase)
-        if self.config.stem:
-            tokens = self.stem(tokens)
+        stopword_indices = self.identify_stop_words(tokens, self.config.normalize.lowercase)
+        tokens = self.stem(tokens)
+        tokens = self.remove_stop_words(tokens, stopword_indices)
 
         return Query(query.id, query.lang, ' '.join(tokens), query_text, query.report)

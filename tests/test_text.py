@@ -5,17 +5,27 @@ from patapsco.text import *
 
 
 def test_stop_words_english():
-    swr = StopWordsRemoval('lucene', 'eng')
-    text = swr.remove(['this', 'is', 'a', 'test'])
-    assert text == ['test']
+    swr = StopWordsRemover('lucene', 'eng')
+    tokens = ['this', 'is', 'a', 'test']
+    indices = swr.identify(tokens)
+    new_tokens = swr.remove(tokens, indices)
+    assert new_tokens == ['test']
 
 
-def test_stop_words_english_case():
-    swr = StopWordsRemoval('lucene', 'eng')
-    text = swr.remove(['This', 'is', 'a', 'test'])
-    assert text == ['This', 'test']
-    text = swr.remove(['This', 'is', 'a', 'test'], is_lower=True)
-    assert text == ['test']
+def test_stop_words_english_uppercase():
+    swr = StopWordsRemover('lucene', 'eng')
+    tokens = ['This', 'is', 'a', 'test']
+    indices = swr.identify(tokens, is_lower=True)
+    new_tokens = swr.remove(tokens, indices)
+    assert new_tokens == ['This', 'test']
+
+
+def test_stop_words_english_caseless():
+    swr = StopWordsRemover('lucene', 'eng')
+    tokens = ['This', 'is', 'a', 'test']
+    indices = swr.identify(tokens, is_lower=False)
+    new_tokens = swr.remove(tokens, indices)
+    assert new_tokens == ['test']
 
 
 def test_porter_stemmer_english():
