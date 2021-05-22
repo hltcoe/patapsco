@@ -1,5 +1,6 @@
 import pytest
 
+from patapsco.schema import TextProcessorConfig
 from patapsco.text import *
 
 
@@ -13,7 +14,7 @@ def test_stop_words_english_case():
     swr = StopWordsRemoval('lucene', 'en')
     text = swr.remove(['This', 'is', 'a', 'test'])
     assert text == ['This', 'test']
-    text = swr.remove(['This', 'is', 'a', 'test'], lower=True)
+    text = swr.remove(['This', 'is', 'a', 'test'], is_lower=True)
     assert text == ['test']
 
 
@@ -22,6 +23,93 @@ def test_porter_stemmer_english():
     ans = ['It', 'wa', 'a', 'bright', 'cold', 'day', 'in', 'April', ',', 'and', 'the', 'clock', 'were', 'strike', 'thirteen', '.']
     stemmer = PorterStemmer("en")
     assert ans == stemmer.stem(tokens)
+
+
+class TestTokenizerStemmerFactory:
+    def setup_method(self):
+        TokenizerStemmerFactory.tokenizer_cache = {}
+        TokenizerStemmerFactory.stemmer_cache = {}
+
+    def test_validate_with_invalid_tokenize(self):
+        with pytest.raises(ConfigError, match="Unknown tokenizer"):
+            TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="stanford", stem=False), "en")
+
+    def test_validate_with_invalid_stem(self):
+        with pytest.raises(ConfigError, match="Unknown stemmer"):
+            TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="whitespace", stem="invalid"), "en")
+
+    def test_validate_ngram_with_stem(self):
+        with pytest.raises(ConfigError):
+            TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="ngram", stem="porter"), "en")
+
+    def test_validate_whitespace_with_invalid_stem(self):
+        with pytest.raises(ConfigError):
+            TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="whitespace", stem="stanza"), "en")
+
+    def test_validate_whitespace_with_valid_stem(self):
+        TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="whitespace", stem="porter"), "en")
+
+    def test_validate_stanza_with_spacy(self):
+        with pytest.raises(ConfigError):
+            TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="stanza", stem="spacy"), "en")
+
+    def test_validate_stanza_porter_en(self):
+        TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="stanza", stem="porter"), "en")
+
+    def test_validate_stanza_porter_ru(self):
+        with pytest.raises(ConfigError):
+            TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="stanza", stem="porter"), "ru")
+
+    @pytest.mark.slow(reason="loads spacy model")
+    def test_create_tokenizer_whitespace(self):
+        conf = TextProcessorConfig(tokenize="whitespace", stem=False)
+        tokenizer = TokenizerStemmerFactory.create_tokenizer(conf, "en")
+        assert isinstance(tokenizer, WhiteSpaceTokenizer)
+
+    @pytest.mark.slow(reason="loads spacy model")
+    def test_create_tokenizer_ngram(self):
+        conf = TextProcessorConfig(tokenize="ngram", stem=False)
+        tokenizer = TokenizerStemmerFactory.create_tokenizer(conf, "en")
+        assert isinstance(tokenizer, NgramTokenizer)
+
+    @pytest.mark.slow(reason="loads spacy model")
+    def test_create_tokenizer_moses(self):
+        conf = TextProcessorConfig(tokenize="moses", stem=False)
+        tokenizer = TokenizerStemmerFactory.create_tokenizer(conf, "en")
+        assert isinstance(tokenizer, MosesTokenizer)
+
+    @pytest.mark.slow(reason="loads spacy model")
+    def test_create_tokenizer_caching(self):
+        conf = TextProcessorConfig(tokenize="moses", stem=False)
+        tokenizer = TokenizerStemmerFactory.create_tokenizer(conf, "en")
+        tokenizer2 = TokenizerStemmerFactory.create_tokenizer(conf, "en")
+        assert tokenizer == tokenizer2
+
+    @pytest.mark.slow(reason="loads spacy model")
+    def test_create_tokenizer_spacy_no_stem(self):
+        conf = TextProcessorConfig(tokenize="spacy", stem=False)
+        tokenizer = TokenizerStemmerFactory.create_tokenizer(conf, "en")
+        assert isinstance(tokenizer, SpacyNLP)
+        assert 'tok2vec' in tokenizer.nlp.disabled
+
+    @pytest.mark.slow(reason="loads spacy model")
+    def test_create_tokenizer_spacy_with_stem(self):
+        conf = TextProcessorConfig(tokenize="spacy", stem="spacy")
+        tokenizer = TokenizerStemmerFactory.create_tokenizer(conf, "en")
+        assert isinstance(tokenizer, SpacyNLP)
+        assert 'tok2vec' not in tokenizer.nlp.disabled
+
+    def test_create_stemmer_porter(self):
+        conf = TextProcessorConfig(tokenize="spacy", stem="porter")
+        stemmer = TokenizerStemmerFactory.create_stemmer(conf, "en")
+        assert isinstance(stemmer, PorterStemmer)
+
+    @pytest.mark.slow(reason="loads spacy model")
+    def test_create_tokenizer_stemmer_combo(self):
+        conf = TextProcessorConfig(tokenize="spacy", stem="spacy")
+        tokenizer = TokenizerStemmerFactory.create_tokenizer(conf, "en")
+        stemmer = TokenizerStemmerFactory.create_stemmer(conf, "en")
+        assert tokenizer == stemmer
 
 
 class TestStanza:

@@ -269,6 +269,7 @@ class MosesTokenizer(Tokenizer):
 class NgramTokenizer(Tokenizer):
     """Character ngram tokenizer"""
 
+    # character ngram size by language
     languages = {
         'ar': 5,
         'en': 5,
@@ -307,17 +308,17 @@ class StopWordsRemoval:
         with open(path, 'r') as fp:
             self.words = {word.strip() for word in fp if word[0] != '#'}
 
-    def remove(self, tokens, lower=False):
+    def remove(self, tokens, is_lower=False):
         """Remove stop words
 
         Args:
             tokens (list of str)
-            lower (bool) Whether the tokens have already been lowercased.
+            is_lower (bool) Whether the tokens have already been lowercased.
 
         Returns
             list of str
         """
-        if lower:
+        if is_lower:
             tokens = [token for token in tokens if token.lower() not in self.words]
         else:
             tokens = [token for token in tokens if token not in self.words]
@@ -361,74 +362,99 @@ class Splitter:
         return len(self.splits) > 0
 
 
-class TextProcessor:
-    """Normalizes, segments, and performs other standardization on text
+class TokenizerStemmerFactory:
+    """Constructs tokenizers and stemmers based on configurations."""
 
-    Used on both documents and queries.
+    tokenizers = {'jieba', 'moses', 'ngram', 'spacy', 'stanza', 'whitespace'}
+    stemmers = {'porter', 'spacy', 'stanza'}
+    # key is name:lang
+    tokenizer_cache = {}
+    stemmer_cache = {}
 
-    Tokenizer and stemmer combinations:
-     - stanza + stanza (ar, en, fa, ru), porter (en)
-     - jieba + no stemming (zh)
-     - spacy + spacy (en, ru), porter (en)
-     - spacy + no stemming (ar, fa, zh)
-     - moses + porter (en)
-     - ngrams + no stemming
-     - whitespace + porter (en)
-    """
-    def __init__(self, config, lang):
+    @classmethod
+    def validate(cls, config, lang):
+        """Validate the config for tokenizers and stemmers.
+
+        Allowed tokenizer and stemmer combinations:
+         - stanza + stanza (ar, en, fa, ru) or porter (en)
+         - jieba/stanza + no stemming (zh)
+         - spacy + spacy (en, ru) or porter (en)
+         - spacy + no stemming (ar, fa, zh)
+         - moses + porter (en)
+         - ngram + no stemming
+         - whitespace + porter (en)
+
+        Some language restrictions are left to the tokenizers or stemmers to check:
+         - No Chinese stemming.
+         - Spacy has no stemming for Arabic or Farsi.
+         - Porter stemming only works for English.
         """
-        Args:
-            config (TextProcessorConfig)
-            lang (str): Language code
-        """
-        self.config = config
-        self.lang = lang
-        self._validate_config(config, lang)
-        self.normalizer = NormalizerFactory.create(lang)
-        self.tokenizer, self.stemmer = self._create_tokenizer_and_stemmer(config, lang)
-        if self.config.stopwords:
-            self.stopwords = StopWordsRemoval(self.config.stopwords, lang)
-        else:
-            self.stopwords = None
-
-    @staticmethod
-    def _validate_config(config, lang):
-        # TODO need better checks
-        if config.tokenize not in ['moses', 'ngram', 'spacy', 'stanza', 'whitespace']:
+        if config.tokenize not in cls.tokenizers:
             raise ConfigError(f"Unknown tokenizer {config.tokenize}")
-        if config.stem and config.tokenize == 'ngram':
-            raise ConfigError(f"Cannot use stemming with the ngram tokenizer")
-        if config.stem and config.stem != 'porter' and config.tokenize in ['moses', 'whitespace']:
-            raise ConfigError(f"Cannot use stemming with the tokenizer {config.tokenize}")
-        if config.stem and lang == 'zh':
-            raise ConfigError(f"Cannot use stemming with language {lang}")
+        if config.stem and config.stem not in cls.stemmers:
+            raise ConfigError(f"Unknown stemmer {config.stem}")
+        if config.stem:
+            if config.tokenize in ['jieba', 'ngram']:
+                raise ConfigError(f"Cannot tokenize with {config.tokenize} and also stem.")
+            if config.tokenize in ['moses', 'whitespace'] and config.stem != 'porter':
+                raise ConfigError(f"Incompatible tokenizer ({config.tokenize}) and stemmer ({config.stem})")
+            if lang == "en":
+                if config.tokenize == "spacy" and config.stem not in ['porter', 'spacy']:
+                    raise ConfigError(f"Incompatible tokenizer ({config.tokenize}) and stemmer ({config.stem})")
+                if config.tokenize == "stanza" and config.stem not in ['porter', 'stanza']:
+                    raise ConfigError(f"Incompatible tokenizer ({config.tokenize}) and stemmer ({config.stem})")
+            else:
+                if config.tokenize in ["spacy", "stanza"] and config.tokenize != config.stem:
+                    raise ConfigError(f"Incompatible tokenizer ({config.tokenize}) and stemmer ({config.stem})")
 
-    def _create_tokenizer_and_stemmer(self, config, lang):
+    @classmethod
+    def create_tokenizer(cls, config, lang):
+        key = f"{config.tokenize}:{lang}"
+        if key in cls.tokenizer_cache:
+            return cls.tokenizer_cache[key]
+
         tokenizer_name = config.tokenize
+        # jieba is wrapped by stanza
+        tokenizer_name = tokenizer_name if tokenizer_name != 'jieba' else 'stanza'
         use_stemmer = bool(config.stem)
-        stemmer = tokenizer = None
-        model_path = self._get_model_path(tokenizer_name, config.model_path)
+        tokenizer = None
+        model_path = cls._get_model_path(tokenizer_name, config.model_path)
 
-        if use_stemmer:
-            if tokenizer_name == "spacy":
-                tokenizer = stemmer = SpacyNLP(lang, model_path, stem=True)
-            elif tokenizer_name == "stanza":
-                tokenizer = stemmer = StanzaNLP(lang, model_path, stem=True)
-            elif config.stem == "porter":
-                tokenizer = WhiteSpaceTokenizer(lang, model_path)
-                stemmer = PorterStemmer(lang)
-        else:
+        if tokenizer_name in ['spacy', 'stanza']:
+            # if not porter stemming, the tokenizer also implements stemming
+            also_stemmer = use_stemmer and config.stem != 'porter'
             if tokenizer_name == 'spacy':
-                tokenizer = SpacyNLP(lang, model_path, stem=False)
+                tokenizer = SpacyNLP(lang, model_path, stem=also_stemmer)
             elif tokenizer_name == 'stanza':
-                tokenizer = StanzaNLP(lang, model_path, stem=False)
-            elif tokenizer_name == 'moses':
-                tokenizer = MosesTokenizer(lang, model_path)
-            elif tokenizer_name == 'ngram':
-                tokenizer = NgramTokenizer(lang, model_path)
-            elif tokenizer_name == 'whitespace':
-                tokenizer = WhiteSpaceTokenizer(lang, model_path)
-        return tokenizer, stemmer
+                tokenizer = StanzaNLP(lang, model_path, stem=also_stemmer)
+        elif tokenizer_name == 'moses':
+            tokenizer = MosesTokenizer(lang, model_path)
+        elif tokenizer_name == 'ngram':
+            tokenizer = NgramTokenizer(lang, model_path)
+        elif tokenizer_name == 'whitespace':
+            tokenizer = WhiteSpaceTokenizer(lang, model_path)
+
+        cls.tokenizer_cache[key] = tokenizer
+        return tokenizer
+
+    @classmethod
+    def create_stemmer(cls, config, lang):
+        if not config.stem:
+            return None
+        key = f"{config.stem}:{lang}"
+        if key in cls.stemmer_cache:
+            return cls.stemmer_cache[key]
+
+        stemmer_name = config.stem
+        stemmer = None
+
+        if stemmer_name in ['spacy', 'stanza']:
+            return cls.create_tokenizer(config, lang)
+        elif stemmer_name == 'porter':
+            stemmer = PorterStemmer(lang)
+
+        cls.stemmer_cache[key] = stemmer
+        return stemmer
 
     @staticmethod
     def _get_model_path(name, path):
@@ -443,6 +469,29 @@ class TextProcessor:
             return path
         return model_directory_defaults[name]
 
+
+class TextProcessor:
+    """Normalizes, segments, and performs other standardization on text
+
+    Used on both documents and queries.
+    """
+    def __init__(self, config, lang):
+        """
+        Args:
+            config (TextProcessorConfig)
+            lang (str): Language code
+        """
+        self.config = config
+        self.lang = lang
+        TokenizerStemmerFactory.validate(config, lang)
+        self.normalizer = NormalizerFactory.create(lang)
+        self.tokenizer = TokenizerStemmerFactory.create_tokenizer(config, lang)
+        self.stemmer = TokenizerStemmerFactory.create_stemmer(config, lang)
+        if self.config.stopwords:
+            self.stopword_remover = StopWordsRemoval(self.config.stopwords, lang)
+        else:
+            self.stopword_remover = None
+
     def normalize(self, text):
         return self.normalizer.normalize(text)
 
@@ -452,9 +501,9 @@ class TextProcessor:
     def lowercase(self, tokens):
         return [token.lower() for token in tokens]
 
-    def remove_stop_words(self, tokens, lower=False):
-        if self.stopwords:
-            return self.stopwords.remove(tokens, lower)
+    def remove_stop_words(self, tokens, is_lower=False):
+        if self.stopword_remover:
+            return self.stopword_remover.remove(tokens, is_lower)
         else:
             return tokens
 
