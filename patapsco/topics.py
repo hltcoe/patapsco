@@ -27,7 +27,8 @@ class Topic:
 class Query:
     id: str
     lang: str
-    text: str
+    query: str  # string that may include query syntax for the retrieval engine
+    text: str  # text that the query is based on
     report: Optional[str]
 
 
@@ -73,7 +74,7 @@ class TopicProcessor(Task):
             Query
         """
         text = ' '.join([getattr(topic, f).strip() for f in self.fields])
-        return Query(topic.id, topic.lang, text, topic.report)
+        return Query(topic.id, topic.lang, text, text, topic.report)
 
     @classmethod
     def _extract_fields(cls, fields_str):
@@ -282,6 +283,7 @@ class QueryProcessor(Task, TextProcessor):
         """
         text = query.text
         text = self.normalize(text)
+        query_text = text
         tokens = self.tokenize(text)
         if self.config.normalize.lowercase:
             tokens = self.lowercase(tokens)
@@ -290,4 +292,4 @@ class QueryProcessor(Task, TextProcessor):
         if self.config.stem:
             tokens = self.stem(tokens)
 
-        return Query(query.id, query.lang, ' '.join(tokens), query.report)
+        return Query(query.id, query.lang, ' '.join(tokens), query_text, query.report)

@@ -64,10 +64,10 @@ class TestLuceneIndex:
             output="retrieve")
         retriever = PyseriniRetriever(run_path='.', config=ret_config)
         retriever.begin()
-        results = retriever.process(Query('123', 'eng', 'test', None))
+        results = retriever.process(Query('123', 'eng', 'test', 'test', None))
         assert len(results.results) == 2
 
-        other_results = retriever.process(Query('124', 'eng', 'another', None))
+        other_results = retriever.process(Query('124', 'eng', 'another', 'test', None))
         assert len(other_results.results) == 1
         assert other_results.results[0].doc_id == '1234'
 
