@@ -9,7 +9,6 @@ from patapsco.schema import *
 
 
 class TestJobBuilder:
-    # TODO no tests for multiplexing index yet
     dir = pathlib.Path(__file__).parent
 
     def setup_method(self):
