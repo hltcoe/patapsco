@@ -1,5 +1,4 @@
 import abc
-import json
 import logging
 import pathlib
 
@@ -112,95 +111,6 @@ class TimedTask(Task):
 
     def __str__(self):
         return str(self.task)
-
-
-class MultiplexItem:
-    """Supports passing multiple items from Task.process"""
-    def __init__(self):
-        self._items = {}
-
-    def add(self, name, item):
-        self._items[name] = item
-
-    def items(self):
-        """
-        Returns an iterator over key-value pairs
-        """
-        return self._items.items()
-
-
-class MultiplexTask(Task):
-    """Accepts a MultiplexItem and wraps the tasks for each item in it"""
-
-    def __init__(self, splits, create_fn=None, run_path=None, config=None, artifact_config=None, *args, **kwargs):
-        """
-        Args:
-            splits (list of str or dict of tasks): List of split identifiers or list of Tasks to be multiplexed.
-            create_fn (callable): Function to create a task per split.
-            run_path (str): Root directory of the run.
-            config (BaseConfig): Config for the tasks.
-            artifact_config (BaseConfig): Config that resulted in this artifact.
-        """
-        super().__init__()
-        if isinstance(splits, dict):
-            self.tasks = splits
-        else:
-            self.tasks = {}
-            if config.output:
-                self.dir = pathlib.Path(run_path) / config.output
-            for split in splits:
-                task_config = config.copy(deep=True)
-                if task_config.output:
-                    task_config.output = str(pathlib.Path(task_config.output) / split)
-                task_artifact_config = self._update_artifact_config(artifact_config, split)
-                self.tasks[split] = create_fn(run_path, task_config, task_artifact_config, *args, **kwargs)
-            self.artifact_config = artifact_config
-            if config.output:
-                self.config_path = self.dir / 'config.yml'
-                # we save the splits for components downstream to access
-                with open(self.dir / '.multiplex', 'w') as fp:
-                    json.dump(splits, fp)
-
-    def process(self, item):
-        new_item = MultiplexItem()
-        for name, value in item.items():
-            new_item.add(name, self.tasks[name].process(value))
-        return new_item
-
-    def begin(self):
-        for task in self.tasks.values():
-            task.begin()
-
-    def end(self):
-        for task in self.tasks.values():
-            task.end()
-        if hasattr(self, 'dir'):
-            if self.artifact_config:
-                ConfigService.write_config_file(self.config_path, self.artifact_config)
-            touch_complete(self.dir)
-
-    def run_reduce(self):
-        if hasattr(self, 'dir'):
-            dirs = sorted(list(self.dir.glob('part*')))
-            for name, task in self.tasks.items():
-                task_dirs = [path / name for path in dirs]
-                task.reduce(task_dirs)
-
-    def __str__(self):
-        return f"Multiplex({list(self.tasks.values())[0]})"
-
-    @staticmethod
-    def _update_artifact_config(artifact_config, split):
-        conf = artifact_config.copy(deep=True)
-        try:
-            conf.documents.process.splits = [split]
-        except AttributeError:
-            pass
-        try:
-            conf.queries.process.splits = [split]
-        except AttributeError:
-            pass
-        return conf
 
 
 class Pipeline(abc.ABC):

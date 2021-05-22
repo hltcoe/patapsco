@@ -2,12 +2,12 @@ import csv
 import dataclasses
 import json
 import pathlib
+from typing import Optional
 
-from .config import BaseConfig, Optional
 from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import TopicsInputConfig
-from .text import Splitter, TextProcessor
+from .text import TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
 from .util.formats import parse_xml_topics, parse_sgml_topics
@@ -267,11 +267,10 @@ class QueryProcessor(Task, TextProcessor):
         Args:
             run_path (str): Root directory of the run.
             config (TextProcessorConfig)
-            lang (str)
+            lang (str): Language code
         """
         Task.__init__(self, run_path)
         TextProcessor.__init__(self, config, lang)
-        self.splitter = Splitter(config.splits)
 
     def process(self, query):
         """
@@ -281,29 +280,14 @@ class QueryProcessor(Task, TextProcessor):
         Returns
             Query
         """
-        self.splitter.reset()
         text = query.text
         text = self.normalize(text)
         tokens = self.tokenize(text)
-        self.splitter.add('tokenize', Query(query.id, query.lang, ' '.join(tokens), query.report))
         if self.config.normalize.lowercase:
             tokens = self.lowercase(tokens)
-        self.splitter.add('lowercase', Query(query.id, query.lang, ' '.join(tokens), query.report))
         if self.config.stopwords:
             tokens = self.remove_stop_words(tokens, not self.config.normalize.lowercase)
-        self.splitter.add('stopwords', Query(query.id, query.lang, ' '.join(tokens), query.report))
         if self.config.stem:
             tokens = self.stem(tokens)
-        self.splitter.add('stem', Query(query.id, query.lang, ' '.join(tokens), query.report))
 
-        if self.splitter:
-            return self.splitter.get()
-        else:
-            return Query(query.id, query.lang, ' '.join(tokens), query.report)
-
-    @property
-    def name(self):
-        if self.splitter:
-            return f"{super()} | Splitter"
-        else:
-            return str(super())
+        return Query(query.id, query.lang, ' '.join(tokens), query.report)

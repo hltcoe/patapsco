@@ -10,7 +10,6 @@ import spacy
 import stanza
 
 from .error import ConfigError
-from .pipeline import MultiplexItem
 from .util.normalize import NormalizerFactory
 
 LOGGER = logging.getLogger(__name__)
@@ -343,43 +342,6 @@ class StopWordsRemoval:
         else:
             tokens = [token for token in tokens if token not in self.words]
         return tokens
-
-
-class Splitter:
-    """Incrementally accepts output from a text processor task.
-
-    Supports splitting output for multiplexing the pipeline.
-    Each output item has an associated name.
-    """
-
-    allowed_splits = {"tokenize", "lowercase", "stopwords", "stem"}
-
-    def __init__(self, splits):
-        """
-        Args:
-            splits (list): List of split strings like "tokenize+lowercase"
-        """
-        if splits:
-            self.splits = {split.split('+')[-1]: split for split in splits}
-            for name in self.splits.keys():
-                if name not in self.allowed_splits:
-                    raise ConfigError(f"Unrecognized split: {name}")
-        else:
-            self.splits = {}
-        self.items = MultiplexItem()
-
-    def add(self, key, item):
-        if key in self.splits:
-            self.items.add(self.splits[key], item)
-
-    def get(self):
-        return self.items
-
-    def reset(self):
-        self.items = MultiplexItem()
-
-    def __bool__(self):
-        return len(self.splits) > 0
 
 
 class TokenizerStemmerFactory:

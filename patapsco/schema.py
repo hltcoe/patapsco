@@ -41,7 +41,6 @@ class TextProcessorConfig(BaseConfig):
     tokenize: str
     stopwords: Union[bool, str] = "lucene"
     stem: Union[bool, str] = False
-    splits: Optional[list]
 
 
 """""""""""""""""
@@ -131,13 +130,9 @@ Retrieve
 """""""""""""""""
 
 
-class RetrieveIndexPathConfig(BaseConfig):
-    path: dict  # index name: index path
-
-
 class RetrieveInputConfig(BaseConfig):
     """Configuration of optional retrieval inputs"""
-    index: Union[None, PathConfig, RetrieveIndexPathConfig]
+    index: Union[None, PathConfig]
     queries: Optional[PathConfig]
 
 

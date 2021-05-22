@@ -9,7 +9,6 @@ from patapsco.schema import *
 
 
 class TestJobBuilder:
-    # TODO no tests for multiplexing index yet
     dir = pathlib.Path(__file__).parent
 
     def setup_method(self):
@@ -196,25 +195,6 @@ class TestJobBuilder:
         builder = JobBuilder(conf)
         plan = [Tasks.DOCUMENTS]
         with pytest.raises(ConfigError):
-            builder._get_stage1_tasks(plan)
-
-    def test_build_stage1_with_standard_docs_split(self):
-        conf = self.create_config('test')
-        conf.documents.process.splits = ['tokenize', 'tokenize+lowercase']
-        builder = JobBuilder(conf)
-        plan = [Tasks.DOCUMENTS]
-        tasks = builder._get_stage1_tasks(plan)
-        assert len(tasks) == 2
-        assert isinstance(tasks[0], DocumentProcessor)
-        assert tasks[0].splitter.splits == {'tokenize': 'tokenize', 'lowercase': 'tokenize+lowercase'}
-        assert isinstance(tasks[1], MultiplexTask)
-
-    def test_build_stage1_with_standard_docs_and_bad_split(self):
-        conf = self.create_config('test')
-        conf.documents.process.splits = ['tokenize', 'tokenize+uppercase']
-        builder = JobBuilder(conf)
-        plan = [Tasks.DOCUMENTS]
-        with pytest.raises(ConfigError, match="Unrecognized split"):
             builder._get_stage1_tasks(plan)
 
     def test_build_stage1_with_no_documents_for_indexer(self):

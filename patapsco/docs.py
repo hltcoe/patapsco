@@ -12,7 +12,7 @@ from .config import ConfigService
 from .error import BadDataError, ConfigError, ParseError
 from .pipeline import Task
 from .schema import DocumentsInputConfig
-from .text import Splitter, TextProcessor
+from .text import TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append, is_complete, touch_complete
 from .util.formats import parse_sgml_documents, parse_hamshahri_documents
@@ -276,7 +276,6 @@ class DocumentProcessor(Task, TextProcessor):
         """
         Task.__init__(self, run_path)
         TextProcessor.__init__(self, config, lang)
-        self.splitter = Splitter(config.splits)
         self.db = db
         self.save_report = config.normalize.report
         self.diffs = collections.Counter()
@@ -289,30 +288,21 @@ class DocumentProcessor(Task, TextProcessor):
         Returns
             Doc
         """
-        self.splitter.reset()
-
         text = original_text = doc.text
         text = self.normalize(text)
         if self.save_report:
             self.diffs += compare_strings(original_text, text)
 
         tokens = self.tokenize(text)
-        self.splitter.add('tokenize', Doc(doc.id, doc.lang, ' '.join(tokens)))
         if self.config.normalize.lowercase:
             tokens = self.lowercase(tokens)
-        self.splitter.add('lowercase', Doc(doc.id, doc.lang, ' '.join(tokens)))
         self.db[doc.id] = ' '.join(tokens)
         if self.config.stopwords:
             tokens = self.remove_stop_words(tokens, not self.config.normalize.lowercase)
-        self.splitter.add('stopwords', Doc(doc.id, doc.lang, ' '.join(tokens)))
         if self.config.stem:
             tokens = self.stem(tokens)
-        self.splitter.add('stem', Doc(doc.id, doc.lang, ' '.join(tokens)))
 
-        if self.splitter:
-            return self.splitter.get()
-        else:
-            return Doc(doc.id, doc.lang, ' '.join(tokens))
+        return Doc(doc.id, doc.lang, ' '.join(tokens))
 
     def end(self):
         self.db.end()
@@ -327,9 +317,3 @@ class DocumentProcessor(Task, TextProcessor):
 
     def run_reduce(self):
         self.db.reduce()
-
-    def __str__(self):
-        if self.splitter:
-            return f"{super().__str__()} | Splitter"
-        else:
-            return super().__str__()
