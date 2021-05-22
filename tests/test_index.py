@@ -26,11 +26,11 @@ class TestLuceneIndex:
         conf = IndexConfig(name='lucene', output=output_directory)
         li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
         li.begin()
-        li.process(Doc("1234", "en", "this is a test"))
+        li.process(Doc("1234", "eng", "this is a test"))
         li.end()
         assert lucene_directory.exists()
         lang_file = lucene_directory / ".lang"
-        assert lang_file.read_text() == "en"
+        assert lang_file.read_text() == "eng"
 
     def test_two_indexes(self):
         run_directory = self.temp_dir
@@ -38,7 +38,7 @@ class TestLuceneIndex:
         conf = IndexConfig(name='lucene', output=str(output_directory))
         li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
         li.begin()
-        li.process(Doc("1234", "en", "this is a another test"))
+        li.process(Doc("1234", "eng", "this is a another test"))
         li.end()
         assert output_directory.exists()
 
@@ -46,7 +46,7 @@ class TestLuceneIndex:
         conf = IndexConfig(name='lucene', output=str(output_directory))
         li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
         li.begin()
-        li.process(Doc("5678", "en", "this is a test"))
+        li.process(Doc("5678", "eng", "this is a test"))
         li.end()
         assert output_directory.exists()
 
@@ -64,10 +64,10 @@ class TestLuceneIndex:
             output="retrieve")
         retriever = PyseriniRetriever(run_path='.', config=ret_config)
         retriever.begin()
-        results = retriever.process(Query('123', 'en', 'test', None))
+        results = retriever.process(Query('123', 'eng', 'test', None))
         assert len(results.results) == 2
 
-        other_results = retriever.process(Query('124', 'en', 'another', None))
+        other_results = retriever.process(Query('124', 'eng', 'another', None))
         assert len(other_results.results) == 1
         assert other_results.results[0].doc_id == '1234'
 

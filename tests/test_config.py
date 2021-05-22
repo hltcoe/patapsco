@@ -217,7 +217,7 @@ def test_json_interpolation_simple():
 def test_json_interpolation_with_missing_value():
     document = """
 {
-  "lang": "ru",
+  "lang": "rus",
   "document_process": {
     "utf8_normalize": true,
     "lowercase": true,

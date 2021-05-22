@@ -8,7 +8,7 @@ database:
 documents:
   input:
     format: json
-    lang: en
+    lang: eng
     encoding: utf8
     path: tests/build_files/input/docs.jsonl
   process:

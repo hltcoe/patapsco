@@ -16,7 +16,7 @@ class MockDB:
         self.path = 'test'
 
     def __getitem__(self, item):
-        return Doc('aaa', 'en', 'text')
+        return Doc('aaa', 'eng', 'text')
 
 
 class TestShellReranker:
@@ -42,13 +42,13 @@ class TestShellReranker:
         script = str(self.directory / 'success.sh')
         config = self.create_config(script)
         reranker = ShellReranker(run_path='', config=config, db=MockDB())
-        items = [Results(Query('1', 'en', 'text', 'report'), 'en', 'test', [
+        items = [Results(Query('1', 'eng', 'text', 'report'), 'eng', 'test', [
             Result('aaa', 1, 0.5),
             Result('bbb', 2, 0.4)
         ])]
         new_items = reranker.batch_process(items)
         assert new_items[0].query.id == '1'
-        assert new_items[0].query.lang == 'en'
+        assert new_items[0].query.lang == 'eng'
         assert new_items[0].results[0].doc_id == 'bbb'
         assert new_items[0].results[1].doc_id == 'aaa'
         assert reranker.batch == 1
@@ -58,8 +58,8 @@ class TestShellReranker:
         config = self.create_config(script)
         reranker = ShellReranker(run_path='', config=config, db=MockDB())
         items = [
-            Results(Query('1', 'en', 'text', 'report 1'), 'en', 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
-            Results(Query('2', 'en', 'text2', 'report 2'), 'en', 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
+            Results(Query('1', 'eng', 'text', 'report 1'), 'eng', 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
+            Results(Query('2', 'eng', 'text2', 'report 2'), 'eng', 'test', [Result('aaa', 1, 0.5), Result('bbb', 2, 0.4)]),
         ]
         with pytest.raises(PatapscoError):
             reranker.batch_process(items)
@@ -68,7 +68,7 @@ class TestShellReranker:
         script = str(self.directory / 'error.sh')
         config = self.create_config(script)
         reranker = ShellReranker(run_path='', config=config, db=MockDB())
-        items = [Results(Query('1', 'en', 'text', 'report'), 'en', 'test', [Result('1', 1, 0.5)])]
+        items = [Results(Query('1', 'eng', 'text', 'report'), 'eng', 'test', [Result('1', 1, 0.5)])]
         with pytest.raises(PatapscoError):
             reranker.batch_process(items)
 
@@ -82,7 +82,7 @@ class TestShellReranker:
         script = str(self.directory / 'success.sh')
         config = self.create_config(script)
         reranker = ShellReranker(run_path='', config=config, db=MockDB())
-        item = Results(Query('1', 'en', 'text', 'report'), 'en', 'test', [
+        item = Results(Query('1', 'eng', 'text', 'report'), 'eng', 'test', [
             Result('aaa', 1, 0.5),
             Result('bbb', 2, 0.4)
         ])
@@ -93,13 +93,13 @@ class TestShellReranker:
         script = str(self.directory / 'args.sh')
         config = self.create_config(script, embedding="mbert")
         reranker = ShellReranker(run_path='', config=config, db=MockDB())
-        items = [Results(Query('1', 'en', 'text', 'report'), 'en', 'test', [
+        items = [Results(Query('1', 'eng', 'text', 'report'), 'eng', 'test', [
             Result('aaa', 1, 0.5),
             Result('bbb', 2, 0.4)
         ])]
         new_items = reranker.batch_process(items)
         assert new_items[0].query.id == '1'
-        assert new_items[0].query.lang == 'en'
+        assert new_items[0].query.lang == 'eng'
         assert new_items[0].results[0].doc_id == 'bbb'
         assert new_items[0].results[1].doc_id == 'aaa'
         assert reranker.batch == 1

@@ -8,10 +8,10 @@ from patapsco.docs import *
 def test_parse_json_documents():
     directory = pathlib.Path(__file__).parent / 'json_files'
     path = directory / 'docs.jsonl'
-    doc_iter = Hc4JsonDocumentReader(str(path.absolute()), 'utf8', 'en')
+    doc_iter = Hc4JsonDocumentReader(str(path.absolute()), 'utf8', 'eng')
     doc = next(doc_iter)
     assert doc.id == 'abcdef'
-    assert doc.lang == 'en'
+    assert doc.lang == 'eng'
     assert doc.text == 'title1 text1'
     doc = next(doc_iter)
     assert doc.id == 'tuvwxy'
@@ -24,7 +24,7 @@ def test_parse_json_documents():
 def test_parse_json_documents_with_bad_format():
     directory = pathlib.Path(__file__).parent / 'json_files'
     path = directory / 'bad_format.jsonl'
-    doc_iter = Hc4JsonDocumentReader(str(path.absolute()), 'utf8', 'en')
+    doc_iter = Hc4JsonDocumentReader(str(path.absolute()), 'utf8', 'eng')
     with pytest.raises(ParseError):
         next(doc_iter)
 
@@ -32,7 +32,7 @@ def test_parse_json_documents_with_bad_format():
 def test_parse_json_documents_with_missing_field():
     directory = pathlib.Path(__file__).parent / 'json_files'
     path = directory / 'missing_field.jsonl'
-    doc_iter = Hc4JsonDocumentReader(str(path.absolute()), 'utf8', 'en')
+    doc_iter = Hc4JsonDocumentReader(str(path.absolute()), 'utf8', 'eng')
     with pytest.raises(ParseError):
         next(doc_iter)
 
@@ -40,7 +40,7 @@ def test_parse_json_documents_with_missing_field():
 def test_parse_msmarco_documents():
     directory = pathlib.Path(__file__).parent / 'msmarco_files'
     path = directory / 'collection.tsv'
-    doc_iter = TsvDocumentReader(str(path.absolute()), 'utf8', 'en')
+    doc_iter = TsvDocumentReader(str(path.absolute()), 'utf8', 'eng')
     doc = next(doc_iter)
     assert doc.id == '1'
     assert doc.text == 'mary had a little lamb'

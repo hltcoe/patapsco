@@ -38,7 +38,7 @@ class PorterStemmer(Stemmer):
     """Porter stemmer from nltk"""
 
     def __init__(self, lang):
-        if lang != "en":
+        if lang != "eng":
             raise ConfigError("Porter stemmer only supports English")
         super().__init__(lang)
         self.stemmer = nltk.stem.porter.PorterStemmer()
@@ -74,6 +74,14 @@ class WhiteSpaceTokenizer(Tokenizer):
 class StanzaNLP(Tokenizer, Stemmer):
     """Tokenizer that uses Stanford's stanza library"""
 
+    lang_map = {
+        'ara': 'ar',
+        'eng': 'en',
+        'fas': 'fa',
+        'rus': 'ru',
+        'zho': 'zh-hans',
+    }
+
     def __init__(self, lang, model_path, stem):
         """
         Args:
@@ -83,8 +91,7 @@ class StanzaNLP(Tokenizer, Stemmer):
         """
         Stemmer.__init__(self, lang)
         Tokenizer.__init__(self, lang, model_path)
-        if self.lang == 'zh':
-            self.lang = 'zh-hans'
+        self.lang = self.lang_map[lang]
         self._setup_logging()
         buffer = io.StringIO()
         with contextlib.redirect_stderr(buffer):
@@ -161,7 +168,11 @@ class SpacyModelLoader:
         'zh': {  # TOKEN_ACC: 97.88, SENT_F: 75.88
             'name': 'zh_core_web_md',
             'version': '3.0.0',
-        }
+        },
+        'xx': {  # UD multilang model. TOKEN_ACC: 99.29, SENT_F: 86.39
+            'name': 'xx_sent_ud_sm',
+            'version': '3.0.0',
+        },
     }
 
     exclude = ['ner', 'parser']
@@ -207,6 +218,14 @@ class SpacyModelLoader:
 class SpacyNLP(Tokenizer, Stemmer):
     """Tokenizer that uses the spaCy package"""
 
+    lang_map = {
+        'ara': 'ar',
+        'eng': 'en',
+        'fas': 'fa',
+        'rus': 'ru',
+        'zho': 'zh',
+    }
+
     def __init__(self, lang, model_path, stem):
         """
         Args:
@@ -216,11 +235,12 @@ class SpacyNLP(Tokenizer, Stemmer):
         """
         Stemmer.__init__(self, lang)
         Tokenizer.__init__(self, lang, model_path)
-        self.nlp = SpacyModelLoader.get_loader(model_path).load(lang)
+        self.lang = self.lang_map[lang]
+        self.nlp = SpacyModelLoader.get_loader(model_path).load(self.lang)
         self.cache = None
         if stem:
-            if lang in ['ar', 'fa', 'zh']:
-                raise ConfigError(f"Spacy does not support lemmatization for {lang}")
+            if self.lang in ['ar', 'fa', 'zh']:
+                raise ConfigError(f"Spacy does not support lemmatization for {self.lang}")
             # enable pipeline components that the lemmatizer depends on
             names = self.nlp.component_names
             for name in set(names) & {'tok2vec', 'tagger', 'attribute_ruler', 'lemmatizer', 'morphologizer'}:
@@ -240,10 +260,10 @@ class MosesTokenizer(Tokenizer):
     """Tokenizer that uses sacremoses"""
 
     languages = {
-        'ar': 'en',
-        'en': 'en',
-        'fa': 'en',
-        'ru': 'ru',
+        'ara': 'en',
+        'eng': 'en',
+        'fas': 'en',
+        'rus': 'ru',
     }
 
     def __init__(self, lang, model_path):
@@ -253,11 +273,11 @@ class MosesTokenizer(Tokenizer):
             model_path (str): Path to spaCy models.
         """
         super().__init__(lang, model_path)
-        if lang == 'zh':
+        if lang == 'zho':
             raise ConfigError("MosesTokenizer does not support Chinese.")
         self.tokenizer = sacremoses.MosesTokenizer(lang=self.languages[lang])
         # we need to segment sentences with spaCy before running the tokenizer
-        self.nlp = SpacyModelLoader.get_loader(model_path).load(lang)
+        self.nlp = SpacyModelLoader.get_loader(model_path).load('xx')
         self.nlp.enable_pipe("senter")
 
     def tokenize(self, text):
@@ -271,11 +291,11 @@ class NgramTokenizer(Tokenizer):
 
     # character ngram size by language
     languages = {
-        'ar': 5,
-        'en': 5,
-        'fa': 5,
-        'ru': 5,
-        'zh': 2
+        'ara': 5,
+        'eng': 5,
+        'fas': 5,
+        'rus': 5,
+        'zho': 2
     }
 
     def __init__(self, lang, model_path):
@@ -287,7 +307,7 @@ class NgramTokenizer(Tokenizer):
         super().__init__(lang, model_path)
         self.n = self.languages[lang]
         # segment sentences with spaCy before create ngrams
-        self.nlp = SpacyModelLoader.get_loader(model_path).load(lang)
+        self.nlp = SpacyModelLoader.get_loader(model_path).load('xx')
         self.nlp.enable_pipe("senter")
 
     def tokenize(self, text):
@@ -376,13 +396,13 @@ class TokenizerStemmerFactory:
         """Validate the config for tokenizers and stemmers.
 
         Allowed tokenizer and stemmer combinations:
-         - stanza + stanza (ar, en, fa, ru) or porter (en)
-         - jieba/stanza + no stemming (zh)
-         - spacy + spacy (en, ru) or porter (en)
-         - spacy + no stemming (ar, fa, zh)
-         - moses + porter (en)
+         - stanza + stanza (ara, eng, fas, rus) or porter (eng)
+         - jieba/stanza + no stemming (zho)
+         - spacy + spacy (eng, rus) or porter (eng)
+         - spacy + no stemming (ara, fas, zho)
+         - moses + porter (eng)
          - ngram + no stemming
-         - whitespace + porter (en)
+         - whitespace + porter (eng)
 
         Some language restrictions are left to the tokenizers or stemmers to check:
          - No Chinese stemming.
@@ -398,7 +418,7 @@ class TokenizerStemmerFactory:
                 raise ConfigError(f"Cannot tokenize with {config.tokenize} and also stem.")
             if config.tokenize in ['moses', 'whitespace'] and config.stem != 'porter':
                 raise ConfigError(f"Incompatible tokenizer ({config.tokenize}) and stemmer ({config.stem})")
-            if lang == "en":
+            if lang == "eng":
                 if config.tokenize == "spacy" and config.stem not in ['porter', 'spacy']:
                     raise ConfigError(f"Incompatible tokenizer ({config.tokenize}) and stemmer ({config.stem})")
                 if config.tokenize == "stanza" and config.stem not in ['porter', 'stanza']:

@@ -11,7 +11,7 @@ import sys
 from .config import ConfigService
 from .docs import DocumentProcessor, DocumentReaderFactory, DocumentDatabaseFactory, DocReader, DocWriter
 from .error import ConfigError
-from .helpers import ArtifactHelper, LangHelper
+from .helpers import ArtifactHelper
 from .index import IndexerFactory
 from .pipeline import BatchPipeline, MultiplexTask, StreamingPipeline
 from .rerank import RerankFactory
@@ -20,7 +20,7 @@ from .retrieve import Joiner, RetrieverFactory
 from .schema import RunnerConfig, PipelineMode, Tasks
 from .score import QrelsReaderFactory, Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
-from .util import DataclassJSONEncoder, LoggingFilter, SlicedIterator, Timer
+from .util import DataclassJSONEncoder, LangStandardizer, LoggingFilter, SlicedIterator, Timer
 from .util.file import delete_dir, is_complete, path_append
 
 LOGGER = logging.getLogger(__name__)
@@ -370,7 +370,7 @@ class JobBuilder:
 
         if Tasks.DOCUMENTS in plan:
             # doc reader -> doc processor with doc db -> optional doc writer
-            self.docs_lang = LangHelper.standardize(self.conf.documents.input.lang)
+            self.docs_lang = LangStandardizer.standardize(self.conf.documents.input.lang)
             self.conf.documents.input.lang = self.docs_lang
             self.clear_output(self.conf.documents)
             self.clear_output(self.conf.database)
@@ -459,12 +459,12 @@ class JobBuilder:
             iterator = self._setup_input(QueryReader, 'queries.input.path', 'topics.output',
                                          'query processor not configured with input')
             query = iterator.peek()
-            self.query_lang = LangHelper.standardize(query.lang)
+            self.query_lang = LangStandardizer.standardize(query.lang)
         elif Tasks.RETRIEVE in plan:
             iterator = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output',
                                          'retrieve not configured with queries')
             query = iterator.peek()
-            self.query_lang = LangHelper.standardize(query.lang)
+            self.query_lang = LangStandardizer.standardize(query.lang)
         else:
             iterator = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output',
                                          'rerank not configured with retrieve results')
@@ -480,7 +480,7 @@ class JobBuilder:
 
         if Tasks.TOPICS in plan:
             # topic reader -> topic processor -> optional query writer
-            self.query_lang = LangHelper.standardize(self.conf.topics.input.lang)
+            self.query_lang = LangStandardizer.standardize(self.conf.topics.input.lang)
             self.conf.topics.input.lang = self.query_lang
             self.clear_output(self.conf.topics)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.TOPICS)
