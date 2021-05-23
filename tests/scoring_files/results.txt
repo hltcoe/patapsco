@@ -1,0 +1,4 @@
+1 Q0 doc1 1 0.87 MockReranker
+1 Q0 doc2 2 0.45 MockReranker
+2 Q0 doc2 1 0.62 MockReranker
+2 Q0 doc1 2 0.49 MockReranker

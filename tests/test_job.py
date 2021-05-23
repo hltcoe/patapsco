@@ -79,7 +79,6 @@ class TestJobBuilder:
         assert Tasks.QUERIES in stage2_plan
         assert Tasks.RETRIEVE in stage2_plan
         assert Tasks.RERANK in stage2_plan
-        assert Tasks.SCORE in stage2_plan
 
     def test_create_plan_with_complete_documents(self):
         conf = self.create_config('docs_complete')
@@ -130,14 +129,6 @@ class TestJobBuilder:
         assert Tasks.QUERIES not in stage2_plan
         assert Tasks.RETRIEVE not in stage2_plan
         assert Tasks.RERANK in stage2_plan
-
-    def test_create_plan_with_no_rerank_retrieval(self):
-        conf = self.create_config('test')
-        conf.rerank = None
-        conf.retrieve = None
-        builder = JobBuilder(conf)
-        with pytest.raises(ConfigError, match="Scorer can only run if either retrieve or rerank is configured."):
-            builder._create_stage2_plan()
 
     def test_build_stage1_with_standard_docs(self):
         conf = self.create_config('test')

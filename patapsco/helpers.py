@@ -130,12 +130,12 @@ class ArtifactHelper:
 
     def __init__(self):
         self.excludes = {
-            Tasks.DOCUMENTS: [Tasks.INDEX, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK, Tasks.SCORE],
-            Tasks.INDEX: [Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK, Tasks.SCORE],
-            Tasks.TOPICS: [Tasks.DOCUMENTS, Tasks.INDEX, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK, Tasks.SCORE],
-            Tasks.QUERIES: [Tasks.DOCUMENTS, Tasks.INDEX, Tasks.RETRIEVE, Tasks.RERANK, Tasks.SCORE],
-            Tasks.RETRIEVE: [Tasks.RERANK, Tasks.SCORE],
-            Tasks.RERANK: [Tasks.SCORE]
+            Tasks.DOCUMENTS: [Tasks.INDEX, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
+            Tasks.INDEX: [Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
+            Tasks.TOPICS: [Tasks.DOCUMENTS, Tasks.INDEX, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
+            Tasks.QUERIES: [Tasks.DOCUMENTS, Tasks.INDEX, Tasks.RETRIEVE, Tasks.RERANK],
+            Tasks.RETRIEVE: [Tasks.RERANK],
+            Tasks.RERANK: []
         }
 
     def get_config(self, config, task):
