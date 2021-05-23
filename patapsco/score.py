@@ -3,7 +3,6 @@ import logging
 import pytrec_eval
 
 from .error import ConfigError
-from .pipeline import Task
 from .schema import ScoreInputConfig
 from .util import ComponentFactory, GlobIterator
 from .util.formats import parse_qrels
@@ -37,21 +36,17 @@ class TrecQrelsReader:
         return data
 
 
-class Scorer(Task):
+class Scorer:
     """Use pytrec_eval to calculate scores"""
 
-    def __init__(self, run_path, config, qrels):
+    def __init__(self, qrels_config, metrics):
         """
         Args:
-            run_path (str): Root directory of the run.
-            config (ScoreConfig)
-            qrels (dict): qrels dictionary
+            qrels_config (PathConfig): Config for the qrels file or glob for multiple files.
+            metrics (list): List of metrics names.
         """
-        super().__init__(run_path, base='')
-        self.config = config
-        self.metrics = self._preprocess_metrics(self.config.metrics)
-        self.qrels = qrels
-        self.run = collections.defaultdict(dict)
+        self.metrics = self._preprocess_metrics(metrics)
+        self.qrels = QrelsReaderFactory.create(qrels_config).read()
         self._validate_metrics(self.metrics)
 
     @staticmethod
@@ -68,30 +63,24 @@ class Scorer(Task):
         except ValueError as e:
             raise ConfigError(e)
 
-    def process(self, results):
-        """Accumulate the results and calculate scores at end
+    def score(self, results_path, scores_path):
+        """Calculate scores at the end of the run.
 
         Args:
-            results (Results): Results for a query
-
-        Return:
-            Results
+            results_path (Path): Path to results of a run.
+            scores_path (Path): Path to write scores.
         """
-        for result in results.results:
-            self.run[results.query.id][result.doc_id] = result.score
-        return results
-
-    def end(self):
-        """Calculate scores at the end of the run"""
-        if set(self.run.keys()) - set(self.qrels.keys()):
+        with open(results_path, 'r') as fp:
+            system_output = pytrec_eval.parse_run(fp)
+        if set(system_output.keys()) - set(self.qrels.keys()):
             LOGGER.warning('There are queries in the run that are not in the qrels')
         measures = {s for s in self.metrics}
         ndcg_prime_results = {}
         if "ndcg_prime" in measures:
-            ndcg_prime_results = self._calc_ndcg_prime()
+            ndcg_prime_results = self._calc_ndcg_prime(system_output)
             measures.discard("ndcg_prime")
         evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, measures)
-        scores = evaluator.evaluate(self.run)
+        scores = evaluator.evaluate(system_output)
         if ndcg_prime_results:
             for query in scores.keys():
                 scores[query].update(ndcg_prime_results[query])
@@ -101,9 +90,9 @@ class Scorer(Task):
                 mean_scores[key] = sum(data[key] for data in scores.values()) / len(scores)
             scores_string = ", ".join(f"{m}: {s:.3f}" for m, s in mean_scores.items())
             LOGGER.info(f"Average scores over {len(scores.keys())} queries: {scores_string}")
-            self._write_scores(scores)
+            self._write_scores(scores, scores_path)
 
-    def _calc_ndcg_prime(self):
+    def _calc_ndcg_prime(self, system_output):
         """Calculate nDCG'
 
         For every query, remove document ids that do not belong to the set of
@@ -111,15 +100,14 @@ class Scorer(Task):
         """
         evaluator = pytrec_eval.RelevanceEvaluator(self.qrels, {'ndcg'})
         modified_run = collections.defaultdict(dict)
-        for query_id in self.run:
-            for doc_id in self.run[query_id]:
+        for query_id in system_output:
+            for doc_id in system_output[query_id]:
                 if doc_id in self.qrels[query_id].keys():
-                    modified_run[query_id][doc_id] = self.run[query_id][doc_id]
+                    modified_run[query_id][doc_id] = system_output[query_id][doc_id]
         ndcg_scores = evaluator.evaluate(modified_run)
         return {query: {"ndcg_prime": scores["ndcg"]} for query, scores in ndcg_scores.items()}
 
-    def _write_scores(self, scores):
-        scores_path = self.run_path / 'scores.txt'
+    def _write_scores(self, scores, scores_path):
         with open(scores_path, 'w') as fp:
             for q, results_dict in sorted(scores.items()):
                 for measure, value in sorted(results_dict.items()):

@@ -16,7 +16,6 @@ class Tasks(str, enum.Enum):
     QUERIES = 'queries'
     RETRIEVE = 'retrieve'
     RERANK = 'rerank'
-    SCORE = 'score'
 
 
 class PathConfig(BaseConfig):
@@ -172,7 +171,7 @@ Score
 class ScoreInputConfig(BaseConfig):
     """Qrels downstream configuration"""
     format: str = "trec"
-    path: str
+    path: str  # path to qrels file or glob to match multiple files
 
 
 class ScoreConfig(SectionConfig):

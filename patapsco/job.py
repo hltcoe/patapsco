@@ -18,7 +18,7 @@ from .rerank import RerankFactory
 from .results import JsonResultsWriter, JsonResultsReader, TrecResultsWriter
 from .retrieve import RetrieverFactory
 from .schema import RunnerConfig, PipelineMode, Tasks
-from .score import QrelsReaderFactory, Scorer
+from .score import Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
 from .util import DataclassJSONEncoder, LangStandardizer, LoggingFilter, SlicedIterator, Timer
 from .util.file import delete_dir, is_complete, path_append
@@ -80,6 +80,7 @@ class Job:
         if not sub_job:
             self.write_config()
             self.write_report(report)
+            self.write_scores()
         LOGGER.info("Run complete")
         return report
 
@@ -95,6 +96,14 @@ class Job:
     def write_config(self):
         path = pathlib.Path(self.run_path) / 'config.yml'
         ConfigService.write_config_file(str(path), self.conf)
+
+    def write_scores(self):
+        results_path = pathlib.Path(self.run_path) / 'results.txt'
+        if results_path.exists() and self.conf.score:
+            scores_path = pathlib.Path(self.run_path) / 'scores.txt'
+            qrels_config = self.conf.score.input
+            scorer = Scorer(qrels_config, self.conf.score.metrics)
+            scorer.score(results_path, scores_path)
 
 
 class SerialJob(Job):
@@ -426,10 +435,6 @@ class JobBuilder:
         if self.conf.rerank:
             if not self.is_task_complete(self.conf.rerank):
                 stage2.append(Tasks.RERANK)
-        if self.conf.score:
-            if Tasks.RERANK not in stage2 and Tasks.RETRIEVE not in stage2:
-                raise ConfigError("Scorer can only run if either retrieve or rerank is configured.")
-            stage2.append(Tasks.SCORE)
 
         # confirm that we're not missing tasks
         if Tasks.TOPICS in stage2 and Tasks.RETRIEVE in stage2 and Tasks.QUERIES not in stage2:
@@ -462,7 +467,7 @@ class JobBuilder:
         return SlicedIterator(iterator, stage_conf.start, stage_conf.stop)
 
     def _get_stage2_tasks(self, plan):
-        # Stage 2 is generally: read topics, extract query, process them, retrieve results, rerank them, score.
+        # Stage 2 is generally: read topics, extract query, process them, retrieve results, rerank them.
         # For each task, we clear previous data from a failed run if it exists.
         # Then we build the tasks from the plan and configuration.
         run_path = self.conf.run.path
@@ -506,10 +511,6 @@ class JobBuilder:
 
         if Tasks.RETRIEVE in plan or Tasks.RERANK in plan:
             tasks.append(TrecResultsWriter(self.conf))
-
-        if Tasks.SCORE in plan:
-            qrels = QrelsReaderFactory.create(self.conf.score.input).read()
-            tasks.append(Scorer(run_path, self.conf.score, qrels))
 
         return tasks
 
