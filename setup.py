@@ -47,6 +47,9 @@ setuptools.setup(
         "dev": ["pytest", "flake8", "autopep8"]
     },
     entry_points={
-        "console_scripts": ["patapsco = patapsco.__main__:main"]
+        "console_scripts": [
+            "patapsco = patapsco.bin.main:main",
+            "patapsco-norm = patapsco.bin.normalize:main",
+        ]
     }
 )
