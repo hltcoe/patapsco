@@ -33,9 +33,13 @@ class Java:
 
     def initialize(self):
         self.initialized = True
-        import pyserini.analysis
-        import pyserini.search
-        import jnius
+        try:
+            import pyserini.analysis
+            import pyserini.search
+            import jnius
+        except Exception as e:
+            msg = "Problem with Java. Likely no Java or an older JVM. Run with '-v' for more details"
+            raise PatapscoError(msg) from e
         # TDOD can remove analyzer when newest version of pyserini is released
         self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
         self.SimpleSearcher = pyserini.search.SimpleSearcher

@@ -4,10 +4,7 @@ import itertools
 import logging
 import pathlib
 
-import nltk
 import sacremoses
-import spacy
-import stanza
 
 from .error import ConfigError
 from .util.normalize import NormalizerFactory
@@ -39,6 +36,7 @@ class PorterStemmer(Stemmer):
     def __init__(self, lang):
         if lang != "eng":
             raise ConfigError("Porter stemmer only supports English")
+        import nltk  # importing nltk is slow so lazy load
         super().__init__(lang)
         self.stemmer = nltk.stem.porter.PorterStemmer()
 
@@ -90,6 +88,7 @@ class StanzaNLP(Tokenizer, Stemmer):
         """
         Stemmer.__init__(self, lang)
         Tokenizer.__init__(self, lang, model_path)
+        import stanza  # lazy load stanza when needed
         self.lang = self.lang_map[lang]
         self._setup_logging()
         buffer = io.StringIO()
@@ -197,6 +196,7 @@ class SpacyModelLoader:
 
         if lang not in self.model_info:
             raise ConfigError(f"Unexpected language for spacy: {lang}")
+        import spacy  # lazy load spacy when needed
         path = self.model_path / f"{self.model_info[lang]['name']}-{self.model_info[lang]['version']}"
         if path.exists():
             LOGGER.info(f"Loading the {lang} spacy model")
