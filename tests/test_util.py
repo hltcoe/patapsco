@@ -183,3 +183,13 @@ class TestLangStandardizer:
     def test_unknown_code(self):
         with pytest.raises(ConfigError):
             LangStandardizer.standardize("es")
+
+
+def test_get_human_readable_size():
+    pairs = [
+        (2049, '2.0 KB'),
+        (1673742502, '1.6 GB'),
+        (1673742502000, '1.5 TB'),
+    ]
+    for bytes, text in pairs:
+        assert text == get_human_readable_size(bytes)

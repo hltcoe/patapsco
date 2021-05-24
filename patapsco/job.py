@@ -6,6 +6,7 @@ import logging
 import math
 import multiprocessing
 import pathlib
+import psutil
 import sys
 
 from .config import ConfigService
@@ -20,7 +21,7 @@ from .retrieve import RetrieverFactory
 from .schema import RunnerConfig, PipelineMode, Tasks
 from .score import Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
-from .util import DataclassJSONEncoder, LangStandardizer, LoggingFilter, SlicedIterator, Timer
+from .util import DataclassJSONEncoder, get_human_readable_size, LangStandardizer, LoggingFilter, SlicedIterator, Timer
 from .util.file import delete_dir, is_complete, path_append
 
 LOGGER = logging.getLogger(__name__)
@@ -81,6 +82,8 @@ class Job:
             self.write_config()
             self.write_report(report)
             self.write_scores()
+        mem = psutil.Process().memory_info().rss
+        LOGGER.info(f"Memory usage: {get_human_readable_size(mem)}")
         LOGGER.info("Run complete")
         return report
 
