@@ -1,5 +1,6 @@
 import argparse
 import sys
+import traceback
 
 from patapsco import Runner, PatapscoError
 
@@ -15,7 +16,10 @@ def main():
         runner = Runner(args.config, args.verbose, args.set)
         runner.run()
     except PatapscoError as error:
-        print(f"Error: {error}")
+        if args.verbose:
+            traceback.print_exc()
+        else:
+            print(f"Error: {error}")
         sys.exit(-1)
 
 
