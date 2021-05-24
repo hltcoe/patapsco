@@ -37,7 +37,8 @@ class Java:
             import pyserini.index  # required to initialize the JVM
             import jnius
         except Exception as e:
-            raise PatapscoError("Problem with Java. Likely no Java or an older JVM. Run with '-v' for more details")
+            msg = "Problem with Java. Likely no Java or an older JVM. Run with '-v' for more details"
+            raise PatapscoError(msg) from e
         self.Document = jnius.autoclass('org.apache.lucene.document.Document')
         self.StoreEnum = jnius.autoclass('org.apache.lucene.document.Field$Store')
         self.BytesRef = jnius.autoclass('org.apache.lucene.util.BytesRef')

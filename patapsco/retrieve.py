@@ -38,7 +38,8 @@ class Java:
             import pyserini.search
             import jnius
         except Exception as e:
-            raise PatapscoError("Problem with Java. Likely no Java or an older JVM. Run with '-v' for more details")
+            msg = "Problem with Java. Likely no Java or an older JVM. Run with '-v' for more details"
+            raise PatapscoError(msg) from e
         # TDOD can remove analyzer when newest version of pyserini is released
         self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
         self.SimpleSearcher = pyserini.search.SimpleSearcher
