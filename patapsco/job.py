@@ -310,7 +310,6 @@ class QsubJob(Job):
 
     def run(self, sub_job=False):
         LOGGER.info("Launching qsub run: %s", self.conf.run.name)
-        self._move_log_file()
 
         job_id = None
         if self.stage1:
@@ -319,6 +318,7 @@ class QsubJob(Job):
         if self.stage2:
             job_id = self._launch_job(self.stage2_script_path, job_id)
             print(f"Job {job_id} submitted")
+        self._move_log_file()
 
     def _launch_job(self, script_path, hold=None):
         """Launch a qsub job and return the job id"""
@@ -343,7 +343,7 @@ class QsubJob(Job):
             content = template.format(base=str(self.base_dir), config=str(self.config_path), debug=debug, stage=1)
             self.stage1_script_path.write_text(content)
             self.stage1_script_path.chmod(0o755)
-        elif self.stage2:
+        if self.stage2:
             content = template.format(base=str(self.base_dir), config=str(self.config_path), debug=debug, stage=2)
             self.stage2_script_path.write_text(content)
             self.stage2_script_path.chmod(0o755)
