@@ -143,7 +143,7 @@ class Hc4JsonTopicReader(InputIterator):
         self.path = path
         self.encoding = encoding
         self.lang = lang
-        self.topics = iter(self.parse(path, encoding))
+        self.topics = iter(self._parse(path, encoding))
 
     def __iter__(self):
         return self
@@ -154,18 +154,25 @@ class Hc4JsonTopicReader(InputIterator):
     def __len__(self):
         return count_lines(self.path, self.encoding)
 
-    def construct(self, data):
+    def _construct(self, data):
+        # the default language in a topics file is always English
         try:
-            title = data['topic_title'].strip()
-            desc = data['topic_description'].strip()
+            if self.lang != "eng":
+                if self.lang not in data['lang_supported']:
+                    raise ConfigError(f"Language {self.lang} not supported in {self.path}")
+                title = data['lang_resources'][self.lang]['title_translation'].strip()
+                desc = data['lang_resources'][self.lang]['description_translation'].strip()
+            else:
+                title = data['topic_title'].strip()
+                desc = data['topic_description'].strip()
             return Topic(data['topic_id'], self.lang, title, desc, None, data['report_text'])
         except KeyError as e:
             raise ParseError(f"Missing field {e} in json docs element: {data}")
 
-    def parse(self, path, encoding='utf8'):
+    def _parse(self, path, encoding='utf8'):
         with open(path, 'r', encoding=encoding) as fp:
             try:
-                return [self.construct(json.loads(data)) for data in fp]
+                return [self._construct(json.loads(data)) for data in fp]
             except json.decoder.JSONDecodeError as e:
                 raise ParseError(f"Problem parsing json from {path}: {e}")
 

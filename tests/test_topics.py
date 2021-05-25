@@ -42,22 +42,46 @@ def test_parse_msmarco_topics():
         next(topic_iter)
 
 
-def test_parse_json_topics():
-    directory = pathlib.Path(__file__).parent / 'json_files'
-    path = directory / 'topics.jsonl'
-    topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng')
-    topic = next(topic_iter)
-    assert topic.id == '001'
-    assert topic.title == 'Test 1'
-    assert topic.desc == 'First test'
-    assert topic.report == 'report 1'
-    topic = next(topic_iter)
-    assert topic.id == '002'
-    assert topic.title == 'Test 2'
-    assert topic.desc == 'Second test'
-    assert topic.report == 'report 2'
-    with pytest.raises(StopIteration):
-        next(topic_iter)
+class TestHc4JsonTopicReader:
+    def test_parse_json_topics(self):
+        directory = pathlib.Path(__file__).parent / 'json_files'
+        path = directory / 'topics.jsonl'
+        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng')
+        topic = next(topic_iter)
+        assert topic.id == '001'
+        assert topic.title == 'Test 1'
+        assert topic.desc == 'First test'
+        assert topic.report == 'report 1'
+        topic = next(topic_iter)
+        assert topic.id == '002'
+        assert topic.title == 'Test 2'
+        assert topic.desc == 'Second test'
+        assert topic.report == 'report 2'
+        with pytest.raises(StopIteration):
+            next(topic_iter)
+
+    def test_with_bad_language(self):
+        directory = pathlib.Path(__file__).parent / 'json_files'
+        path = directory / 'topics.jsonl'
+        with pytest.raises(ConfigError):
+            Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'spa')
+
+    def test_parse_json_topics_lang_resources(self):
+        directory = pathlib.Path(__file__).parent / 'json_files'
+        path = directory / 'topics.jsonl'
+        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'rus')
+        topic = next(topic_iter)
+        assert topic.id == '001'
+        assert topic.title == 'Тест 1'
+        assert topic.desc == 'Первый тест'
+        assert topic.report == 'report 1'
+        topic = next(topic_iter)
+        assert topic.id == '002'
+        assert topic.title == 'Тест 2'
+        assert topic.desc == 'Второй тест'
+        assert topic.report == 'report 2'
+        with pytest.raises(StopIteration):
+            next(topic_iter)
 
 
 def test_query_reader():
