@@ -315,8 +315,10 @@ class QsubJob(Job):
         job_id = None
         if self.stage1:
             job_id = self._launch_job(self.stage1_script_path)
+            print(f"Job {job_id} submitted")
         if self.stage2:
-            self._launch_job(self.stage2_script_path, job_id)
+            job_id = self._launch_job(self.stage2_script_path, job_id)
+            print(f"Job {job_id} submitted")
 
     def _launch_job(self, script_path, hold=None):
         """Launch a qsub job and return the job id"""
@@ -325,7 +327,7 @@ class QsubJob(Job):
             args.extend(['-hold_jid', hold])
         args.append(str(script_path))
         if self.debug:
-            LOGGER.debug(' '.join(args))
+            LOGGER.debug(' '.join([str(arg) for arg in args]))
         try:
             ps = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
             return int(ps.stdout)
