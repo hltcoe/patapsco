@@ -6,6 +6,7 @@ import logging
 import math
 import multiprocessing
 import pathlib
+import psutil
 import sys
 
 from .config import ConfigService
@@ -20,7 +21,7 @@ from .retrieve import RetrieverFactory
 from .schema import RunnerConfig, PipelineMode, Tasks
 from .score import Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
-from .util import DataclassJSONEncoder, LangStandardizer, LoggingFilter, SlicedIterator, Timer
+from .util import DataclassJSONEncoder, get_human_readable_size, LangStandardizer, LoggingFilter, SlicedIterator, Timer
 from .util.file import delete_dir, is_complete, path_append
 
 LOGGER = logging.getLogger(__name__)
@@ -81,6 +82,8 @@ class Job:
             self.write_config()
             self.write_report(report)
             self.write_scores()
+        mem = psutil.Process().memory_info().rss
+        LOGGER.info(f"Memory usage: {get_human_readable_size(mem)}")
         LOGGER.info("Run complete")
         return report
 
@@ -143,10 +146,10 @@ class ParallelJob(Job):
 
     This uses concurrent.futures to implement map/reduce over the input iterators.
     """
-    def __init__(self, conf, stage1, stage2, verbose):
+    def __init__(self, conf, stage1, stage2, debug):
         super().__init__(conf, stage1, stage2)
         multiprocessing.set_start_method('spawn')  # so JVM doesn't get copied to child processes
-        self.verbose = verbose
+        self.debug = debug
         self.stage1_jobs = self.stage2_jobs = None
         if stage1:
             self.stage1_jobs = self._get_stage1_jobs(conf.run.stage1.num_jobs)
@@ -159,7 +162,7 @@ class ParallelJob(Job):
         if self.stage1_jobs:
             LOGGER.info("Stage 1: Starting processing of documents")
             self.stage1.begin()
-            report1 = self.map(self.stage1_jobs, self.verbose)
+            report1 = self.map(self.stage1_jobs, self.debug)
             self.stage1.reduce()
             self.stage1.end()
             LOGGER.info("Stage 1: Ingested %d documents", report1.stage1.count)
@@ -167,22 +170,22 @@ class ParallelJob(Job):
         if self.stage2_jobs:
             LOGGER.info("Stage 2: Starting processing of queries")
             self.stage2.begin()
-            report2 = self.map(self.stage2_jobs, self.verbose)
+            report2 = self.map(self.stage2_jobs, self.debug)
             self.stage2.reduce()
             self.stage2.end()
             LOGGER.info("Stage 2: Processed %d queries", report2.stage2.count)
 
         return report1 + report2
 
-    def map(self, jobs, verbose):
+    def map(self, jobs, debug):
         """
         Args:
             jobs (list of ParallelJobDef): Job definitions to be mapped over.
-            verbose (bool): Verbose logging.
+            debug (bool): Whether to run in debug mode.
         Returns:
             Report
         """
-        func = functools.partial(self._fork, verbose=verbose)
+        func = functools.partial(self._fork, debug=debug)
         with concurrent.futures.ProcessPoolExecutor(max_workers=len(jobs)) as executor:
             # we loop in a try/except to catch errors from the jobs running in separate processes
             try:
@@ -192,9 +195,9 @@ class ParallelJob(Job):
                 sys.exit(-1)
 
     @staticmethod
-    def _fork(job, verbose):
+    def _fork(job, debug):
         # only log parallel jobs to their unique log file
-        log_level = logging.DEBUG if verbose else logging.INFO
+        log_level = logging.DEBUG if debug else logging.INFO
         logger = logging.getLogger('patapsco')
         logger.setLevel(log_level)
         log_file = path_append(job.conf.run.path, f"patapsco.{job.id}.log")
@@ -205,7 +208,7 @@ class ParallelJob(Job):
         file.addFilter(LoggingFilter())
         logger.addHandler(file)
 
-        job = JobBuilder(job.conf).build(verbose)
+        job = JobBuilder(job.conf).build(debug)
         return job.run(sub_job=True)
 
     def _get_stage1_jobs(self, num_processes):
@@ -303,11 +306,11 @@ class JobBuilder:
         self.doc_lang = None
         self.query_lang = None
 
-    def build(self, verbose):
+    def build(self, debug):
         """Build the job(s) for this run
 
         Args:
-            verbose (bool): Should the logging be verbose.
+            debug (bool): Debug flag.
         """
         stage1 = stage2 = None
         stage1_plan = []
@@ -342,7 +345,7 @@ class JobBuilder:
             self.check_text_processing()
 
         if self.conf.run.parallel:
-            return ParallelJob(self.conf, stage1, stage2, verbose)
+            return ParallelJob(self.conf, stage1, stage2, debug)
         else:
             return SerialJob(self.conf, stage1, stage2)
 
@@ -401,6 +404,7 @@ class JobBuilder:
     def _build_stage1_pipeline(self, iterator, tasks):
         # select pipeline based on stage configuration
         stage_conf = self.conf.run.stage1
+        stage_conf.progress_interval = stage_conf.progress_interval if stage_conf.progress_interval else 10000
         if self.conf.run.parallel:
             LOGGER.info(f'Stage 1 has {stage_conf.num_jobs} parallel jobs.')
         if stage_conf.mode == PipelineMode.STREAMING:
@@ -412,7 +416,7 @@ class JobBuilder:
             pipeline_class = functools.partial(BatchPipeline, n=stage_conf.batch_size)
         else:
             raise ConfigError(f"Unrecognized pipeline mode: {stage_conf.mode}")
-        pipeline = pipeline_class(iterator, tasks)
+        pipeline = pipeline_class(iterator, tasks, progress_interval=stage_conf.progress_interval)
         LOGGER.info("Stage 1 pipeline: %s", pipeline)
         return pipeline
 
@@ -517,6 +521,7 @@ class JobBuilder:
     def _build_stage2_pipeline(self, iterator, tasks):
         # select pipeline based on stage configuration
         stage_conf = self.conf.run.stage2
+        stage_conf.progress_interval = stage_conf.progress_interval if stage_conf.progress_interval else 10
         if self.conf.run.parallel:
             LOGGER.info(f'Stage 2 has {stage_conf.num_jobs} parallel jobs.')
 
@@ -529,7 +534,7 @@ class JobBuilder:
             pipeline_class = functools.partial(BatchPipeline, n=stage_conf.batch_size)
         else:
             raise ConfigError(f"Unrecognized pipeline mode: {stage_conf.mode}")
-        pipeline = pipeline_class(iterator, tasks)
+        pipeline = pipeline_class(iterator, tasks, progress_interval=stage_conf.progress_interval)
         LOGGER.info("Stage 2 pipeline: %s", pipeline)
         return pipeline
 

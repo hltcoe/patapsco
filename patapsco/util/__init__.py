@@ -305,3 +305,11 @@ class LangStandardizer:
             return cls.langs[lang.lower()]
         except KeyError:
             raise ConfigError(f"Unknown language code: {lang}")
+
+
+def get_human_readable_size(size):
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if size < 1024.0 or unit == 'TB':
+            break
+        size /= 1024.0
+    return f"{size:.1f} {unit}"

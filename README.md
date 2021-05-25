@@ -1,7 +1,11 @@
 # Patapsco - the SCALE 2021 Pipeline
 
 ## Requirements
-Patapsco requires Python 3.6+ and Java 11+
+Patapsco requires Python 3.6+ and Java 11+.
+
+Installing Patapsco with Anaconda will add Java into the virtual environment.
+If not using Anaconda, you will need to check your Java version or
+enable the java module on the grid.
 
 To check your Java version:
 ```
@@ -78,6 +82,19 @@ For more information on configuration, see `docs/config.md`.
 After installing Patapsco, a sample run is started with:
 ```
 patapsco samples/configs/en_basic.yml
+```
+
+By default, the output for the run is written to a `runs` directory in the working directory.
+If a run is complete, Patapsco will not overwrite it.
+
+To turn on more detailed logging and full exception stack traces, use the debug flag:
+```
+patapsco --debug samples/configs/en_basic.yml
+```
+
+Any variable in the configuration can be overriden on the command line:
+```
+patapsco --set run.name=my_test_run samples/configs/en_basic.yml
 ```
 
 ## Submitting Results

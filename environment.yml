@@ -9,7 +9,9 @@ dependencies:
   - more-itertools
   - nltk
   - numpy
+  - psutil
   - pydantic>=1.7.1,<1.8.0
+  - pyjnius
   - pymorphy2
   - pyyaml
   - sacremoses
