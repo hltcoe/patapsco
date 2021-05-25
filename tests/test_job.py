@@ -62,7 +62,7 @@ class TestJobBuilder:
         conf = RunnerConfig(run=RunConfig(name='test', path=str(self.temp_dir)))
         builder = JobBuilder(conf)
         with pytest.raises(ConfigError, match='No tasks are configured to run'):
-            builder.build(verbose=False)
+            builder.build(debug=False)
 
     def test_create_plan1_with_normal_config(self):
         conf = self.create_config('test')
