@@ -330,7 +330,7 @@ class QsubJob(Job):
             LOGGER.debug(' '.join([str(arg) for arg in args]))
         try:
             ps = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
-            return ps.stdout
+            return ps.stdout.decode()
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
             sys.exit(-1)
