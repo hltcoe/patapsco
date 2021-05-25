@@ -5,4 +5,4 @@
 #$ -o {base}
 #$ -l h_rt=12:00:00
 
-patapsco {debug} {config}
+patapsco-grid {debug} --stage {stage} {config}

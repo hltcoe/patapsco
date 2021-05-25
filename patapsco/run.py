@@ -11,14 +11,14 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Runner:
-    def __init__(self, config_filename, debug=False, overrides=None):
+    def __init__(self, config_filename, debug=False, overrides=None, **kwargs):
         self.setup_logging(debug)
         LOGGER.info(f"Patapsco version {__version__}")
         LOGGER.info(f"Configuration: {pathlib.Path(config_filename).absolute()}")
         conf = ConfigHelper.load(config_filename, overrides)
         LOGGER.info(f"Writing output to: {pathlib.Path(conf.run.path).absolute()}")
         self.add_file_logging(conf.run.path)
-        self.job = JobBuilder(conf).build(debug)
+        self.job = JobBuilder(conf, **kwargs).build(debug)
 
     def run(self):
         self.job.run()
