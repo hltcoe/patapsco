@@ -1,6 +1,8 @@
 import logging
 import pathlib
 
+import jnius_config
+
 from .error import PatapscoError
 from .pipeline import Task
 from .schema import IndexConfig
@@ -33,6 +35,8 @@ class Java:
 
     def initialize(self):
         self.initialized = True
+        if not jnius_config.vm_running:
+            jnius_config.add_options('-Xmx500m')  # restrict Java to 500 MB which is enough for Anserini/Lucene
         try:
             import pyserini.index  # required to initialize the JVM
             import jnius
