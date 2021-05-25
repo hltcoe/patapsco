@@ -484,15 +484,20 @@ class TextProcessor(Task):
         """
         super().__init__(run_path)
         self.lang = lang
+        self.processor_config = config
         self.run_lowercase = config.normalize.lowercase
         TokenizerStemmerFactory.validate(config, lang)
-        self.normalizer = NormalizerFactory.create(lang)
-        self.tokenizer = TokenizerStemmerFactory.create_tokenizer(config, lang)
-        self.stemmer = TokenizerStemmerFactory.create_stemmer(config, lang)
-        if config.stopwords:
-            self.stopword_remover = StopWordsRemover(config.stopwords, lang)
-        else:
-            self.stopword_remover = None
+        self.normalizer = None
+        self.tokenizer = None
+        self.stemmer = None
+        self.stopword_remover = None
+
+    def begin(self):
+        self.normalizer = NormalizerFactory.create(self.lang)
+        self.tokenizer = TokenizerStemmerFactory.create_tokenizer(self.processor_config, self.lang)
+        self.stemmer = TokenizerStemmerFactory.create_stemmer(self.processor_config, self.lang)
+        if self.processor_config.stopwords:
+            self.stopword_remover = StopWordsRemover(self.processor_config.stopwords, self.lang)
 
     def normalize(self, text):
         return self.normalizer.normalize(text)
