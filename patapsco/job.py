@@ -294,11 +294,11 @@ class QsubJob(Job):
         super().__init__(conf, stage1, stage2)
         conf.run.path = str(pathlib.Path(self.run_path).absolute())
         conf.run.parallel = None
-        base_dir = (pathlib.Path(self.run_path) / 'qsub').absolute()
-        base_dir.mkdir(parents=True, exist_ok=True)
-        self.script_path = base_dir / 'job.sh'
-        self.config_path = base_dir / 'config.yml'
-        self.log_path = base_dir / 'patapsco.log'
+        self.base_dir = (pathlib.Path(self.run_path) / 'qsub').absolute()
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.script_path = self.base_dir / 'job.sh'
+        self.config_path = self.base_dir / 'config.yml'
+        self.log_path = self.base_dir / 'patapsco.log'
         ConfigService.write_config_file(self.config_path, conf)
         self._create_script(debug)
 
@@ -309,6 +309,7 @@ class QsubJob(Job):
         args = ['qsub', '-q', 'all.q', str(self.script_path)]
         try:
             ps = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+            print()
             print(ps.stdout.decode())
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
@@ -317,7 +318,7 @@ class QsubJob(Job):
         template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'job.sh'
         template = template_path.read_text()
         debug = '-d' if debug else ''
-        content = template.format(config=str(self.config_path), debug=debug)
+        content = template.format(base=str(self.base_dir), config=str(self.config_path), debug=debug)
         self.script_path.write_text(content)
         self.script_path.chmod(0o755)
 
