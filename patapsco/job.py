@@ -6,9 +6,10 @@ import logging
 import math
 import multiprocessing
 import pathlib
-import psutil
 import sys
 import subprocess
+
+import psutil
 
 from .config import ConfigService
 from .docs import DocumentProcessor, DocumentReaderFactory, DocumentDatabaseFactory, DocReader, DocWriter
@@ -295,7 +296,10 @@ class QsubJob(Job):
         conf.run.path = str(pathlib.Path(self.run_path).absolute())
         conf.run.parallel = None
         self.base_dir = (pathlib.Path(self.run_path) / 'qsub').absolute()
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.base_dir.mkdir(parents=True)
+        except FileExistsError:
+            raise ConfigError(f"A qsub directory already exists at {self.base_dir}")
         self.script_path = self.base_dir / 'job.sh'
         self.config_path = self.base_dir / 'config.yml'
         self.log_path = self.base_dir / 'patapsco.log'
