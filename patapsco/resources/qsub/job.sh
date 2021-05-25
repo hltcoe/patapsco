@@ -1,3 +1,3 @@
 #!/bin/bash
 
-patapsco $debug $config
+patapsco {debug} {config}

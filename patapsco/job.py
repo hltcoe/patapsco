@@ -8,7 +8,6 @@ import multiprocessing
 import pathlib
 import psutil
 import sys
-import string
 import subprocess
 
 from .config import ConfigService
@@ -310,15 +309,15 @@ class QsubJob(Job):
         args = ['qsub', '-q', 'all.q', str(self.script_path)]
         try:
             ps = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
-            print(ps.stdout)
+            print(ps.stdout.decode())
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
 
     def _create_script(self, debug):
         template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'job.sh'
-        template = string.Template(template_path.read_text())
+        template = template_path.read_text()
         debug = '-d' if debug else ''
-        content = template.substitute(config=str(self.config_path), debug=debug)
+        content = template.format(config=str(self.config_path), debug=debug)
         self.script_path.write_text(content)
         self.script_path.chmod(0o755)
 
