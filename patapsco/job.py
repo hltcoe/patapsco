@@ -146,10 +146,10 @@ class ParallelJob(Job):
 
     This uses concurrent.futures to implement map/reduce over the input iterators.
     """
-    def __init__(self, conf, stage1, stage2, verbose):
+    def __init__(self, conf, stage1, stage2, debug):
         super().__init__(conf, stage1, stage2)
         multiprocessing.set_start_method('spawn')  # so JVM doesn't get copied to child processes
-        self.verbose = verbose
+        self.debug = debug
         self.stage1_jobs = self.stage2_jobs = None
         if stage1:
             self.stage1_jobs = self._get_stage1_jobs(conf.run.stage1.num_jobs)
@@ -162,7 +162,7 @@ class ParallelJob(Job):
         if self.stage1_jobs:
             LOGGER.info("Stage 1: Starting processing of documents")
             self.stage1.begin()
-            report1 = self.map(self.stage1_jobs, self.verbose)
+            report1 = self.map(self.stage1_jobs, self.debug)
             self.stage1.reduce()
             self.stage1.end()
             LOGGER.info("Stage 1: Ingested %d documents", report1.stage1.count)
@@ -170,22 +170,22 @@ class ParallelJob(Job):
         if self.stage2_jobs:
             LOGGER.info("Stage 2: Starting processing of queries")
             self.stage2.begin()
-            report2 = self.map(self.stage2_jobs, self.verbose)
+            report2 = self.map(self.stage2_jobs, self.debug)
             self.stage2.reduce()
             self.stage2.end()
             LOGGER.info("Stage 2: Processed %d queries", report2.stage2.count)
 
         return report1 + report2
 
-    def map(self, jobs, verbose):
+    def map(self, jobs, debug):
         """
         Args:
             jobs (list of ParallelJobDef): Job definitions to be mapped over.
-            verbose (bool): Verbose logging.
+            debug (bool): Whether to run in debug mode.
         Returns:
             Report
         """
-        func = functools.partial(self._fork, verbose=verbose)
+        func = functools.partial(self._fork, debug=debug)
         with concurrent.futures.ProcessPoolExecutor(max_workers=len(jobs)) as executor:
             # we loop in a try/except to catch errors from the jobs running in separate processes
             try:
@@ -195,9 +195,9 @@ class ParallelJob(Job):
                 sys.exit(-1)
 
     @staticmethod
-    def _fork(job, verbose):
+    def _fork(job, debug):
         # only log parallel jobs to their unique log file
-        log_level = logging.DEBUG if verbose else logging.INFO
+        log_level = logging.DEBUG if debug else logging.INFO
         logger = logging.getLogger('patapsco')
         logger.setLevel(log_level)
         log_file = path_append(job.conf.run.path, f"patapsco.{job.id}.log")
@@ -208,7 +208,7 @@ class ParallelJob(Job):
         file.addFilter(LoggingFilter())
         logger.addHandler(file)
 
-        job = JobBuilder(job.conf).build(verbose)
+        job = JobBuilder(job.conf).build(debug)
         return job.run(sub_job=True)
 
     def _get_stage1_jobs(self, num_processes):
@@ -306,11 +306,11 @@ class JobBuilder:
         self.doc_lang = None
         self.query_lang = None
 
-    def build(self, verbose):
+    def build(self, debug):
         """Build the job(s) for this run
 
         Args:
-            verbose (bool): Should the logging be verbose.
+            debug (bool): Debug flag.
         """
         stage1 = stage2 = None
         stage1_plan = []
@@ -345,7 +345,7 @@ class JobBuilder:
             self.check_text_processing()
 
         if self.conf.run.parallel:
-            return ParallelJob(self.conf, stage1, stage2, verbose)
+            return ParallelJob(self.conf, stage1, stage2, debug)
         else:
             return SerialJob(self.conf, stage1, stage2)
 

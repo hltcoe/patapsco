@@ -11,21 +11,21 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Runner:
-    def __init__(self, config_filename, verbose=False, overrides=None):
-        self.setup_logging(verbose)
+    def __init__(self, config_filename, debug=False, overrides=None):
+        self.setup_logging(debug)
         LOGGER.info(f"Patapsco version {__version__}")
         LOGGER.info(f"Configuration: {pathlib.Path(config_filename).absolute()}")
         conf = ConfigHelper.load(config_filename, overrides)
         LOGGER.info(f"Writing output to: {pathlib.Path(conf.run.path).absolute()}")
         self.add_file_logging(conf.run.path)
-        self.job = JobBuilder(conf).build(verbose)
+        self.job = JobBuilder(conf).build(debug)
 
     def run(self):
         self.job.run()
 
     @staticmethod
-    def setup_logging(verbose):
-        log_level = logging.DEBUG if verbose else logging.INFO
+    def setup_logging(debug):
+        log_level = logging.DEBUG if debug else logging.INFO
         logger = logging.getLogger('patapsco')
         logger.setLevel(log_level)
         console = logging.StreamHandler()

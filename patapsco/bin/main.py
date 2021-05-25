@@ -2,21 +2,26 @@ import argparse
 import sys
 import traceback
 
-from patapsco import Runner, PatapscoError
+from patapsco import Runner, PatapscoError, __version__
 
 
 def main():
     parser = argparse.ArgumentParser(description="SCALE 2021 Pipeline")
     parser.add_argument("config", help="Configuration file for the run")
-    parser.add_argument("-v", dest="verbose", action="store_true", help="Increase verbosity of logger")
-    parser.add_argument("--set", metavar="KEY=VALUE", nargs="+", help="Key-value pairs of parameters to override")
+    parser.add_argument("-d", "--debug", action="store_true", help="Include debug information in logging")
+    parser.add_argument("-v", "--version", action="version", version=f"Patapsco {__version__}")
+    parser.add_argument("-s", "--set", metavar="KEY1=VALUE1,KEY2=VALUE2,...",
+                        help="Comma-separated key-value pairs of parameters to override")
     args = parser.parse_args()
 
+    if args.set:
+        args.set = args.set.split(',')
+
     try:
-        runner = Runner(args.config, args.verbose, args.set)
+        runner = Runner(args.config, args.debug, args.set)
         runner.run()
     except PatapscoError as error:
-        if args.verbose:
+        if args.debug:
             traceback.print_exc()
         else:
             print(f"Error: {error}")
