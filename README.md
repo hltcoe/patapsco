@@ -81,7 +81,7 @@ For more information on configuration, see `docs/config.md`.
 ## Running
 After installing Patapsco, a sample run is started with:
 ```
-patapsco samples/configs/en_basic.yml
+patapsco samples/configs/eng_basic.yml
 ```
 
 By default, the output for the run is written to a `runs` directory in the working directory.
@@ -89,12 +89,12 @@ If a run is complete, Patapsco will not overwrite it.
 
 To turn on more detailed logging and full exception stack traces, use the debug flag:
 ```
-patapsco --debug samples/configs/en_basic.yml
+patapsco --debug samples/configs/eng_basic.yml
 ```
 
 Any variable in the configuration can be overriden on the command line:
 ```
-patapsco --set run.name=my_test_run samples/configs/en_basic.yml
+patapsco --set run.name=my_test_run samples/configs/eng_basic.yml
 ```
 
 ## Submitting Results
