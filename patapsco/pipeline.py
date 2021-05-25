@@ -116,7 +116,7 @@ class TimedTask(Task):
 class Pipeline(abc.ABC):
     """Interface for a pipeline of tasks"""
 
-    def __init__(self, iterator, tasks):
+    def __init__(self, iterator, tasks, progress_interval=None):
         """
         Args:
             iterator (iterator): Iterator over input for pipeline.
@@ -124,6 +124,7 @@ class Pipeline(abc.ABC):
         """
         self.iterator = TimedIterator(iterator)
         self.tasks = [TimedTask(task) for task in tasks]
+        self.progress_interval = progress_interval
         self.count = 0
 
     @abc.abstractmethod
@@ -164,20 +165,23 @@ class StreamingPipeline(Pipeline):
             for task in self.tasks:
                 item = task.process(item)
             self.count += 1
+            if self.progress_interval and self.count % self.progress_interval == 0:
+                LOGGER.info(f"{self.count} iterations completed...")
         self.end()
 
 
 class BatchPipeline(Pipeline):
     """Pipeline that pushes chunks of input through the tasks"""
 
-    def __init__(self, iterator, tasks, n):
+    def __init__(self, iterator, tasks, n, progress_interval=None):
         """
         Args:
             iterator (iterator): Iterator that produces input for the pipeline.
             tasks (list): List of tasks.
             n (int): Batch size or None to process all.
         """
-        super().__init__(ChunkedIterator(iterator, n), tasks)
+        super().__init__(ChunkedIterator(iterator, n), tasks, progress_interval)
+        self.current_progress = self.progress_interval
 
     def run(self):
         self.begin()
@@ -185,4 +189,10 @@ class BatchPipeline(Pipeline):
             self.count += len(chunk)
             for task in self.tasks:
                 chunk = task.batch_process(chunk)
+            self._update_progress()
         self.end()
+
+    def _update_progress(self):
+        if self.progress_interval and self.count >= self.current_progress:
+            LOGGER.info(f"{self.count} iterations completed...")
+            self.current_progress += self.progress_interval

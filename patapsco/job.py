@@ -404,6 +404,7 @@ class JobBuilder:
     def _build_stage1_pipeline(self, iterator, tasks):
         # select pipeline based on stage configuration
         stage_conf = self.conf.run.stage1
+        stage_conf.progress_interval = stage_conf.progress_interval if stage_conf.progress_interval else 10000
         if self.conf.run.parallel:
             LOGGER.info(f'Stage 1 has {stage_conf.num_jobs} parallel jobs.')
         if stage_conf.mode == PipelineMode.STREAMING:
@@ -415,7 +416,7 @@ class JobBuilder:
             pipeline_class = functools.partial(BatchPipeline, n=stage_conf.batch_size)
         else:
             raise ConfigError(f"Unrecognized pipeline mode: {stage_conf.mode}")
-        pipeline = pipeline_class(iterator, tasks)
+        pipeline = pipeline_class(iterator, tasks, progress_interval=stage_conf.progress_interval)
         LOGGER.info("Stage 1 pipeline: %s", pipeline)
         return pipeline
 
@@ -520,6 +521,7 @@ class JobBuilder:
     def _build_stage2_pipeline(self, iterator, tasks):
         # select pipeline based on stage configuration
         stage_conf = self.conf.run.stage2
+        stage_conf.progress_interval = stage_conf.progress_interval if stage_conf.progress_interval else 10
         if self.conf.run.parallel:
             LOGGER.info(f'Stage 2 has {stage_conf.num_jobs} parallel jobs.')
 
@@ -532,7 +534,7 @@ class JobBuilder:
             pipeline_class = functools.partial(BatchPipeline, n=stage_conf.batch_size)
         else:
             raise ConfigError(f"Unrecognized pipeline mode: {stage_conf.mode}")
-        pipeline = pipeline_class(iterator, tasks)
+        pipeline = pipeline_class(iterator, tasks, progress_interval=stage_conf.progress_interval)
         LOGGER.info("Stage 2 pipeline: %s", pipeline)
         return pipeline
 
