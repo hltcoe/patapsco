@@ -6,7 +6,7 @@ documents:
     format: json
     lang: eng
     encoding: utf8
-    path: samples/data/en_mini_docs.jsonl
+    path: samples/data/eng_mini_docs.jsonl
   process:
     normalize:
       lowercase: true
@@ -22,7 +22,7 @@ topics:
     format: json
     lang: eng
     encoding: utf8
-    path: samples/data/en_mini_topics.jsonl
+    path: samples/data/eng_mini_topics.jsonl
   fields: title
 
 queries:
@@ -39,7 +39,7 @@ rerank:
 score:
   input:
     format: trec
-    path: samples/data/en_mini_qrels
+    path: samples/data/eng_mini_qrels
   metrics:
     - map
     - P@20
