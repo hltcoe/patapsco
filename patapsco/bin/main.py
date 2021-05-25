@@ -10,12 +10,9 @@ def main():
     parser.add_argument("config", help="Configuration file for the run")
     parser.add_argument("-d", "--debug", action="store_true", help="Include debug information in logging")
     parser.add_argument("-v", "--version", action="version", version=f"Patapsco {__version__}")
-    parser.add_argument("-s", "--set", metavar="KEY1=VALUE1,KEY2=VALUE2,...",
-                        help="Comma-separated key-value pairs of parameters to override")
+    parser.add_argument("-s", "--set", action='append', metavar="KEY=VALUE",
+                        help="Key-value pair for overriding a parameter. Flag can be used more than once.")
     args = parser.parse_args()
-
-    if args.set:
-        args.set = args.set.split(',')
 
     try:
         runner = Runner(args.config, args.debug, args.set)
