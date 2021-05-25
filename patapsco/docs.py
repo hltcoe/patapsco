@@ -263,7 +263,7 @@ class DocumentDatabaseFactory:
         return DocumentDatabase(base_path, config, readonly)
 
 
-class DocumentProcessor(Task, TextProcessor):
+class DocumentProcessor(TextProcessor):
     """Document Preprocessing"""
 
     def __init__(self, run_path, config, lang, db):
@@ -274,8 +274,7 @@ class DocumentProcessor(Task, TextProcessor):
             lang (str): Language code for the documents.
             db (DocumentDatabase): Document db for later retrieval.
         """
-        Task.__init__(self, run_path)
-        TextProcessor.__init__(self, config.process, lang)
+        super().__init__(run_path, config.process, lang)
         self.db = db
         self.save_report = config.process.normalize.report
         self.diffs = collections.Counter()
@@ -294,10 +293,10 @@ class DocumentProcessor(Task, TextProcessor):
             self.diffs += compare_strings(original_text, text)
 
         tokens = self.tokenize(text)
-        if self.config.normalize.lowercase:
+        if self.run_lowercase:
             tokens = self.lowercase(tokens)
         self.db[doc.id] = ' '.join(tokens)
-        stopword_indices = self.identify_stop_words(tokens, self.config.normalize.lowercase)
+        stopword_indices = self.identify_stop_words(tokens, self.run_lowercase)
         tokens = self.stem(tokens)
         tokens = self.remove_stop_words(tokens, stopword_indices)
 

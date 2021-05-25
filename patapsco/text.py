@@ -7,6 +7,7 @@ import pathlib
 import sacremoses
 
 from .error import ConfigError
+from .pipeline import Task
 from .util.normalize import NormalizerFactory
 
 LOGGER = logging.getLogger(__name__)
@@ -469,25 +470,27 @@ class TokenizerStemmerFactory:
         return model_directory_defaults[name]
 
 
-class TextProcessor:
+class TextProcessor(Task):
     """Normalizes, segments, and performs other standardization on text
 
     Used on both documents and queries.
     """
-    def __init__(self, config, lang):
+    def __init__(self, run_path, config, lang,):
         """
         Args:
+            run_path (str): Root directory of the run.
             config (TextProcessorConfig)
             lang (str): Language code
         """
-        self.config = config
+        super().__init__(run_path)
         self.lang = lang
+        self.run_lowercase = config.normalize.lowercase
         TokenizerStemmerFactory.validate(config, lang)
         self.normalizer = NormalizerFactory.create(lang)
         self.tokenizer = TokenizerStemmerFactory.create_tokenizer(config, lang)
         self.stemmer = TokenizerStemmerFactory.create_stemmer(config, lang)
-        if self.config.stopwords:
-            self.stopword_remover = StopWordsRemover(self.config.stopwords, lang)
+        if config.stopwords:
+            self.stopword_remover = StopWordsRemover(config.stopwords, lang)
         else:
             self.stopword_remover = None
 
