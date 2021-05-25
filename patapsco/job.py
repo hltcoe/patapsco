@@ -8,6 +8,8 @@ import multiprocessing
 import pathlib
 import psutil
 import sys
+import string
+import subprocess
 
 from .config import ConfigService
 from .docs import DocumentProcessor, DocumentReaderFactory, DocumentDatabaseFactory, DocReader, DocWriter
@@ -73,8 +75,7 @@ class Job:
         self.stage2 = stage2
 
     def run(self, sub_job=False):
-        if self.conf.run.name:
-            LOGGER.info("Starting run: %s", self.conf.run.name)
+        LOGGER.info("Starting run: %s", self.conf.run.name)
 
         report = self._run()
 
@@ -137,7 +138,8 @@ class SerialJob(Job):
 
 @dataclasses.dataclass
 class ParallelJobDef:
-    id: int
+    """Describes a parallel sub-job"""
+    id: int  # zero based id counter for sub-jobs
     conf: RunnerConfig
 
 
@@ -287,6 +289,45 @@ class ParallelJob(Job):
             pass
 
 
+class QsubJob(Job):
+    """Parallel job that uses qsub."""
+    def __init__(self, conf, stage1, stage2, debug):
+        super().__init__(conf, stage1, stage2)
+        conf.run.path = str(pathlib.Path(self.run_path).absolute())
+        conf.run.parallel = None
+        base_dir = (pathlib.Path(self.run_path) / 'qsub').absolute()
+        base_dir.mkdir(parents=True, exist_ok=True)
+        self.script_path = base_dir / 'job.sh'
+        self.config_path = base_dir / 'config.yml'
+        self.log_path = base_dir / 'patapsco.log'
+        ConfigService.write_config_file(self.config_path, conf)
+        self._create_script(debug)
+
+    def run(self, sub_job=False):
+        LOGGER.info("Launching qsub run: %s", self.conf.run.name)
+        self._move_log_file()
+
+        args = ['qsub', '-q', 'all.q', str(self.script_path)]
+        try:
+            ps = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+            print(ps.stdout)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+    def _create_script(self, debug):
+        template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'job.sh'
+        template = string.Template(template_path.read_text())
+        debug = '-d' if debug else ''
+        content = template.substitute(config=str(self.config_path), debug=debug)
+        self.script_path.write_text(content)
+        self.script_path.chmod(0o755)
+
+    def _move_log_file(self):
+        logging.shutdown()
+        current_log_path = pathlib.Path(self.run_path) / 'patapsco.log'
+        current_log_path.rename(self.log_path)
+
+
 class JobBuilder:
     """Builds a Job based on stage 1 and stage 2 pipelines
 
@@ -320,7 +361,7 @@ class JobBuilder:
             raise ConfigError('Run is already complete. Delete the output directory to rerun.')
 
         if self.conf.run.parallel:
-            LOGGER.info('Parallel job selected.')
+            LOGGER.info(f'Parallel job selected of type {self.conf.run.parallel}.')
 
         if self.conf.run.stage1:
             stage1_plan = self._create_stage1_plan()
@@ -345,7 +386,12 @@ class JobBuilder:
             self.check_text_processing()
 
         if self.conf.run.parallel:
-            return ParallelJob(self.conf, stage1, stage2, debug)
+            if self.conf.run.parallel.lower() == "mp":
+                return ParallelJob(self.conf, stage1, stage2, debug)
+            elif self.conf.run.parallel.lower() == "qsub":
+                return QsubJob(self.conf, stage1, stage2, debug)
+            else:
+                raise ConfigError(f"Unknown parallel job type: {self.conf.run.parallel}")
         else:
             return SerialJob(self.conf, stage1, stage2)
 

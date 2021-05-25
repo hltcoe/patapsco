@@ -1,0 +1,43 @@
+run:
+  name: English qsub
+  parallel: qsub
+
+documents:
+  input:
+    format: json
+    lang: eng
+    encoding: utf8
+    path: samples/data/eng_mini_docs.jsonl
+  process:
+    tokenize: whitespace
+
+index:
+  name: lucene
+
+topics:
+  input:
+    format: json
+    lang: eng
+    encoding: utf8
+    path: samples/data/eng_mini_topics.jsonl
+  fields: title
+
+queries:
+  process:
+    inherit: documents.process
+
+retrieve:
+  name: bm25
+  number: 5
+
+rerank:
+  name: mock
+
+score:
+  input:
+    format: trec
+    path: samples/data/eng_mini_qrels
+  metrics:
+    - map
+    - P@20
+    - ndcg
