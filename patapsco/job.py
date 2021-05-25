@@ -314,10 +314,10 @@ class QsubJob(Job):
         job_id = None
         if self.stage1:
             job_id = self._launch_job(self.stage1_script_path)
-            print(f"Job {job_id} submitted")
+            LOGGER.info(f"Job {job_id} submitted")
         if self.stage2:
             job_id = self._launch_job(self.stage2_script_path, job_id)
-            print(f"Job {job_id} submitted")
+            LOGGER.info(f"Job {job_id} submitted")
         self._move_log_file()
 
     def _launch_job(self, script_path, hold=None):
@@ -330,7 +330,7 @@ class QsubJob(Job):
             LOGGER.debug(' '.join([str(arg) for arg in args]))
         try:
             ps = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
-            return int(ps.stdout)
+            return ps.stdout
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
             sys.exit(-1)
