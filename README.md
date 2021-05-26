@@ -101,6 +101,14 @@ patapsco --set run.name=my_test_run samples/configs/eng_basic.yml
 A run's output file plus the configuration used to generate the run can be submitted at the website: 
 https://scale21.org (not ready yet)
 
+## Bug Reports
+Use issues on Gitlab to report bugs or request new features.
+For a bug report include 
+ * a description of what was expected and what actually happened
+ * any stack trace or error message
+ * the configuration file if the bug only happens with that configuration
+
+
 ## Development
 Developers should install Patapsco in editable mode along with development dependencies:
 ```
