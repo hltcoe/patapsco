@@ -338,7 +338,7 @@ class QueryProcessor(TextProcessor):
                 stopwords=self.psq_config.stopwords,
                 stem=self.psq_config.stem
             )
-            processor = TextProcessor(self.run_path, text_config, "eng")
+            processor = TextProcessor(self.run_path, text_config, self.psq_config.lang)
             processor.begin()  # load models
             self.generator = PSQGenerator(processor, self.psq_config.path, self.psq_config.threshold)
         else:
