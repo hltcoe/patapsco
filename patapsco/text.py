@@ -499,6 +499,10 @@ class TextProcessor(Task):
         if self.processor_config.stopwords:
             self.stopword_remover = StopWordsRemover(self.processor_config.stopwords, self.lang)
 
+    def process(self, item):
+        """Child classes will override this"""
+        return item
+
     def pre_normalize(self, text):
         return self.normalizer.pre_normalize(text)
 
