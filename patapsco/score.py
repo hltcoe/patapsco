@@ -74,6 +74,8 @@ class Scorer:
             system_output = pytrec_eval.parse_run(fp)
         if set(system_output.keys()) - set(self.qrels.keys()):
             LOGGER.warning('There are queries in the run that are not in the qrels')
+        if set(self.qrels.keys()) - set(system_output.keys()):
+            LOGGER.warning('There are queries in the qrels that are not in the run')
         measures = {s for s in self.metrics}
         ndcg_prime_results = {}
         if "ndcg_prime" in measures:
