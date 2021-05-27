@@ -1,6 +1,11 @@
 import collections
 import logging
-import pytrec_eval
+import sys
+
+try:
+    import pytrec_eval
+except ImportError:
+    pass
 
 from .error import ConfigError
 from .schema import ScoreInputConfig
@@ -45,6 +50,10 @@ class Scorer:
             qrels_config (PathConfig): Config for the qrels file or glob for multiple files.
             metrics (list): List of metrics names.
         """
+        self.pytrec_eval_avail = 'pytrec_eval' in sys.modules
+        if not self.pytrec_eval_avail:
+            LOGGER.warning("pytrec_eval is not installed so no scoring is available")
+            return
         self.metrics = self._preprocess_metrics(metrics)
         self.qrels = QrelsReaderFactory.create(qrels_config).read()
         self._validate_metrics(self.metrics)
@@ -70,6 +79,9 @@ class Scorer:
             results_path (Path): Path to results of a run.
             scores_path (Path): Path to write scores.
         """
+        if not self.pytrec_eval_avail:
+            return
+
         with open(results_path, 'r') as fp:
             system_output = pytrec_eval.parse_run(fp)
         if set(system_output.keys()) - set(self.qrels.keys()):
