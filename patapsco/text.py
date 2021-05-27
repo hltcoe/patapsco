@@ -499,8 +499,11 @@ class TextProcessor(Task):
         if self.processor_config.stopwords:
             self.stopword_remover = StopWordsRemover(self.processor_config.stopwords, self.lang)
 
-    def normalize(self, text):
-        return self.normalizer.normalize(text)
+    def pre_normalize(self, text):
+        return self.normalizer.pre_normalize(text)
+
+    def post_normalize(self, text):
+        return self.normalizer.post_normalize(text)
 
     def tokenize(self, text):
         return self.tokenizer.tokenize(text)

@@ -311,7 +311,7 @@ class QueryProcessor(TextProcessor):
             Query
         """
         text = query.text
-        text = self.normalize(text)
+        text = self.pre_normalize(text)
         tokens = self.tokenize(text)
         if self.psq_path:
             generator = ProbabilisticStructuredQueryGenerator(query, text, tokens, self.psq_path)
