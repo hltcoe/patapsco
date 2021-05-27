@@ -176,7 +176,7 @@ class ScoreInputConfig(BaseConfig):
 
 class ScoreConfig(SectionConfig):
     """Configuration for the scorer module"""
-    metrics: list = ['map']
+    metrics: list = ['ndcg_prime', 'ndcg', 'map', 'recall_100', 'recall_1000']
     input: ScoreInputConfig
 
 
