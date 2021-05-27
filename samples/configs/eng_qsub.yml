@@ -35,9 +35,4 @@ rerank:
 
 score:
   input:
-    format: trec
     path: samples/data/eng_mini_qrels
-  metrics:
-    - map
-    - P@20
-    - ndcg
