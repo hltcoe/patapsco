@@ -257,7 +257,10 @@ class GenericNormalizer(Normalizer):
         return self.update_spaces(text)
 
     def post_normalize(self, text):
-        """Normalization for indexing"""
+        """Normalization for indexing
+
+        This could operate on token text or entire an document.
+        """
         return text
 
 

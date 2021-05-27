@@ -268,25 +268,28 @@ class QueryReader(InputIterator):
 
 
 class QueryGenerator:
-    def __init__(self, query, text, tokens):
+    def __init__(self, query, text, tokens, normalizer):
         self.id = query.id
         self.lang = query.lang
         self.text = text
         self.report = query.report
         self.original_query = query
         self.tokens = tokens
+        self.normalizer = normalizer
 
     def generate(self):
-        return Query(self.id, self.lang, ' '.join(self.tokens), self.text, self.report)
+        query = self.normalizer.post_normalize(' '.join(self.tokens))
+        return Query(self.id, self.lang, query, self.text, self.report)
 
 
 class ProbabilisticStructuredQueryGenerator(QueryGenerator):
     # TODO load translation table and generate PSQ syntax
-    def __init__(self, query, text, tokens, table_path):
-        super().__init__(query, text, tokens)
+    def __init__(self, query, text, tokens, normalizer, table_path):
+        super().__init__(query, text, tokens, normalizer)
 
     def generate(self):
-        return Query(self.id, self.lang, ' '.join(self.tokens), self.text, self.report)
+        query = self.normalizer.post_normalize(' '.join(self.tokens))
+        return Query(self.id, self.lang, query, self.text, self.report)
 
 
 class QueryProcessor(TextProcessor):
@@ -314,9 +317,9 @@ class QueryProcessor(TextProcessor):
         text = self.pre_normalize(text)
         tokens = self.tokenize(text)
         if self.psq_path:
-            generator = ProbabilisticStructuredQueryGenerator(query, text, tokens, self.psq_path)
+            generator = ProbabilisticStructuredQueryGenerator(query, text, tokens, self.normalizer, self.psq_path)
         else:
-            generator = QueryGenerator(query, text, tokens)
+            generator = QueryGenerator(query, text, tokens, self.normalizer)
         if self.run_lowercase:
             generator.tokens = self.lowercase(generator.tokens)
         stopword_indices = self.identify_stop_words(generator.tokens, self.run_lowercase)
