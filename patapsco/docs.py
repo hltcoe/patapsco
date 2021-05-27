@@ -288,7 +288,7 @@ class DocumentProcessor(TextProcessor):
             Doc
         """
         text = original_text = doc.text
-        text = self.normalize(text)
+        text = self.pre_normalize(text)
         if self.save_report:
             self.diffs += compare_strings(original_text, text)
 
@@ -299,8 +299,9 @@ class DocumentProcessor(TextProcessor):
         stopword_indices = self.identify_stop_words(tokens, self.run_lowercase)
         tokens = self.stem(tokens)
         tokens = self.remove_stop_words(tokens, stopword_indices)
+        text = self.post_normalize(' '.join(tokens))
 
-        return Doc(doc.id, doc.lang, ' '.join(tokens))
+        return Doc(doc.id, doc.lang, text)
 
     def end(self):
         self.db.end()
