@@ -160,8 +160,8 @@ class Hc4JsonTopicReader(InputIterator):
             if self.lang != "eng":
                 if self.lang not in data['lang_supported']:
                     raise ConfigError(f"Language {self.lang} not supported in {self.path}")
-                title = data['lang_resources'][self.lang]['title_translation'].strip()
-                desc = data['lang_resources'][self.lang]['description_translation'].strip()
+                title = data['lang_resources'][self.lang]['topic_title'].strip()
+                desc = data['lang_resources'][self.lang]['topic_description'].strip()
             else:
                 title = data['topic_title'].strip()
                 desc = data['topic_description'].strip()
