@@ -91,11 +91,22 @@ class QueriesInputConfig(BaseConfig):
     path: Union[str, list]
 
 
+class PSQConfig(BaseConfig):
+    """Probabilistic Structured Query configuration"""
+    path: str  # path to a translation table
+    threshold: float = 0.97  # cumulative probability threshold
+    lang: str  # language code of documents
+    # English text processing configuration
+    normalize: NormalizationConfig = NormalizationConfig()
+    stopwords: Union[bool, str] = "lucene"
+    stem: Union[bool, str] = False
+
+
 class QueriesConfig(SectionConfig):
     """Configuration for processing queries"""
     input: Optional[QueriesInputConfig]
     process: TextProcessorConfig
-    psq: Optional[str]  # path to translation table for PSQ
+    psq: Optional[PSQConfig]
     output: Union[bool, str] = True
 
 

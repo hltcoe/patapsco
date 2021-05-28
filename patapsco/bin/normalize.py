@@ -12,7 +12,7 @@ def main():
 
     normalizer = NormalizerFactory.create(args.lang)
     text = pathlib.Path(args.file).read_text()
-    print(normalizer.normalize(text))
+    print(normalizer.pre_normalize(text))
 
 
 if __name__ == '__main__':

@@ -1,0 +1,5 @@
+{
+  "cat": {"gato":  0.8, "felino":  0.15},
+  "dog": {"pero":  0.9, "can":  0.20},
+  "bird": {"pájaro": 0.6, "ave": 0.38, "galla": 0.02}
+}
