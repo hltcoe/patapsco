@@ -13,6 +13,12 @@ def path_append(path, subdirectory):
     return str(pathlib.Path(path) / subdirectory)
 
 
+def create_path(path):
+    """Create a Path object expanding ~ for the user's home directory"""
+    path = pathlib.Path(path)
+    return path.expanduser()
+
+
 def validate_encoding(encoding):
     """Validate that this encoding is supported by python"""
     try:

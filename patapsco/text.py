@@ -8,6 +8,7 @@ import sacremoses
 
 from .error import ConfigError
 from .pipeline import Task
+from .util.file import create_path
 from .util.normalize import NormalizerFactory
 
 LOGGER = logging.getLogger(__name__)
@@ -84,7 +85,7 @@ class StanzaNLP(Tokenizer, Stemmer):
         """
         Args:
             lang (str): Language code.
-            model_path (str): Path to stanza models.
+            model_path (Path): Path to stanza models.
             stem (bool): Whether to stem the tokens.
         """
         Stemmer.__init__(self, lang)
@@ -95,7 +96,7 @@ class StanzaNLP(Tokenizer, Stemmer):
         buffer = io.StringIO()
         with contextlib.redirect_stderr(buffer):
             try:
-                stanza.download(self.lang, model_dir=self.model_path)
+                stanza.download(self.lang, model_dir=str(self.model_path))
             except PermissionError:
                 msg = f"Cannot write to {self.model_path}. Maybe model_path needs to be set in process section."
                 raise ConfigError(msg)
@@ -105,7 +106,7 @@ class StanzaNLP(Tokenizer, Stemmer):
                 processors = 'tokenize,lemma'
             else:
                 processors = 'tokenize'
-            self.nlp = stanza.Pipeline(self.lang, processors=processors, dir=self.model_path)
+            self.nlp = stanza.Pipeline(self.lang, processors=processors, dir=str(self.model_path))
             self.cache = None
         LOGGER.debug(buffer.getvalue())
 
@@ -188,8 +189,12 @@ class SpacyModelLoader:
         return cls.loaders[model_path]
 
     def __init__(self, model_path):
+        """
+        Args:
+            model_path (Path): Path to spacy model directory
+        """
         self.models = {}
-        self.model_path = pathlib.Path(model_path)
+        self.model_path = model_path
 
     def load(self, lang):
         """Load the model (or return cached model)"""
@@ -231,7 +236,7 @@ class SpacyNLP(Tokenizer, Stemmer):
         """
         Args:
             lang (str): Language code.
-            model_path (str): Path to stored models.
+            model_path (Path): Path to stored models.
             stem (bool): Whether to stem the tokens.
         """
         Stemmer.__init__(self, lang)
@@ -271,7 +276,7 @@ class MosesTokenizer(Tokenizer):
         """
         Args:
             lang (str): Language code.
-            model_path (str): Path to spaCy models.
+            model_path (Path): Path to spaCy models.
         """
         super().__init__(lang, model_path)
         if lang == 'zho':
@@ -303,7 +308,7 @@ class NgramTokenizer(Tokenizer):
         """
         Args:
             lang (str): Language code.
-            model_path (str): Path to spaCy models.
+            model_path (Path): Path to spaCy models.
         """
         super().__init__(lang, model_path)
         self.n = self.languages[lang]
@@ -459,6 +464,7 @@ class TokenizerStemmerFactory:
 
     @staticmethod
     def _get_model_path(name, path):
+        """returns a Path object"""
         model_directory_defaults = {
             'ngram': '/exp/scale21/resources/spacy',
             'moses': '/exp/scale21/resources/spacy',
@@ -467,8 +473,10 @@ class TokenizerStemmerFactory:
             'whitespace': None,
         }
         if path:
-            return path
-        return model_directory_defaults[name]
+            return create_path(path)
+        else:
+            path = model_directory_defaults[name]
+            return create_path(path) if path else path
 
 
 class TextProcessor(Task):

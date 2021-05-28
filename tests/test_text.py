@@ -122,7 +122,7 @@ class TestTokenizerStemmerFactory:
 
 
 class TestStanza:
-    model_path = str(pathlib.Path.home() / 'stanza_resources')
+    model_path = pathlib.Path.home() / 'stanza_resources'
 
     @pytest.mark.slow
     def test_tokenizer_arabic(self):
@@ -191,7 +191,7 @@ class TestStanza:
 
 class TestSpacy:
     # if not running on the grid, spacy will use pip to install models
-    model_path = '/exp/scale21/resources/spacy'
+    model_path = pathlib.Path('/exp/scale21/resources/spacy')
 
     @pytest.mark.slow
     def test_tokenizer_arabic(self):
@@ -242,7 +242,7 @@ class TestSpacy:
 
 class TestMoses:
     # moses requires the sentence segmentation from spaCy
-    model_path = '/exp/scale21/resources/spacy'
+    model_path = pathlib.Path('/exp/scale21/resources/spacy')
 
     @pytest.mark.slow
     def test_tokenizer_arabic(self):
@@ -291,7 +291,7 @@ class TestMoses:
 
 class TestNgramTokenizer:
     # ngram tokenization uses sentence segmentation from spaCy
-    model_path = '/exp/scale21/resources/spacy'
+    model_path = pathlib.Path('/exp/scale21/resources/spacy')
 
     @pytest.mark.slow
     def test_stanza_tokenizer_english(self):
