@@ -196,7 +196,7 @@ class StageConfig(BaseConfig):
     stop: Optional[int]  # O-based index of stop position in input (exclusive)
 
 
-class RunConfig(BaseConfig):
+class RunConfig(SectionConfig):
     """Configuration for a run of Patapsco"""
     name: str
     path: Optional[str]  # base path for run output by default created based on name
