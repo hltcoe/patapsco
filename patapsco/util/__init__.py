@@ -264,6 +264,9 @@ class LoggingFilter(logging.Filter):
     def filter(self, record):
         # stanza has some annoying logging that we clean up
         if record.name == 'stanza':
+            # stanza can pass a dictionary or tuple as the message sometimes
+            if isinstance(record.msg, dict) or isinstance(record.msg, tuple):
+                record.msg = str(record.msg)
             if record.msg.startswith('Loading these models for language'):
                 lines = record.msg.split('\n')
                 lines = [line for line in lines if "====" not in line and "----" not in line and line]
