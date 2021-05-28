@@ -1,4 +1,33 @@
-# Query file format
+# Patapsco file formats
+Patapsco defines a few file formats for intermediate results.
+These can be used by researchers to tap into the Patapsco pipeline at various points.
+For example, a query file could be generated with special syntax or enrichment data
+and the stage 2 pipeline run from that file as input rather than the topics file.
+
+## Doc file format
+Patapsco makes documents available of this form:
+
+```
+{
+  "id": "1",
+  "lang": "eng",
+  "date": "2021-02-21",
+  "text": "This is a test document."
+}
+```
+
+| field  | description |
+| ------ | ----------- |
+| id     | Document id  |
+| lang   | ISO 639-3 |
+| date   | YYYY-MM-DD or empty string |
+| text   | Text of the document |
+
+The `text` field will have the basic normalization run on it.
+This includes removing control characters, standardizing spaces and smart quotes, and collapsing combining characters.
+
+
+## Query file format
 Patapsco saves and reads query files with the following jsonl format:
 
 ```json
@@ -26,7 +55,7 @@ The `text` field is used by reranking and should not have any stemming or other 
 The `query` could be the original text with some processing (like stemming) or could include query syntax for the retrieval system.
 
 
-# Results file format
+## Results file format
 Patapsco saves the retrieval results in jsonl:
 
 ```json
