@@ -283,6 +283,12 @@ class QueryGenerator:
         return Query(query.id, query.lang, query_syntax, text, query.report)
 
 
+@dataclasses.dataclass
+class PSQToken:
+    text: str
+    prob: Optional[float]
+
+
 class PSQGenerator(QueryGenerator):
     """Generate a PSQ"""
     def __init__(self, processor, psq_path, threshold):
@@ -293,24 +299,42 @@ class PSQGenerator(QueryGenerator):
             raise ConfigError(f"Unable to load PSQ translation table: {e}")
 
     def generate(self, query, text, tokens):
-        tokens = self.processor.lowercase(tokens)
-        tokens = self._project(tokens)
-        stopword_indices = self.processor.identify_stop_words(tokens, self.processor.run_lowercase)
-        tokens = self.processor.stem(tokens)
-        tokens = self.processor.remove_stop_words(tokens, stopword_indices)
-        tokens = [self.processor.post_normalize(token) for token in tokens]
-        query_syntax = self.processor.post_normalize(' '.join(tokens))
-        # TODO generate PSQ syntax based on probabilities
+        """Post process the tokens (stem, stop words, normalize) and generate PSQ"""
+        psq_tokens = self._project(self.processor.lowercase(tokens))
+
+        # remove stop words and stem and apply to PSQ tokens
+        text_tokens = [token.text for token in psq_tokens]
+        stopword_indices = self.processor.identify_stop_words(text_tokens, is_lower=True)
+        text_tokens = self.processor.stem(text_tokens)
+        for index in range(len(psq_tokens)):
+            psq_tokens[index].text = text_tokens[index]
+        psq_tokens = self.processor.remove_stop_words(psq_tokens, stopword_indices)
+
+        # normalize the text of the PSQ tokens and remove those that are now empty
+        for psq_token in psq_tokens:
+            psq_token.text = self.processor.post_normalize(psq_token.text)
+        psq_tokens = [psq_token for psq_token in psq_tokens if psq_token.text]
+
+        # formulate the query syntax for weighted query
+        terms = [self._format_term(psq_token) for psq_token in psq_tokens]
+        query_syntax = self.processor.post_normalize(' '.join(terms))
         return Query(query.id, query.lang, query_syntax, text, query.report)
 
+    def _format_term(self, psq_token):
+        """mock PSQ syntax with Lucene boost syntax"""
+        if psq_token.prob:
+            return f"{psq_token.text}^{psq_token.prob:.4f}"
+        else:
+            return psq_token.text
+
     def _project(self, tokens):
+        """project the query into the target language"""
         eng_tokens = []
         for token in tokens:
             if token in self.psq_table:
-                # TODO update to use probabilities
-                eng_tokens.extend(list(self.psq_table[token].keys()))
+                eng_tokens.extend([PSQToken(text, prob) for text, prob in self.psq_table[token].items()])
             else:
-                eng_tokens.append(token)
+                eng_tokens.append(PSQToken(token, None))
         return eng_tokens
 
 
