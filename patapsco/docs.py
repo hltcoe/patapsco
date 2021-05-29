@@ -232,7 +232,7 @@ class DocumentDatabase(sqlitedict.SqliteDict):
     def __setitem__(self, key, value):
         if self.readonly:
             return
-        super().__setitem(key, json.dumps(value))
+        super().__setitem__(key, json.dumps(value))
 
     def __getitem__(self, key):
         try:
@@ -301,7 +301,6 @@ class DocumentProcessor(TextProcessor):
         tokens = self.stem(tokens)
         tokens = self.remove_stop_words(tokens, stopword_indices)
         text = self.post_normalize(' '.join(tokens))
-        print("HEY!", Doc(doc.id, doc.lang, text))
         return Doc(doc.id, doc.lang, text)
 
     def end(self):
