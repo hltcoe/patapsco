@@ -301,7 +301,7 @@ class DocumentProcessor(TextProcessor):
         tokens = self.stem(tokens)
         tokens = self.remove_stop_words(tokens, stopword_indices)
         text = self.post_normalize(' '.join(tokens))
-        return Doc(doc.id, doc.lang, text)
+        return Doc(doc.id, doc.lang, text, None)
 
     def end(self):
         self.db.end()
