@@ -13,9 +13,11 @@ def test_parse_json_documents():
     assert doc.id == 'abcdef'
     assert doc.lang == 'eng'
     assert doc.text == 'title1 text1'
+    assert doc.date == '2020-12-31'
     doc = next(doc_iter)
     assert doc.id == 'tuvwxy'
     assert doc.text == 'title2 text2'
+    assert doc.date == '2020-12-31'
     with pytest.raises(StopIteration):
         next(doc_iter)
     assert doc_iter.fp.closed
