@@ -236,7 +236,7 @@ class DocumentDatabase(sqlitedict.SqliteDict):
 
     def __getitem__(self, key):
         try:
-            return super().__getitem__(json.loads(key))
+            return json.loads(super().__getitem__(key))
         except KeyError:
             raise BadDataError(f"Unable to retrieve doc {key} from the database")
 
