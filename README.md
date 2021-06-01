@@ -45,7 +45,7 @@ conda activate patapsco
 ```
 Install Patapsco:
 ```
-pip install .
+pip install --editable .
 ```
 
 #### Windows users
