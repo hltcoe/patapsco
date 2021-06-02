@@ -196,11 +196,17 @@ class StageConfig(BaseConfig):
     stop: Optional[int]  # O-based index of stop position in input (exclusive)
 
 
+class ParallelConfig(BaseConfig):
+    name: str  # mp or qsub
+    queue: Optional[str] = "all.q"  # used for qsub jobs
+
+
 class RunConfig(BaseConfig):
     """Configuration for a run of Patapsco"""
     name: str
     path: Optional[str]  # base path for run output by default created based on name
-    parallel: Optional[str]  # parallel implementation choices: mp, qsub
+    results: str = "results.txt"  # default results filename
+    parallel: Optional[ParallelConfig]  # configure for a parallel job
     stage1: Union[bool, StageConfig] = StageConfig()
     stage2: Union[bool, StageConfig] = StageConfig()
 

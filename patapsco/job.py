@@ -102,7 +102,7 @@ class Job:
         ConfigService.write_config_file(str(path), self.conf)
 
     def write_scores(self):
-        results_path = pathlib.Path(self.run_path) / 'results.txt'
+        results_path = pathlib.Path(self.run_path) / self.conf.run.results
         if results_path.exists() and self.conf.score:
             scores_path = pathlib.Path(self.run_path) / 'scores.txt'
             qrels_config = self.conf.score.input
@@ -266,6 +266,7 @@ class ParallelJob(Job):
 
     @staticmethod
     def _update_stage2_output_paths(conf, part):
+        conf.run.results += '_' + part
         # configs may not have all tasks so we ignore errors
         try:
             if conf.topics.output:
@@ -397,7 +398,7 @@ class JobBuilder:
             raise ConfigError('Run is already complete. Delete the output directory to rerun.')
 
         if self.conf.run.parallel:
-            LOGGER.info(f'Parallel job selected of type {self.conf.run.parallel}.')
+            LOGGER.info(f'Parallel job selected of type {self.conf.run.parallel.name}.')
 
         if self.conf.run.stage1:
             stage1_plan = self._create_stage1_plan()
@@ -422,12 +423,13 @@ class JobBuilder:
             self.check_text_processing()
 
         if self.conf.run.parallel:
-            if self.conf.run.parallel.lower() == "mp":
+            parallel_type = self.conf.run.parallel.name.lower()
+            if parallel_type == "mp":
                 return ParallelJob(self.conf, stage1, stage2, debug)
-            elif self.conf.run.parallel.lower() == "qsub":
+            elif parallel_type == "qsub":
                 return QsubJob(self.conf, stage1, stage2, debug)
             else:
-                raise ConfigError(f"Unknown parallel job type: {self.conf.run.parallel}")
+                raise ConfigError(f"Unknown parallel job type: {self.conf.run.parallel.name}")
         else:
             return SerialJob(self.conf, stage1, stage2)
 
