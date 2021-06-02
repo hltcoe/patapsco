@@ -16,7 +16,7 @@ class MockDB:
         self.path = 'test'
 
     def __getitem__(self, item):
-        return Doc('aaa', 'eng', 'text')
+        return Doc('aaa', 'eng', 'text', None)
 
 
 class TestShellReranker:

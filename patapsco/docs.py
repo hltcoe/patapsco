@@ -26,6 +26,7 @@ class Doc:
     id: str
     lang: str
     text: str
+    date: str
 
 
 class DocumentReaderFactory(ReaderFactory):
@@ -54,7 +55,7 @@ class SgmlDocumentReader(InputIterator):
 
     def __next__(self):
         doc = next(self.docs_iter)
-        return Doc(doc[0], self.lang, doc[1])
+        return Doc(doc[0], self.lang, doc[1], None)
 
     def __len__(self):
         return count_lines_with('<DOC>', self.path, self.encoding)
@@ -88,7 +89,7 @@ class Hc4JsonDocumentReader(InputIterator):
             raise StopIteration()
         try:
             data = json.loads(line.strip())
-            return Doc(data['id'], self.lang, ' '.join([data['title'].strip(), data['text'].strip()]))
+            return Doc(data['id'], self.lang, ' '.join([data['title'].strip(), data['text'].strip()]), data['date'])
         except json.decoder.JSONDecodeError as e:
             raise ParseError(f"Problem parsing json from {self.path} on line {self.count}: {e}")
         except KeyError as e:
@@ -115,7 +116,7 @@ class TsvDocumentReader(InputIterator):
     def __next__(self):
         try:
             row = next(self.reader)
-            return Doc(row[0], self.lang, row[1])
+            return Doc(row[0], self.lang, row[1], None)
         except StopIteration:
             self.fp.close()
             raise
@@ -231,11 +232,11 @@ class DocumentDatabase(sqlitedict.SqliteDict):
     def __setitem__(self, key, value):
         if self.readonly:
             return
-        super().__setitem__(key, value)
+        super().__setitem__(key, json.dumps(value))
 
     def __getitem__(self, key):
         try:
-            return super().__getitem__(key)
+            return json.loads(super().__getitem__(key))
         except KeyError:
             raise BadDataError(f"Unable to retrieve doc {key} from the database")
 
@@ -300,8 +301,7 @@ class DocumentProcessor(TextProcessor):
         tokens = self.stem(tokens)
         tokens = self.remove_stop_words(tokens, stopword_indices)
         text = self.post_normalize(' '.join(tokens))
-
-        return Doc(doc.id, doc.lang, text)
+        return Doc(doc.id, doc.lang, text, None)
 
     def end(self):
         self.db.end()
