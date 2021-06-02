@@ -97,11 +97,7 @@ class Scorer:
         scores = evaluator.evaluate(system_output)
         if ndcg_prime_results:
             for query in scores.keys():
-                if query in ndcg_prime_results:
-                    scores[query].update(ndcg_prime_results[query])
-                else:
-                    # no ndcg_prime result, so ndcg_prime == ndcg
-                    scores[query].update({'ndcg_prime': scores[query]['ndcg']})
+                scores[query].update(ndcg_prime_results[query])
         if scores:
             mean_scores = {}
             for key in sorted(self.metrics):
@@ -122,8 +118,17 @@ class Scorer:
             for doc_id in system_output[query_id]:
                 if doc_id in self.qrels[query_id].keys():
                     modified_run[query_id][doc_id] = system_output[query_id][doc_id]
-        ndcg_scores = evaluator.evaluate(modified_run)
-        return {query: {"ndcg_prime": scores["ndcg"]} for query, scores in ndcg_scores.items()}
+        ndcg_prime_scores = evaluator.evaluate(modified_run)
+        ndcg_scores = evaluator.evaluate(system_output)
+        combined_scores = {}
+        for query_id in system_output:
+            for scores in ndcg_prime_scores.values():
+                if query_id in ndcg_prime_scores.keys():
+                    combined_scores[query_id] = {"ndcg_prime": scores["ndcg"]}
+                else:
+                    # if no ndcg_prime result, ndcg_prime == ndcg
+                    combined_scores[query_id] = {"ndcg_prime": ndcg_scores[query_id]['ndcg']}
+        return combined_scores
 
     def _write_scores(self, scores, scores_path):
         with open(scores_path, 'w') as fp:
