@@ -62,6 +62,7 @@ class TestScorer:
 
     def test_ndcg_prime_mixed(self):
         modified_qrels = self.directory / 'qrels_missing_doc.txt'
+
         def inner_create_scorer(metrics):
             config = ScoreInputConfig(path=str(modified_qrels))
             return Scorer(config, metrics)
@@ -70,4 +71,3 @@ class TestScorer:
             system_output = pytrec_eval.parse_run(fp)
         results = scorer._calc_ndcg_prime(system_output)
         assert results['2']["ndcg_prime"] == 0
-
