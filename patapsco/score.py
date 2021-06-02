@@ -97,7 +97,11 @@ class Scorer:
         scores = evaluator.evaluate(system_output)
         if ndcg_prime_results:
             for query in scores.keys():
-                scores[query].update(ndcg_prime_results[query])
+                if query in ndcg_prime_results:
+                    scores[query].update(ndcg_prime_results[query])
+                else:
+                    # no ndcg_prime result, so ndcg_prime == ndcg
+                    scores[query].update({'ndcg_prime': scores[query]['ndcg']})
         if scores:
             mean_scores = {}
             for key in sorted(self.metrics):
