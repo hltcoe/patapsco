@@ -126,9 +126,14 @@ class ShellReranker(Reranker):
         attributes = [attribute for attribute in self.config.__fields_set__ if attribute not in fields]
         pairs = [['--' + attribute, getattr(self.config, attribute)] for attribute in attributes]
         pairs = itertools.chain(*pairs)
+        # make sure all paths are absolute
+        db_path = str(pathlib.Path(self.db.path).absolute())
+        input_path = str(pathlib.Path(input_path).absolute())
+        output_path = str(pathlib.Path(output_path).absolute())
+        # form command line args
         args = [self.config.script]
         args.extend(pairs)
-        args.extend([doc_lang, query_lang, self.db.path, input_path, output_path])
+        args.extend([doc_lang, query_lang, db_path, input_path, output_path])
         return args
 
     @staticmethod
