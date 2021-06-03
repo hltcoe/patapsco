@@ -307,7 +307,7 @@ class QsubJob(Job):
         self.config_path = self.base_dir / 'config.yml'
         self.log_path = self.base_dir / 'patapsco.log'
         ConfigService.write_config_file(self.config_path, conf)
-        self._create_script(debug)
+        self._create_scripts(debug)
 
     def run(self, sub_job=False):
         LOGGER.info("Launching qsub run: %s", self.conf.run.name)
@@ -336,16 +336,34 @@ class QsubJob(Job):
             print(f"Error: {e}")
             sys.exit(-1)
 
-    def _create_script(self, debug):
+    def _create_scripts(self, debug):
         template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'job.sh'
         template = template_path.read_text()
         debug = '-d' if debug else ''
         if self.stage1:
-            content = template.format(base=str(self.base_dir), config=str(self.config_path), debug=debug, stage=1)
+            num_jobs = self.conf.run.stage1.num_jobs
+            LOGGER.debug(f"Stage 1 is using {num_jobs} jobs")
+            increment = self._get_stage1_increment(num_jobs)
+            content = template.format(
+                base=str(self.base_dir),
+                config=str(self.config_path),
+                debug=debug,
+                increment=increment,
+                stage=1
+            )
             self.stage1_script_path.write_text(content)
             self.stage1_script_path.chmod(0o755)
         if self.stage2:
-            content = template.format(base=str(self.base_dir), config=str(self.config_path), debug=debug, stage=2)
+            num_jobs = self.conf.run.stage2.num_jobs
+            LOGGER.debug(f"Stage 2 is using {num_jobs} jobs")
+            increment = self._get_stage2_increment(num_jobs)
+            content = template.format(
+                base=str(self.base_dir),
+                config=str(self.config_path),
+                debug=debug,
+                increment=increment,
+                stage=2
+            )
             self.stage2_script_path.write_text(content)
             self.stage2_script_path.chmod(0o755)
 
@@ -353,6 +371,15 @@ class QsubJob(Job):
         logging.shutdown()
         current_log_path = pathlib.Path(self.run_path) / 'patapsco.log'
         current_log_path.rename(self.log_path)
+
+    def _get_stage1_increment(self, num_jobs):
+        LOGGER.info("Calculating job size...")
+        num_items = len(self.stage1.iterator)
+        return int(math.ceil(num_items / num_jobs))
+
+    def _get_stage2_increment(self, num_jobs):
+        num_items = len(self.stage2.iterator)
+        return int(math.ceil(num_items / num_jobs))
 
 
 class JobBuilder:
