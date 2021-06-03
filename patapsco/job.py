@@ -331,7 +331,9 @@ class QsubJob(Job):
             LOGGER.debug(' '.join([str(arg) for arg in args]))
         try:
             ps = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
-            return ps.stdout.decode().strip()
+            job_id = ps.stdout.decode().strip()
+            # array jobs have ids of xxxxxxx.1-num_jobs
+            return job_id.split('.')[0]
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
             sys.exit(-1)
