@@ -1,6 +1,7 @@
 run:
   name: English qsub
-  parallel: qsub
+  parallel:
+    name: qsub
 
 documents:
   input:
@@ -29,9 +30,6 @@ queries:
 retrieve:
   name: bm25
   number: 5
-
-rerank:
-  name: mock
 
 score:
   input:

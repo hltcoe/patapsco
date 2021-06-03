@@ -14,7 +14,7 @@ from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
-from .util.file import count_lines, count_lines_with, path_append, is_complete, touch_complete
+from .util.file import count_lines, count_lines_with, delete_dir, path_append, is_complete, touch_complete
 from .util.formats import parse_sgml_documents, parse_hamshahri_documents
 from .util.normalize import compare_strings
 
@@ -252,6 +252,7 @@ class DocumentDatabase(sqlitedict.SqliteDict):
             db = sqlitedict.SqliteDict(str(path))
             for doc_id in db:
                 self[doc_id] = db[doc_id]
+        [delete_dir(item) for item in dirs]
 
 
 class DocumentDatabaseFactory:

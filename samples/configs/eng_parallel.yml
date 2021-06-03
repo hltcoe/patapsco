@@ -1,6 +1,7 @@
 run:
   name: English multiprocessing parallel run
-  parallel: mp
+  parallel:
+    name: mp
   stage1:
     num_jobs: 2
   stage2:

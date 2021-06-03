@@ -7,7 +7,6 @@ from .error import PatapscoError
 from .pipeline import Task
 from .schema import IndexConfig
 from .util import TaskFactory
-from .util.file import delete_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -125,4 +124,3 @@ class LuceneIndexer(Task):
         [index.close() for index in indexes]
         # need to record the documents language in the new index
         self.lang = (pathlib.Path(dirs[0]) / ".lang").read_text()
-        [delete_dir(item) for item in dirs]

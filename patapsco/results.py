@@ -2,6 +2,7 @@ import collections
 import csv
 import dataclasses
 import json
+import logging
 import pathlib
 from typing import List, Union
 
@@ -9,6 +10,8 @@ from .pipeline import Task
 from .topics import Query
 from .util import DataclassJSONEncoder
 from .util.file import path_append
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -39,7 +42,7 @@ class TrecResultsWriter(Task):
         super().__init__()
         self.base = pathlib.Path(config.run.path)
         self.artifact_config = config
-        self.path = self.base / 'results.txt'
+        self.path = self.base / config.run.results
         self.file = None
 
     def begin(self):
@@ -59,11 +62,15 @@ class TrecResultsWriter(Task):
         super().end()
 
     def reduce(self, dirs):
-        for base in dirs:
-            path = path_append(base, 'results.txt')
-            with open(path) as fp:
+        # rather than directories, we need to process files of the form [results]_part_*
+        glob = self.artifact_config.run.results + '_part_*'
+        files = sorted(list(self.base.glob(glob)))
+        LOGGER.debug("Reducing to a single results file from %s", ', '.join(str(x) for x in files))
+        for file in files:
+            with open(file) as fp:
                 for line in fp:
                     self.file.write(line)
+            file.unlink()
 
 
 class TrecResultsReader:

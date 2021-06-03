@@ -102,7 +102,7 @@ class Job:
         ConfigService.write_config_file(str(path), self.conf)
 
     def write_scores(self):
-        results_path = pathlib.Path(self.run_path) / 'results.txt'
+        results_path = pathlib.Path(self.run_path) / self.conf.run.results
         if results_path.exists() and self.conf.score:
             scores_path = pathlib.Path(self.run_path) / 'scores.txt'
             qrels_config = self.conf.score.input
@@ -266,6 +266,7 @@ class ParallelJob(Job):
 
     @staticmethod
     def _update_stage2_output_paths(conf, part):
+        conf.run.results += '_' + part
         # configs may not have all tasks so we ignore errors
         try:
             if conf.topics.output:
@@ -293,6 +294,7 @@ class QsubJob(Job):
     """Parallel job that uses qsub."""
     def __init__(self, conf, stage1, stage2, debug):
         super().__init__(conf, stage1, stage2)
+        self.debug = debug
         conf.run.path = str(pathlib.Path(self.run_path).absolute())
         conf.run.parallel = None
         self.base_dir = (pathlib.Path(self.run_path) / 'qsub').absolute()
@@ -300,7 +302,8 @@ class QsubJob(Job):
             self.base_dir.mkdir(parents=True)
         except FileExistsError:
             raise ConfigError(f"A qsub directory already exists at {self.base_dir}")
-        self.script_path = self.base_dir / 'job.sh'
+        self.stage1_script_path = self.base_dir / 'stage1_job.sh'
+        self.stage2_script_path = self.base_dir / 'stage2_job.sh'
         self.config_path = self.base_dir / 'config.yml'
         self.log_path = self.base_dir / 'patapsco.log'
         ConfigService.write_config_file(self.config_path, conf)
@@ -308,23 +311,43 @@ class QsubJob(Job):
 
     def run(self, sub_job=False):
         LOGGER.info("Launching qsub run: %s", self.conf.run.name)
+
+        job_id = None
+        if self.stage1:
+            job_id = self._launch_job(self.stage1_script_path)
+            LOGGER.info(f"Job {job_id} submitted")
+        if self.stage2:
+            job_id = self._launch_job(self.stage2_script_path, job_id)
+            LOGGER.info(f"Job {job_id} submitted")
         self._move_log_file()
 
-        args = ['qsub', '-q', 'all.q', str(self.script_path)]
+    def _launch_job(self, script_path, hold=None):
+        """Launch a qsub job and return the job id"""
+        args = ['qsub', '-terse', '-q', 'all.q']
+        if hold:
+            args.extend(['-hold_jid', hold])
+        args.append(str(script_path))
+        if self.debug:
+            LOGGER.debug(' '.join([str(arg) for arg in args]))
         try:
             ps = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
-            print()
-            print(ps.stdout.decode())
+            return ps.stdout.decode().strip()
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
+            sys.exit(-1)
 
     def _create_script(self, debug):
         template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'job.sh'
         template = template_path.read_text()
         debug = '-d' if debug else ''
-        content = template.format(base=str(self.base_dir), config=str(self.config_path), debug=debug)
-        self.script_path.write_text(content)
-        self.script_path.chmod(0o755)
+        if self.stage1:
+            content = template.format(base=str(self.base_dir), config=str(self.config_path), debug=debug, stage=1)
+            self.stage1_script_path.write_text(content)
+            self.stage1_script_path.chmod(0o755)
+        if self.stage2:
+            content = template.format(base=str(self.base_dir), config=str(self.config_path), debug=debug, stage=2)
+            self.stage2_script_path.write_text(content)
+            self.stage2_script_path.chmod(0o755)
 
     def _move_log_file(self):
         logging.shutdown()
@@ -340,16 +363,26 @@ class JobBuilder:
     Handles restarting a run where it left off.
     Will create pipelines for partial runs (that end early or start from artifacts).
     """
-    def __init__(self, conf):
+    def __init__(self, conf, **kwargs):
         """
         Args:
             conf (RunnerConfig): Configuration for the runner.
         """
         self.conf = conf
+        self.parallel_args = kwargs
         self.run_path = pathlib.Path(conf.run.path)
         self.artifact_helper = ArtifactHelper()
         self.doc_lang = None
         self.query_lang = None
+        self._update_config()
+
+    def _update_config(self):
+        """Update config based on parallel args"""
+        if self.parallel_args:
+            if self.parallel_args['stage'] == 1:
+                self.conf.run.stage2 = False
+            else:
+                self.conf.run.stage1 = False
 
     def build(self, debug):
         """Build the job(s) for this run
@@ -365,7 +398,7 @@ class JobBuilder:
             raise ConfigError('Run is already complete. Delete the output directory to rerun.')
 
         if self.conf.run.parallel:
-            LOGGER.info(f'Parallel job selected of type {self.conf.run.parallel}.')
+            LOGGER.info(f'Parallel job selected of type {self.conf.run.parallel.name}.')
 
         if self.conf.run.stage1:
             stage1_plan = self._create_stage1_plan()
@@ -390,12 +423,13 @@ class JobBuilder:
             self.check_text_processing()
 
         if self.conf.run.parallel:
-            if self.conf.run.parallel.lower() == "mp":
+            parallel_type = self.conf.run.parallel.name.lower()
+            if parallel_type == "mp":
                 return ParallelJob(self.conf, stage1, stage2, debug)
-            elif self.conf.run.parallel.lower() == "qsub":
+            elif parallel_type == "qsub":
                 return QsubJob(self.conf, stage1, stage2, debug)
             else:
-                raise ConfigError(f"Unknown parallel job type: {self.conf.run.parallel}")
+                raise ConfigError(f"Unknown parallel job type: {self.conf.run.parallel.name}")
         else:
             return SerialJob(self.conf, stage1, stage2)
 
