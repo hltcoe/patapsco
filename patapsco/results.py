@@ -54,7 +54,6 @@ class TrecResultsWriter(Task):
             results (Results): Results for a query
         """
         for result in results.results:
-            LOGGER.debug(f"{results.query.id} Q0 {result.doc_id} {result.rank} {result.score} {results.system}")
             self.file.write(f"{results.query.id} Q0 {result.doc_id} {result.rank} {result.score} {results.system}\n")
         return results
 
