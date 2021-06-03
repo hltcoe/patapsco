@@ -122,12 +122,11 @@ class Scorer:
         ndcg_scores = evaluator.evaluate(system_output)
         combined_scores = {}
         for query_id in system_output:
-            for scores in ndcg_prime_scores.values():
-                if query_id in ndcg_prime_scores.keys():
-                    combined_scores[query_id] = {"ndcg_prime": scores["ndcg"]}
-                else:
-                    # if no ndcg_prime result, ndcg_prime == ndcg
-                    combined_scores[query_id] = {"ndcg_prime": ndcg_scores[query_id]['ndcg']}
+            if query_id in ndcg_prime_scores.keys():
+                combined_scores[query_id] = {"ndcg_prime": ndcg_prime_scores[query_id]['ndcg']}
+            else:
+                # if no ndcg_prime result, ndcg_prime == ndcg
+                combined_scores[query_id] = {"ndcg_prime": ndcg_scores[query_id]['ndcg']}
         return combined_scores
 
     def _write_scores(self, scores, scores_path):
