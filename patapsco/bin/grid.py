@@ -15,10 +15,6 @@ def main():
     parser.add_argument("--stage", type=int, required=True, choices={1, 2}, help="Pipeline stage")
     args = parser.parse_args()
 
-    print(args.job)
-    if args.job != "0":
-        quit()
-
     parallel_args = {
         'job': args.job,
         'increment': args.increment,

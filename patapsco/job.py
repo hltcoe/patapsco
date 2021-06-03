@@ -412,8 +412,12 @@ class JobBuilder:
         if self.parallel_args:
             if self.parallel_args['stage'] == 1:
                 self.conf.run.stage2 = False
+                self.conf.run.stage1.start = self.parallel_args['increment'] * self.parallel_args['job']
+                self.conf.run.stage1.stop = self.parallel_args['increment'] * (self.parallel_args['job'] + 1)
             else:
                 self.conf.run.stage1 = False
+                self.conf.run.stage2.start = self.parallel_args['increment'] * self.parallel_args['job']
+                self.conf.run.stage2.stop = self.parallel_args['increment'] * (self.parallel_args['job'] + 1)
 
     def build(self, debug):
         """Build the job(s) for this run
