@@ -349,6 +349,7 @@ class QsubJob(Job):
                 config=str(self.config_path),
                 debug=debug,
                 increment=increment,
+                num_jobs=num_jobs,
                 stage=1
             )
             self.stage1_script_path.write_text(content)
@@ -362,6 +363,7 @@ class QsubJob(Job):
                 config=str(self.config_path),
                 debug=debug,
                 increment=increment,
+                num_jobs=num_jobs,
                 stage=2
             )
             self.stage2_script_path.write_text(content)
