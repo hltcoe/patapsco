@@ -1,6 +1,7 @@
 run:
   name: English qsub
-  parallel: qsub
+  parallel:
+    name: qsub
 
 documents:
   input:
@@ -30,14 +31,7 @@ retrieve:
   name: bm25
   number: 5
 
-rerank:
-  name: mock
-
 score:
   input:
     format: trec
     path: samples/data/eng_mini_qrels
-  metrics:
-    - map
-    - P@20
-    - ndcg
