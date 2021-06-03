@@ -1,6 +1,11 @@
 import collections
 import logging
-import pytrec_eval
+import sys
+
+try:
+    import pytrec_eval
+except ImportError:
+    pass
 
 from .error import ConfigError
 from .schema import ScoreInputConfig
@@ -45,6 +50,10 @@ class Scorer:
             qrels_config (PathConfig): Config for the qrels file or glob for multiple files.
             metrics (list): List of metrics names.
         """
+        self.pytrec_eval_avail = 'pytrec_eval' in sys.modules
+        if not self.pytrec_eval_avail:
+            LOGGER.warning("pytrec_eval is not installed so no scoring is available")
+            return
         self.metrics = self._preprocess_metrics(metrics)
         self.qrels = QrelsReaderFactory.create(qrels_config).read()
         self._validate_metrics(self.metrics)
@@ -70,10 +79,15 @@ class Scorer:
             results_path (Path): Path to results of a run.
             scores_path (Path): Path to write scores.
         """
+        if not self.pytrec_eval_avail:
+            return
+
         with open(results_path, 'r') as fp:
             system_output = pytrec_eval.parse_run(fp)
         if set(system_output.keys()) - set(self.qrels.keys()):
             LOGGER.warning('There are queries in the run that are not in the qrels')
+        if set(self.qrels.keys()) - set(system_output.keys()):
+            LOGGER.warning('There are queries in the qrels that are not in the run')
         measures = {s for s in self.metrics}
         ndcg_prime_results = {}
         if "ndcg_prime" in measures:
@@ -104,8 +118,17 @@ class Scorer:
             for doc_id in system_output[query_id]:
                 if doc_id in self.qrels[query_id].keys():
                     modified_run[query_id][doc_id] = system_output[query_id][doc_id]
-        ndcg_scores = evaluator.evaluate(modified_run)
-        return {query: {"ndcg_prime": scores["ndcg"]} for query, scores in ndcg_scores.items()}
+        ndcg_prime_scores = evaluator.evaluate(modified_run)
+        ndcg_scores = evaluator.evaluate(system_output)
+        combined_scores = {}
+        for query_id in system_output:
+            for scores in ndcg_prime_scores.values():
+                if query_id in ndcg_prime_scores.keys():
+                    combined_scores[query_id] = {"ndcg_prime": scores["ndcg"]}
+                else:
+                    # if no ndcg_prime result, ndcg_prime == ndcg
+                    combined_scores[query_id] = {"ndcg_prime": ndcg_scores[query_id]['ndcg']}
+        return combined_scores
 
     def _write_scores(self, scores, scores_path):
         with open(scores_path, 'w') as fp:

@@ -42,10 +42,10 @@ class TestNormalizer:
         text = "But we\u00e2\u0080\u0099ve come out the other side of it"
         assert Normalizer.fix_encoding(text) == "But we’ve come out the other side of it"
 
-    def test_combine(self):
-        assert Normalizer.combine("\u0043\u0327") == "\u00c7"  # combine diacritics
-        assert Normalizer.combine("\u2160") != "I"  # do not convert to canonical form (Roman numeral I to capital I)
-        assert Normalizer.combine("\uff0c") == "\uff0c"  # do not convert fullwidth chars to normal chars
+    def test_standardize_combining_chars(self):
+        assert Normalizer.standardize_combining_chars("\u0043\u0327") == "\u00c7"  # combine diacritics
+        assert Normalizer.standardize_combining_chars("\u2160") != "I"  # do not convert to canonical form (Roman numeral I to capital I)
+        assert Normalizer.standardize_combining_chars("\uff0c") == "\uff0c"  # do not convert fullwidth chars to normal chars
 
     def test_expand_range(self):
         r1 = '\u2000-\u2009'

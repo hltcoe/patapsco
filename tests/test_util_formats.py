@@ -110,3 +110,18 @@ def test_parse_qrels_tsv():
     assert qrels['142']['doc3'] == 0
     with pytest.raises(StopIteration):
         next(qrels_iter)
+
+
+def test_parse_psq_table():
+    directory = pathlib.Path(__file__).parent / 'psq_files'
+    path = directory / 'psq.json'
+    table = parse_psq_table(path, threshold=0.97)
+    assert len(table) == 3
+    assert list(table.keys()) == ['cat', 'dog', 'bird']
+    assert table['cat']['gato'] == pytest.approx(0.842105263)
+    assert table['cat']['felino'] == pytest.approx(0.1578947368)
+    assert table['dog']['pero'] == pytest.approx(0.81818181818)
+    assert table['dog']['can'] == pytest.approx(0.181818181818)
+    assert len(table['bird']) == 2
+    assert table['bird']['pájaro'] == pytest.approx(0.612244897)
+    assert table['bird']['ave'] == pytest.approx(0.38775510)

@@ -6,11 +6,11 @@ from typing import Optional
 
 from .error import ConfigError, ParseError
 from .pipeline import Task
-from .schema import TopicsInputConfig
+from .schema import TextProcessorConfig, TopicsInputConfig
 from .text import TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
-from .util.formats import parse_xml_topics, parse_sgml_topics
+from .util.formats import parse_xml_topics, parse_sgml_topics, parse_psq_table
 
 
 @dataclasses.dataclass
@@ -160,8 +160,8 @@ class Hc4JsonTopicReader(InputIterator):
             if self.lang != "eng":
                 if self.lang not in data['lang_supported']:
                     raise ConfigError(f"Language {self.lang} not supported in {self.path}")
-                title = data['lang_resources'][self.lang]['title_translation'].strip()
-                desc = data['lang_resources'][self.lang]['description_translation'].strip()
+                title = data['lang_resources'][self.lang]['topic_title'].strip()
+                desc = data['lang_resources'][self.lang]['topic_description'].strip()
             else:
                 title = data['topic_title'].strip()
                 desc = data['topic_description'].strip()
@@ -268,25 +268,74 @@ class QueryReader(InputIterator):
 
 
 class QueryGenerator:
-    def __init__(self, query, text, tokens):
-        self.id = query.id
-        self.lang = query.lang
-        self.text = text
-        self.report = query.report
-        self.original_query = query
-        self.tokens = tokens
+    """Generate a plain text query"""
 
-    def generate(self):
-        return Query(self.id, self.lang, ' '.join(self.tokens), self.text, self.report)
+    def __init__(self, processor):
+        self.processor = processor
+
+    def generate(self, query, text, tokens):
+        if self.processor.run_lowercase:
+            tokens = self.processor.lowercase(tokens)
+        stopword_indices = self.processor.identify_stop_words(tokens, self.processor.run_lowercase)
+        tokens = self.processor.stem(tokens)
+        tokens = self.processor.remove_stop_words(tokens, stopword_indices)
+        query_syntax = self.processor.post_normalize(' '.join(tokens))
+        return Query(query.id, query.lang, query_syntax, text, query.report)
 
 
-class ProbabilisticStructuredQueryGenerator(QueryGenerator):
-    # TODO load translation table and generate PSQ syntax
-    def __init__(self, query, text, tokens, table_path):
-        super().__init__(query, text, tokens)
+@dataclasses.dataclass
+class PSQToken:
+    text: str
+    prob: Optional[float]
 
-    def generate(self):
-        return Query(self.id, self.lang, ' '.join(self.tokens), self.text, self.report)
+
+class PSQGenerator(QueryGenerator):
+    """Generate a PSQ"""
+    def __init__(self, processor, psq_path, threshold):
+        super().__init__(processor)
+        try:
+            self.psq_table = parse_psq_table(psq_path, threshold)
+        except OSError as e:
+            raise ConfigError(f"Unable to load PSQ translation table: {e}")
+
+    def generate(self, query, text, tokens):
+        """Post process the tokens (stem, stop words, normalize) and generate PSQ"""
+        psq_tokens = self._project(self.processor.lowercase(tokens))
+
+        # remove stop words and stem and apply to PSQ tokens
+        text_tokens = [token.text for token in psq_tokens]
+        stopword_indices = self.processor.identify_stop_words(text_tokens, is_lower=True)
+        text_tokens = self.processor.stem(text_tokens)
+        for index in range(len(psq_tokens)):
+            psq_tokens[index].text = text_tokens[index]
+        psq_tokens = self.processor.remove_stop_words(psq_tokens, stopword_indices)
+
+        # normalize the text of the PSQ tokens and remove those that are now empty
+        for psq_token in psq_tokens:
+            psq_token.text = self.processor.post_normalize(psq_token.text)
+        psq_tokens = [psq_token for psq_token in psq_tokens if psq_token.text]
+
+        # formulate the query syntax for weighted query
+        terms = [self._format_term(psq_token) for psq_token in psq_tokens]
+        query_syntax = self.processor.post_normalize(' '.join(terms))
+        return Query(query.id, query.lang, query_syntax, text, query.report)
+
+    def _format_term(self, psq_token):
+        """mock PSQ syntax with Lucene boost syntax"""
+        if psq_token.prob:
+            return f"{psq_token.text}^{psq_token.prob:.4f}"
+        else:
+            return psq_token.text
+
+    def _project(self, tokens):
+        """project the query into the target language"""
+        eng_tokens = []
+        for token in tokens:
+            if token in self.psq_table:
+                eng_tokens.extend([PSQToken(text, prob) for text, prob in self.psq_table[token].items()])
+            else:
+                eng_tokens.append(PSQToken(token, None))
+        return eng_tokens
 
 
 class QueryProcessor(TextProcessor):
@@ -300,7 +349,24 @@ class QueryProcessor(TextProcessor):
             lang (str): Language code
         """
         super().__init__(run_path, config.process, lang)
-        self.psq_path = config.psq
+        self.psq_config = config.psq
+        self.generator = None
+
+    def begin(self):
+        super().begin()
+        if self.psq_config:
+            # build an English text processor to handle English tokens from PSQ
+            text_config = TextProcessorConfig(
+                normalize=self.psq_config.normalize,
+                tokenize="whitespace",
+                stopwords=self.psq_config.stopwords,
+                stem=self.psq_config.stem
+            )
+            processor = TextProcessor(self.run_path, text_config, self.psq_config.lang)
+            processor.begin()  # load models
+            self.generator = PSQGenerator(processor, self.psq_config.path, self.psq_config.threshold)
+        else:
+            self.generator = QueryGenerator(self)
 
     def process(self, query):
         """
@@ -311,15 +377,6 @@ class QueryProcessor(TextProcessor):
             Query
         """
         text = query.text
-        text = self.normalize(text)
+        text = self.pre_normalize(text)
         tokens = self.tokenize(text)
-        if self.psq_path:
-            generator = ProbabilisticStructuredQueryGenerator(query, text, tokens, self.psq_path)
-        else:
-            generator = QueryGenerator(query, text, tokens)
-        if self.run_lowercase:
-            generator.tokens = self.lowercase(generator.tokens)
-        stopword_indices = self.identify_stop_words(generator.tokens, self.run_lowercase)
-        generator.tokens = self.stem(generator.tokens)
-        generator.tokens = self.remove_stop_words(generator.tokens, stopword_indices)
-        return generator.generate()
+        return self.generator.generate(query, text, tokens)

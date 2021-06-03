@@ -1,9 +1,13 @@
 import collections
 import csv
+import functools
 import gzip
+import itertools
+import json
 import xml.etree.ElementTree as ElementTree
 
 import bs4
+import numpy as np
 
 from ..error import ParseError
 
@@ -101,3 +105,28 @@ def parse_qrels(path):
         for row in reader:
             qrels[row[0]][row[2]] = int(row[3])
     yield qrels
+
+
+def normalize_psq_entry(entry, cum_thresh=0.97, elem_thresh=1e-5):
+    """Throw out small probabilities and normalize so sum = 1"""
+    total = sum(entry.values())
+    entry = {word: prob / total for word, prob in entry.items()}
+    entry = {word: prob for word, prob in entry.items() if prob > elem_thresh}
+    entry = dict(sorted(entry.items(), key=lambda item: item[1], reverse=True))
+    if cum_thresh < 1:
+        probs = np.array(list(entry.values()), dtype='float')
+        index = np.where(np.cumsum(probs) > cum_thresh)[0][0]
+        entry = dict(itertools.islice(entry.items(), int(index) + 1))
+        total = sum(entry.values())
+        entry = {word: prob / total for word, prob in entry.items()}
+    return entry
+
+
+def parse_psq_table(path, threshold=0.97):
+    """translation table is a dictionary of dictionaries
+    The inner dictionary maps target words to probabilities.
+    """
+    norm = functools.partial(normalize_psq_entry, cum_thresh=threshold)
+    with open(path) as fp:
+        trans_table = json.load(fp)
+        return {k: norm(v) for k, v in trans_table.items()}

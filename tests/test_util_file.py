@@ -6,6 +6,16 @@ from patapsco.error import ConfigError
 from patapsco.util import file
 
 
+def test_create_path_with_tilde():
+    path = file.create_path("~/test")
+    assert pathlib.Path.home() / "test" == path
+
+
+def test_create_path_no_tilde():
+    path = file.create_path("/exp")
+    assert pathlib.Path("/exp") == path
+
+
 def test_validate_encoding():
     file.validate_encoding('utf-8')
     file.validate_encoding('utf8')

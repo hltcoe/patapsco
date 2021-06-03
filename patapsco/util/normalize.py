@@ -5,14 +5,17 @@ Types of normalization:
 
 # Corruption
 1. Incorrect encodings. For example, latin-1 encoded text in a utf-8 file.
-2. Escaped characters. For example, &amp; from html in a utf-8 file. Not implemented as only issue is multiple escaped elements.
-3. HTML or XML tags in the text from a poor extraction process. Not implemented.
+2. Escaped characters. For example, &amp; from html in a utf-8 file.
+3. HTML or XML tags in the text from a poor extraction process.
+Note 2 and 3 are not implemented as not found to be an issue with our data.
+There are cases of #2, but they were escaped multiple times.
 
 # Standardization
 1. Use a single representation for punctuation (quotes, dashes, periods, commas, etc.).
 2. Use a single representation for symbols (percent sign, etc.).
 3. Use a single representation for spacing (newlines, tabs, various spaces).
 4. Use a common representation for numbers.
+5. Case folding (lowercasing).
 
 # Remove Formatting Characters
 1. Directionality markers (LTR mark, RTL mark, Pop directionality, etc.).
@@ -23,15 +26,16 @@ Types of normalization:
 2. Remove diacritics.
 
 # Remove
-1. Punctuation
-2. Emojis
+1. Control characters
+2. Punctuation
+3. Emojis
+4. Characters outside of the expected unicode block(s)
 
 # Replace
 1. Numbers
 2. Phone numbers
 3. URLs
 4. Usernames
-5. Fractions?
 
 
 # Unicode characters for normalization
@@ -195,6 +199,8 @@ class NormalizerFactory:
 
 
 class Normalizer:
+    """Base class of the text normalizers"""
+
     FORMAT_RANGE = [
         '\u200e', '\u200f', '\u202a-\u202e', '\u2066-\u206b',  # RTL
         '\u061c', '\u206c-\u206f',  # Arabic shaping and national digit selection
@@ -230,7 +236,7 @@ class Normalizer:
         return ftfy.fix_encoding(text)
 
     @staticmethod
-    def combine(text):
+    def standardize_combining_chars(text):
         """combine chars + separate diacritics"""
         return unicodedata.normalize('NFC', text)
 
@@ -239,30 +245,40 @@ class Normalizer:
         return ftfy.fixes.uncurl_quotes(text)
 
 
-class GenricNormalizer(Normalizer):
-    def normalize(self, text):
+class GenericNormalizer(Normalizer):
+    """General text normalizer"""
+
+    def pre_normalize(self, text):
+        """Normalization common to all processing"""
         text = self.fix_encoding(text)
         text = self.remove_control_chars(text)
         text = self.remove_format_chars(text)
-        text = self.combine(text)
+        text = self.standardize_combining_chars(text)
         return self.update_spaces(text)
 
+    def post_normalize(self, text):
+        """Normalization for indexing
 
-class ArabicNormalizer(GenricNormalizer):
+        This could operate on token text or entire an document.
+        """
+        return text
+
+
+class ArabicNormalizer(GenericNormalizer):
     pass
 
 
-class ChineseNormalizer(GenricNormalizer):
+class ChineseNormalizer(GenericNormalizer):
     pass
 
 
-class EnglishNormalizer(GenricNormalizer):
+class EnglishNormalizer(GenericNormalizer):
     pass
 
 
-class FarsiNormalizer(GenricNormalizer):
+class FarsiNormalizer(GenericNormalizer):
     pass
 
 
-class RussianNormalizer(GenricNormalizer):
+class RussianNormalizer(GenericNormalizer):
     pass

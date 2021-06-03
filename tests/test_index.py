@@ -26,7 +26,7 @@ class TestLuceneIndex:
         conf = IndexConfig(name='lucene', output=output_directory)
         li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
         li.begin()
-        li.process(Doc("1234", "eng", "this is a test"))
+        li.process(Doc("1234", "eng", "this is a test", None))
         li.end()
         assert lucene_directory.exists()
         lang_file = lucene_directory / ".lang"
@@ -38,7 +38,7 @@ class TestLuceneIndex:
         conf = IndexConfig(name='lucene', output=str(output_directory))
         li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
         li.begin()
-        li.process(Doc("1234", "eng", "this is a another test"))
+        li.process(Doc("1234", "eng", "this is a another test", None))
         li.end()
         assert output_directory.exists()
 
@@ -46,7 +46,7 @@ class TestLuceneIndex:
         conf = IndexConfig(name='lucene', output=str(output_directory))
         li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
         li.begin()
-        li.process(Doc("5678", "eng", "this is a test"))
+        li.process(Doc("5678", "eng", "this is a test", None))
         li.end()
         assert output_directory.exists()
 
