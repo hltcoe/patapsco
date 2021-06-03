@@ -21,7 +21,7 @@ def main():
         'stage': args.stage
     }
     try:
-        runner = Runner(args.config, args.debug, {}, **parallel_args)
+        runner = Runner(args.config, debug=args.debug, grid=True, **parallel_args)
         runner.run()
     except PatapscoError as error:
         if args.debug:

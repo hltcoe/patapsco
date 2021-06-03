@@ -15,7 +15,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        runner = Runner(args.config, args.debug, args.set)
+        runner = Runner(args.config, debug=args.debug, overrides=args.set)
         runner.run()
     except PatapscoError as error:
         if args.debug:
