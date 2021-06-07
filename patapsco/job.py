@@ -23,7 +23,8 @@ from .retrieve import RetrieverFactory
 from .schema import RunnerConfig, PipelineMode, Tasks
 from .score import Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
-from .util import DataclassJSONEncoder, get_human_readable_size, LangStandardizer, LoggingFilter, SlicedIterator, Timer
+from .util import DataclassJSONEncoder, get_human_readable_size, ignore_exception, LangStandardizer, LoggingFilter,\
+    SlicedIterator, Timer
 from .util.file import delete_dir, is_complete, path_append
 
 LOGGER = logging.getLogger(__name__)
@@ -248,46 +249,32 @@ class ParallelJob(Job):
     @staticmethod
     def _update_stage1_output_paths(conf, part):
         # configs may not have all tasks so we ignore errors
-        try:
+        with ignore_exception(AttributeError):
             if conf.database.output:
                 conf.database.output = path_append(conf.database.output, part)
-        except AttributeError:
-            pass
-        try:
+        with ignore_exception(AttributeError):
             if conf.documents.output:
                 conf.documents.output = path_append(conf.documents.output, part)
-        except AttributeError:
-            pass
-        try:
+        with ignore_exception(AttributeError):
             if conf.index.output:
                 conf.index.output = path_append(conf.index.output, part)
-        except AttributeError:
-            pass
 
     @staticmethod
     def _update_stage2_output_paths(conf, part):
         conf.run.results += '_' + part
         # configs may not have all tasks so we ignore errors
-        try:
+        with ignore_exception(AttributeError):
             if conf.topics.output:
                 conf.topics.output = path_append(conf.topics.output, part)
-        except AttributeError:
-            pass
-        try:
+        with ignore_exception(AttributeError):
             if conf.queries.output:
                 conf.queries.output = path_append(conf.queries.output, part)
-        except AttributeError:
-            pass
-        try:
+        with ignore_exception(AttributeError):
             if conf.retrieve.output:
                 conf.retrieve.output = path_append(conf.retrieve.output, part)
-        except AttributeError:
-            pass
-        try:
+        with ignore_exception(AttributeError):
             if conf.rerank.output:
                 conf.rerank.output = path_append(conf.rerank.output, part)
-        except AttributeError:
-            pass
 
 
 class QsubJob(Job):
