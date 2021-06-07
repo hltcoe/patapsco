@@ -405,9 +405,9 @@ class JobBuilder:
         self.artifact_helper = ArtifactHelper()
         self.doc_lang = None
         self.query_lang = None
-        self._update_config()
+        self._update_config_for_grid_jobs()
 
-    def _update_config(self):
+    def _update_config_for_grid_jobs(self):
         """Update config based on parallel args"""
         if self.parallel_args:
             if self.parallel_args['stage'] == 1:
