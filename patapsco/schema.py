@@ -145,6 +145,15 @@ class RetrieveInputConfig(BaseConfig):
     """Configuration of optional retrieval inputs"""
     index: Union[None, PathConfig]
     queries: Optional[PathConfig]
+    # bm25
+    k1: float = 0.9
+    b: float = 0.4
+    # rm3
+    fb_terms = 10
+    fb_docs = 10
+    original_query_weight = float(0.5)
+    # qld
+    mu: int = 1000
 
 
 class RetrieveConfig(SectionConfig):
