@@ -410,10 +410,36 @@ class JobBuilder:
                 self.conf.run.stage2 = False
                 self.conf.run.stage1.start = self.parallel_args['increment'] * self.parallel_args['job']
                 self.conf.run.stage1.stop = self.parallel_args['increment'] * (self.parallel_args['job'] + 1)
+                part = f"part_{self.parallel_args['job']}"
+                with ignore_exception(AttributeError):
+                    if self.conf.database.output:
+                        self.conf.database.output = path_append(part, self.conf.database.output)
+                with ignore_exception(AttributeError):
+                    if self.conf.documents.output:
+                        self.conf.documents.output = path_append(part, self.conf.documents.output)
+                with ignore_exception(AttributeError):
+                    if self.conf.index.output:
+                        self.conf.index.output = path_append(part, self.conf.index.output)
             else:
                 self.conf.run.stage1 = False
                 self.conf.run.stage2.start = self.parallel_args['increment'] * self.parallel_args['job']
                 self.conf.run.stage2.stop = self.parallel_args['increment'] * (self.parallel_args['job'] + 1)
+                part = f"part_{self.parallel_args['job']}"
+                self.conf.run.results = path_append(part, self.conf.run.results)
+                # configs may not have all tasks so we ignore errors
+                with ignore_exception(AttributeError):
+                    if self.conf.topics.output:
+                        self.conf.topics.output = path_append(part, self.conf.topics.output)
+                with ignore_exception(AttributeError):
+                    if self.conf.queries.output:
+                        self.conf.queries.output = path_append(part, self.conf.queries.output)
+                with ignore_exception(AttributeError):
+                    if self.conf.retrieve.output:
+                        self.conf.retrieve.output = path_append(part, self.conf.retrieve.output)
+                with ignore_exception(AttributeError):
+                    if self.conf.rerank.output:
+                        self.conf.rerank.output = path_append(part, self.conf.rerank.output)
+
 
     def build(self, debug):
         """Build the job(s) for this run
