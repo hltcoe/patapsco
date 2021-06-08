@@ -4,7 +4,7 @@ import pathlib
 
 from .config import ConfigService
 from .util import Timer, TimedIterator, ChunkedIterator
-from .util.file import delete_dir, touch_complete
+from .util.file import touch_complete
 
 LOGGER = logging.getLogger(__name__)
 

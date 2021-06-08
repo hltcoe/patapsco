@@ -32,7 +32,10 @@ class Results:
 
 
 class TrecResultsWriter(Task):
-    """Write results to a file in TREC format"""
+    """Write results to a file in TREC format
+
+    This writes the .complete to the run directory to indicate that a job is complete.
+    """
 
     def __init__(self, config):
         """
@@ -41,7 +44,7 @@ class TrecResultsWriter(Task):
         """
         super().__init__()
         # the base directory for results is the run_path
-        self.run_path = pathlib.Path(config.run.path)
+        self.run_path = self.base = pathlib.Path(config.run.path)
         self.relative_path = ''
         self.artifact_config = config
         self.filename = config.run.results
