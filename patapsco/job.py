@@ -168,6 +168,7 @@ class ParallelJob(Job):
             report1 = self.map(self.stage1_jobs, self.debug)
             self.stage1.reduce()
             self.stage1.end()
+            self._del_reduce_directories()
             LOGGER.info("Stage 1: Ingested %d documents", report1.stage1.count)
 
         if self.stage2_jobs:
@@ -176,6 +177,7 @@ class ParallelJob(Job):
             report2 = self.map(self.stage2_jobs, self.debug)
             self.stage2.reduce()
             self.stage2.end()
+            self._del_reduce_directories()
             LOGGER.info("Stage 2: Processed %d queries", report2.stage2.count)
 
         return report1 + report2
@@ -203,7 +205,10 @@ class ParallelJob(Job):
         log_level = logging.DEBUG if debug else logging.INFO
         logger = logging.getLogger('patapsco')
         logger.setLevel(log_level)
-        log_file = path_append(job.conf.run.path, f"patapsco.{job.id}.log")
+        log_dir = pathlib.Path(job.conf.run.path) / 'logs'
+        log_dir.mkdir(exist_ok=True)
+        stage = 'stage1' if job.conf.run.stage1 else 'stage2'
+        log_file = path_append(log_dir, f"patapsco.{stage}.{job.id}.log")
         file = logging.FileHandler(log_file)
         file.setLevel(logger.level)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -251,30 +256,34 @@ class ParallelJob(Job):
         # configs may not have all tasks so we ignore errors
         with ignore_exception(AttributeError):
             if conf.database.output:
-                conf.database.output = path_append(conf.database.output, part)
+                conf.database.output = path_append(part, conf.database.output)
         with ignore_exception(AttributeError):
             if conf.documents.output:
-                conf.documents.output = path_append(conf.documents.output, part)
+                conf.documents.output = path_append(part, conf.documents.output)
         with ignore_exception(AttributeError):
             if conf.index.output:
-                conf.index.output = path_append(conf.index.output, part)
+                conf.index.output = path_append(part, conf.index.output)
 
     @staticmethod
     def _update_stage2_output_paths(conf, part):
-        conf.run.results += '_' + part
+        conf.run.results = path_append(part, conf.run.results)
         # configs may not have all tasks so we ignore errors
         with ignore_exception(AttributeError):
             if conf.topics.output:
-                conf.topics.output = path_append(conf.topics.output, part)
+                conf.topics.output = path_append(part, conf.topics.output)
         with ignore_exception(AttributeError):
             if conf.queries.output:
-                conf.queries.output = path_append(conf.queries.output, part)
+                conf.queries.output = path_append(part, conf.queries.output)
         with ignore_exception(AttributeError):
             if conf.retrieve.output:
-                conf.retrieve.output = path_append(conf.retrieve.output, part)
+                conf.retrieve.output = path_append(part, conf.retrieve.output)
         with ignore_exception(AttributeError):
             if conf.rerank.output:
-                conf.rerank.output = path_append(conf.rerank.output, part)
+                conf.rerank.output = path_append(part, conf.rerank.output)
+
+    def _del_reduce_directories(self):
+        base_dir = pathlib.Path(self.run_path)
+        [delete_dir(item) for item in base_dir.glob('part*')]
 
 
 class QsubJob(Job):

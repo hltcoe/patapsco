@@ -26,6 +26,7 @@ class Task(abc.ABC):
         """
         self.artifact_config = artifact_config
         self.run_path = pathlib.Path(run_path) if run_path else None
+        self.relative_path = base
         if base is not None:
             base = self.run_path / base
             base.mkdir(parents=True, exist_ok=True)
@@ -70,11 +71,11 @@ class Task(abc.ABC):
         pass
 
     def run_reduce(self):
-        """Method for pipeline to call to run reduce()"""
-        if self.base:
-            dirs = sorted(list(self.base.glob('part*')))
+        """Method for pipeline to call to run reduce() for each task"""
+        if self.run_path and self.relative_path is not None:
+            dirs = sorted(list(self.run_path.glob('part*')))
+            dirs = [d / self.relative_path for d in dirs]
             self.reduce(dirs)
-            [delete_dir(item) for item in dirs]
 
     def __str__(self):
         return self.__class__.__name__

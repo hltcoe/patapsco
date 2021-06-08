@@ -40,9 +40,12 @@ class TrecResultsWriter(Task):
             config (RunnerConfig): Config for the run.
         """
         super().__init__()
-        self.base = pathlib.Path(config.run.path)
+        # the base directory for results is the run_path
+        self.run_path = pathlib.Path(config.run.path)
+        self.relative_path = ''
         self.artifact_config = config
-        self.path = self.base / config.run.results
+        self.filename = config.run.results
+        self.path = self.run_path / self.filename
         self.file = None
 
     def begin(self):
@@ -63,14 +66,11 @@ class TrecResultsWriter(Task):
 
     def reduce(self, dirs):
         # rather than directories, we need to process files of the form [results]_part_*
-        glob = self.artifact_config.run.results + '_part_*'
-        files = sorted(list(self.base.glob(glob)))
-        LOGGER.debug("Reducing to a single results file from %s", ', '.join(str(x) for x in files))
-        for file in files:
-            with open(file) as fp:
+        LOGGER.debug("Reducing to a single results file from %s", ', '.join(str(x) for x in dirs))
+        for d in dirs:
+            with open(d / self.filename) as fp:
                 for line in fp:
                     self.file.write(line)
-            file.unlink()
 
 
 class TrecResultsReader:

@@ -205,29 +205,32 @@ class DocumentDatabase(sqlitedict.SqliteDict):
 
     Uses a dictionary interface.
     Example:
-        store = DocumentDatabase('docs.sqlite')
-        store['doc_77'] = 'some text'
+        store = DocumentDatabase('path/to/docs.db')
+        store['doc_77'] = doc_object
         print(store['doc_77'])
     """
 
-    def __init__(self, base_path, artifact_config, readonly=False, *args, **kwargs):
+    def __init__(self, run_path, output_path, artifact_config, readonly=False, *args, **kwargs):
         """
         Args:
-            base_path (Path): Database directory.
+            run_path (str): Path to run directory.
+            output_path (str): Database directory.
             artifact_config (RunnerConfig): Config that resulted in this database.
             readonly (bool): Whether to support adding documents.
         """
         kwargs['autocommit'] = True
         self.readonly = readonly
-        self.base = pathlib.Path(base_path)
-        self.path = self.base / "docs.db"
-        if readonly and not self.path.exists():
-            raise ConfigError(f"Document database does not exist: {self.path}")
+        self.run_path = pathlib.Path(run_path)
+        self.output_path = output_path
+        self.base = self.run_path / output_path
+        self.db_path = self.base / "docs.db"
+        if readonly and not self.db_path.exists():
+            raise ConfigError(f"Document database does not exist: {self.db_path}")
         if not self.base.exists():
             self.base.mkdir(parents=True)
         self.artifact_config = artifact_config
         self.config_path = self.base / 'config.yml'
-        super().__init__(str(self.path), *args, **kwargs)
+        super().__init__(str(self.db_path), *args, **kwargs)
 
     def __setitem__(self, key, value):
         if self.readonly:
@@ -246,23 +249,23 @@ class DocumentDatabase(sqlitedict.SqliteDict):
             touch_complete(self.base)
 
     def reduce(self):
-        dirs = sorted(list(self.base.glob('part*')))
+        # because this is not a task, we need to do the glob ourselves
+        dirs = sorted(list(self.run_path.glob('part*')))
         for base in dirs:
-            path = path_append(base, 'docs.db')
+            path = base / self.output_path / 'docs.db'
             db = sqlitedict.SqliteDict(str(path))
             for doc_id in db:
                 self[doc_id] = db[doc_id]
-        [delete_dir(item) for item in dirs]
 
 
 class DocumentDatabaseFactory:
     @staticmethod
     def create(run_path, output_path, config=None, readonly=False):
-        base_path = pathlib.Path(run_path) / output_path
-        if is_complete(base_path):
+        db_path = pathlib.Path(run_path) / output_path
+        if is_complete(db_path):
             readonly = True
-            config = ConfigService().read_config_file(pathlib.Path(base_path) / 'config.yml')
-        return DocumentDatabase(base_path, config, readonly)
+            config = ConfigService().read_config_file(db_path / 'config.yml')
+        return DocumentDatabase(run_path, output_path, config, readonly)
 
 
 class DocumentProcessor(TextProcessor):
