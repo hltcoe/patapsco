@@ -6,7 +6,7 @@ import pytest
 from patapsco.docs import Doc
 from patapsco.error import PatapscoError
 from patapsco.index import LuceneIndexer
-from patapsco.retrieve import PyseriniRetriever
+from patapsco.retrieve import BM25Retriever
 from patapsco.schema import IndexConfig, PathConfig, RetrieveConfig, RetrieveInputConfig
 from patapsco.topics import Query
 from patapsco.util.file import delete_dir
@@ -62,7 +62,7 @@ class TestLuceneIndex:
             input=RetrieveInputConfig(index=PathConfig(path=str(self.temp_dir / "testIndex"))),
             name="test",
             output="retrieve")
-        retriever = PyseriniRetriever(run_path='.', config=ret_config)
+        retriever = BM25Retriever(run_path='.', config=ret_config)
         retriever.begin()
         results = retriever.process(Query('123', 'eng', 'test', 'test', None))
         assert len(results.results) == 2

@@ -18,12 +18,12 @@ class TestPyseriniRetriever:
         lang_path = self.temp_dir / ".lang"
         lang_path.write_text("rus")
         conf = RetrieveConfig(name="bm25", input=RetrieveInputConfig(index=PathConfig(path=str(self.temp_dir))))
-        pr = PyseriniRetriever(run_path=self.temp_dir, config=conf)
+        pr = BM25Retriever(run_path=self.temp_dir, config=conf)
         pr.begin()
         assert pr.lang == "rus"
 
     def test_no_lang(self):
         conf = RetrieveConfig(name="bm25", input=RetrieveInputConfig(index=PathConfig(path=str(self.temp_dir))))
-        pr = PyseriniRetriever(run_path=self.temp_dir, config=conf)
+        pr = BM25Retriever(run_path=self.temp_dir, config=conf)
         with pytest.raises(PatapscoError):
             pr.begin()
