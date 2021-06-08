@@ -95,11 +95,12 @@ class StanzaNLP(Tokenizer, Stemmer):
         self._setup_logging()
         buffer = io.StringIO()
         with contextlib.redirect_stderr(buffer):
-            try:
-                stanza.download(self.lang, model_dir=str(self.model_path))
-            except PermissionError:
-                msg = f"Cannot write to {self.model_path}. Maybe model_path needs to be set in process section."
-                raise ConfigError(msg)
+            if not (self.model_path / self.lang).exists():
+                try:
+                    stanza.download(self.lang, model_dir=str(self.model_path))
+                except PermissionError:
+                    msg = f"Cannot write to {self.model_path}. Maybe model_path needs to be set in process section."
+                    raise ConfigError(msg)
             if self.lang == 'zh-hans':
                 processors = {'tokenize': 'jieba'}
             elif stem:
