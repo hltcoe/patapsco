@@ -431,14 +431,20 @@ class ReduceJob(Job):
             self.stage1.begin()
             self.stage1.reduce()
             self.stage1.end()
+            self._del_reduce_directories()
 
         if self.stage2:
             LOGGER.info("Stage 2: Running reduce")
             self.stage2.begin()
             self.stage2.reduce()
             self.stage2.end()
+            self._del_reduce_directories()
 
         return Report()
+
+    def _del_reduce_directories(self):
+        base_dir = pathlib.Path(self.run_path)
+        [delete_dir(item) for item in base_dir.glob('part*')]
 
 
 class JobType(enum.Enum):
