@@ -103,11 +103,14 @@ class StanzaNLP(Tokenizer, Stemmer):
                     raise ConfigError(msg)
             if self.lang == 'zh-hans':
                 processors = {'tokenize': 'jieba'}
+                package = None
             elif stem:
                 processors = 'tokenize,lemma'
+                package = 'default'
             else:
                 processors = 'tokenize'
-            self.nlp = stanza.Pipeline(self.lang, processors=processors, dir=str(self.model_path))
+                package = 'default'
+            self.nlp = stanza.Pipeline(self.lang, processors=processors, package=package, dir=str(self.model_path))
             self.cache = None
         LOGGER.debug(buffer.getvalue())
 
