@@ -50,8 +50,9 @@ setuptools.setup(
     entry_points={
         "console_scripts": [
             "patapsco = patapsco.bin.main:main",
-            "patapsco-grid = patapsco.bin.grid:main",
+            "patapsco-map = patapsco.bin.map:main",
             "patapsco-norm = patapsco.bin.normalize:main",
+            "patapsco-reduce = patapsco.bin.reduce:main",
         ]
     }
 )

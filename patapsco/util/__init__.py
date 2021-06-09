@@ -1,5 +1,6 @@
 import abc
 import collections.abc
+import contextlib
 import dataclasses
 import glob
 import itertools
@@ -316,3 +317,11 @@ def get_human_readable_size(size):
             break
         size /= 1024.0
     return f"{size:.1f} {unit}"
+
+
+@contextlib.contextmanager
+def ignore_exception(exception):
+    try:
+        yield
+    except exception:
+        pass

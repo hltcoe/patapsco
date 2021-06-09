@@ -193,3 +193,9 @@ def test_get_human_readable_size():
     ]
     for bytes, text in pairs:
         assert text == get_human_readable_size(bytes)
+
+
+def text_ignore_exception():
+    with ignore_exception(ValueError):
+        raise ValueError()
+    assert True

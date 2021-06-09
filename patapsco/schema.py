@@ -210,6 +210,8 @@ class StageConfig(BaseConfig):
 class ParallelConfig(BaseConfig):
     name: str  # mp or qsub
     queue: Optional[str] = "all.q"  # used for qsub jobs
+    email: Optional[str]  # email address for job completion notifications
+    resources: str = "h_rt=12:00:00"  # default to 12 hours as an upper limit
 
 
 class RunConfig(SectionConfig):
@@ -219,7 +221,7 @@ class RunConfig(SectionConfig):
     results: str = "results.txt"  # default results filename
     parallel: Optional[ParallelConfig]  # configure for a parallel job
     stage1: Union[bool, StageConfig] = StageConfig()
-    stage2: Union[bool, StageConfig] = StageConfig()
+    stage2: Union[bool, StageConfig] = StageConfig(num_jobs=1)
 
 
 class RunnerConfig(BaseConfig):
