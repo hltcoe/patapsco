@@ -5,6 +5,7 @@ import pathlib
 import logging
 import random
 import subprocess
+from tempfile import TemporaryDirectory
 
 from .error import BadDataError, ConfigError, PatapscoError
 from .pipeline import Task
@@ -87,9 +88,17 @@ class ShellReranker(Reranker):
         if not pathlib.Path(config.script).exists():
             raise ConfigError(f"Reranker shell script does not exist: {config.script}")
         super().__init__(run_path, config, db)
-        self.dir = pathlib.Path(config.output) / 'shell'
+        if config.output:
+            self.dir = pathlib.Path(run_path) / config.output / 'shell'
+        else:
+            self.temp_dir = TemporaryDirectory()
+            self.dir = pathlib.Path(self.temp_dir.name)
         self.dir.mkdir(parents=True, exist_ok=True)
         self.batch = 0
+    
+    def __del__(self):
+        if hasattr(self, 'temp_dir'):
+            self.temp_dir.cleanup()
 
     def process(self, results):
         raise ConfigError("Shell reranker only runs with a batch pipeline")
