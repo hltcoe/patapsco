@@ -26,7 +26,7 @@ from .score import Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
 from .util import DataclassJSONEncoder, get_human_readable_size, ignore_exception, LangStandardizer, LoggingFilter,\
     SlicedIterator, Timer
-from .util.file import delete_dir, is_complete, path_append
+from .util.file import delete_dir, is_complete, path_append, touch_complete
 
 LOGGER = logging.getLogger(__name__)
 
@@ -82,6 +82,7 @@ class Job:
         report = self._run()
 
         if not sub_job:
+            self.write_complete()
             self.write_config()
             self.write_report(report)
             self.write_scores()
@@ -98,6 +99,12 @@ class Job:
         path = pathlib.Path(self.run_path) / 'timing.json'
         with open(path, 'w') as fp:
             json.dump(report, fp, indent=4, cls=DataclassJSONEncoder)
+
+    def write_complete(self):
+        # run is only complete if we have results
+        results_path = pathlib.Path(self.run_path) / self.conf.run.results
+        if results_path.exists():
+            touch_complete(self.run_path)
 
     def write_config(self):
         path = pathlib.Path(self.run_path) / 'config.yml'

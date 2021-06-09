@@ -44,8 +44,8 @@ class TrecResultsWriter(Task):
         """
         super().__init__()
         # the base directory for results is the run_path
-        self.run_path = self.base = pathlib.Path(config.run.path)
-        self.relative_path = ''
+        self.run_path = pathlib.Path(config.run.path)  # base not set so that we don't write config/complete indicator
+        self.relative_path = ''  # used by Task to provide dirs for reduce
         self.artifact_config = config
         self.filename = config.run.results
         self.path = self.run_path / self.filename
