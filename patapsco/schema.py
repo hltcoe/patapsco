@@ -221,7 +221,7 @@ class RunConfig(SectionConfig):
     results: str = "results.txt"  # default results filename
     parallel: Optional[ParallelConfig]  # configure for a parallel job
     stage1: Union[bool, StageConfig] = StageConfig()
-    stage2: Union[bool, StageConfig] = StageConfig()
+    stage2: Union[bool, StageConfig] = StageConfig(num_jobs=1)
 
 
 class RunnerConfig(BaseConfig):
