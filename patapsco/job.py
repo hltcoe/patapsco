@@ -417,16 +417,15 @@ class ReduceJob(Job):
     def __init__(self, conf, stage1, stage2, debug):
         super().__init__(conf, stage1, stage2)
         self.debug = debug
-        self.stage1_jobs = self.stage2_jobs = None
 
     def _run(self):
-        if self.stage1_jobs:
+        if self.stage1:
             LOGGER.info("Stage 1: Running reduce")
             self.stage1.begin()
             self.stage1.reduce()
             self.stage1.end()
 
-        if self.stage2_jobs:
+        if self.stage2:
             LOGGER.info("Stage 2: Running reduce")
             self.stage2.begin()
             self.stage2.reduce()
@@ -549,7 +548,10 @@ class JobBuilder:
             else:
                 raise ConfigError(f"Unknown parallel job type: {self.conf.run.parallel.name}")
         elif self.job_type == JobType.REDUCE:
-            return ReduceJob(self.conf, stage1, stage2, debug)
+            if self.parallel_args['stage'] == 1:
+                return ReduceJob(self.conf, stage1, None, debug)
+            else:
+                return ReduceJob(self.conf, None, stage2, debug)
         else:
             return SerialJob(self.conf, stage1, stage2)
 
