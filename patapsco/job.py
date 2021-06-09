@@ -330,6 +330,7 @@ class QsubJob(Job):
             LOGGER.info(f"Job {job_id} submitted - stage 2 mapper")
             job_id = self._launch_job(self.stage2_reduce_path, job_id)
             LOGGER.info(f"Job {job_id} submitted - stage 2 reducer")
+        LOGGER.info("All jobs submitted")
 
     def _launch_job(self, script_path, hold=None):
         """Launch a qsub job and return the job id"""
