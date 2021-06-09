@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#$ -N patapsco-map
+#$ -N patapsco-map-stage-{stage}
 #$ -j y
 #$ -o {base}
 #$ -l h_rt=12:00:00
