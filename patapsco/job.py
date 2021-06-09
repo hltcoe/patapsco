@@ -500,7 +500,6 @@ class JobBuilder:
                     if self.conf.rerank.output:
                         self.conf.rerank.output = path_append(part, self.conf.rerank.output)
 
-
     def build(self, debug):
         """Build the job(s) for this run
 
