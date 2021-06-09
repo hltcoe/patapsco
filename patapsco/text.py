@@ -91,6 +91,8 @@ class StanzaNLP(Tokenizer, Stemmer):
         Stemmer.__init__(self, lang)
         Tokenizer.__init__(self, lang, model_path)
         import stanza  # lazy load stanza when needed
+        import torch
+        torch.set_num_threads(1)  # TODO make this configurable
         self.lang = self.lang_map[lang]
         self._setup_logging()
         buffer = io.StringIO()
