@@ -14,7 +14,7 @@ Defines properties of the run and how the pipelines work.
 | -------- | -------- | ----------- |
 | name     | yes      | Name of run. Used to create output directory. |
 | path     | no       | Absolute path or relative to current directory. If not specified, set to current-dir/runs/run-name. |
-| parallel | no       | 'qsub' or 'mp' for parallel runs |
+| parallel | no       | nested parallel configuration information |
 | stage1   | no       | Stage 1 config or false |
 | stage2   | no       | Stage 2 config or false |
 
@@ -26,11 +26,21 @@ Defines properties of the run and how the pipelines work.
 | num_jobs          | no       | If parallel run, how many sub-jobs. |
 | progress_interval | no       | Integer number of items to process between progress updates. |
 
+#### parallel config
+| field             | required | description |
+| ----------------- | -------- | ----------- |
+| name              | yes      | 'mp' or 'qsub'. |
+| queue             | no       | Defaults to all.q. |
+| email             | no       | Your email address if desire notifications. |
+| resources         | no       | qsub resources. Default is 'h_rt=12:00:00'. |
+
+
 #### example
 ```yaml
 run:
   name: HC4 Russian with param x
-  parallel: mp
+  parallel:
+    name: mp
   stage1:
     num_jobs: 20
   stage2:
