@@ -95,7 +95,7 @@ class ShellReranker(Reranker):
             self.dir = pathlib.Path(self.temp_dir.name)
         self.dir.mkdir(parents=True, exist_ok=True)
         self.batch = 0
-    
+
     def __del__(self):
         if hasattr(self, 'temp_dir'):
             self.temp_dir.cleanup()
