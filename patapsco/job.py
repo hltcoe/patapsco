@@ -330,7 +330,6 @@ class QsubJob(Job):
             LOGGER.info(f"Job {job_id} submitted - stage 2 mapper")
             job_id = self._launch_job(self.stage2_reduce_path, job_id)
             LOGGER.info(f"Job {job_id} submitted - stage 2 reducer")
-        self._move_log_file()
 
     def _launch_job(self, script_path, hold=None):
         """Launch a qsub job and return the job id"""
@@ -404,11 +403,6 @@ class QsubJob(Job):
             )
             self.stage2_reduce_path.write_text(content)
             self.stage2_reduce_path.chmod(0o755)
-
-    def _move_log_file(self):
-        logging.shutdown()
-        current_log_path = pathlib.Path(self.run_path) / 'patapsco.log'
-        current_log_path.rename(self.log_path)
 
     def _get_stage1_increment(self, num_jobs):
         LOGGER.info("Calculating job size...")
