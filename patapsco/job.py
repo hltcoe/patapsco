@@ -395,6 +395,7 @@ class QsubJob(Job):
                 base=str(self.base_dir),
                 config=str(self.config_path),
                 debug=debug,
+                email=self.email,
                 stage=1
             )
             self.stage1_reduce_path.write_text(content)
@@ -404,6 +405,7 @@ class QsubJob(Job):
                 base=str(self.base_dir),
                 config=str(self.config_path),
                 debug=debug,
+                email=self.email,
                 stage=2
             )
             self.stage2_reduce_path.write_text(content)
