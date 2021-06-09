@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#$ -N patapsco
+#$ -N patapsco-map
 #$ -j y
 #$ -o {base}
 #$ -l h_rt=12:00:00
@@ -9,4 +9,4 @@
 # we want zero-based job ids
 JOB_ID=$(($SGE_TASK_ID-1))
 
-patapsco-grid {debug} --stage {stage} --job $JOB_ID --increment {increment} {config}
+patapsco-map {debug} --stage {stage} --job $JOB_ID --increment {increment} {config}

@@ -1,5 +1,6 @@
 import concurrent.futures
 import dataclasses
+import enum
 import functools
 import json
 import logging
@@ -216,7 +217,7 @@ class ParallelJob(Job):
         file.addFilter(LoggingFilter())
         logger.addHandler(file)
 
-        job = JobBuilder(job.conf).build(debug)
+        job = JobBuilder(job.conf, JobType.NORMAL).build(debug)
         return job.run(sub_job=True)
 
     def _get_stage1_jobs(self, num_processes):
@@ -298,22 +299,27 @@ class QsubJob(Job):
             self.base_dir.mkdir(parents=True)
         except FileExistsError:
             raise ConfigError(f"A qsub directory already exists at {self.base_dir}")
-        self.stage1_script_path = self.base_dir / 'stage1_job.sh'
-        self.stage2_script_path = self.base_dir / 'stage2_job.sh'
+        self.stage1_map_path = self.base_dir / 'stage1_map.sh'
+        self.stage2_map_path = self.base_dir / 'stage2_map.sh'
+        self.stage1_reduce_path = self.base_dir / 'stage1_reduce.sh'
+        self.stage2_reduce_path = self.base_dir / 'stage2_reduce.sh'
         self.config_path = self.base_dir / 'config.yml'
         self.log_path = self.base_dir / 'patapsco.log'
         ConfigService.write_config_file(self.config_path, conf)
-        self._create_scripts(debug)
+        self._create_map_scripts(debug)
+        self._create_reduce_scripts(debug)
 
     def run(self, sub_job=False):
         LOGGER.info("Launching qsub run: %s", self.conf.run.name)
 
         job_id = None
         if self.stage1:
-            job_id = self._launch_job(self.stage1_script_path)
+            job_id = self._launch_job(self.stage1_map_path)
+            job_id = self._launch_job(self.stage1_reduce_path, job_id)
             LOGGER.info(f"Job {job_id} submitted")
         if self.stage2:
-            job_id = self._launch_job(self.stage2_script_path, job_id)
+            job_id = self._launch_job(self.stage2_map_path, job_id)
+            job_id = self._launch_job(self.stage2_reduce_path, job_id)
             LOGGER.info(f"Job {job_id} submitted")
         self._move_log_file()
 
@@ -334,8 +340,8 @@ class QsubJob(Job):
             print(f"Error: {e}")
             sys.exit(-1)
 
-    def _create_scripts(self, debug):
-        template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'job.sh'
+    def _create_map_scripts(self, debug):
+        template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'map.sh'
         template = template_path.read_text()
         debug = '-d' if debug else ''
         if self.stage1:
@@ -350,8 +356,8 @@ class QsubJob(Job):
                 num_jobs=num_jobs,
                 stage=1
             )
-            self.stage1_script_path.write_text(content)
-            self.stage1_script_path.chmod(0o755)
+            self.stage1_map_path.write_text(content)
+            self.stage1_map_path.chmod(0o755)
         if self.stage2:
             num_jobs = self.conf.run.stage2.num_jobs
             LOGGER.debug(f"Stage 2 is using {num_jobs} jobs")
@@ -364,8 +370,31 @@ class QsubJob(Job):
                 num_jobs=num_jobs,
                 stage=2
             )
-            self.stage2_script_path.write_text(content)
-            self.stage2_script_path.chmod(0o755)
+            self.stage2_map_path.write_text(content)
+            self.stage2_map_path.chmod(0o755)
+
+    def _create_reduce_scripts(self, debug):
+        template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'reduce.sh'
+        template = template_path.read_text()
+        debug = '-d' if debug else ''
+        if self.stage1:
+            content = template.format(
+                base=str(self.base_dir),
+                config=str(self.config_path),
+                debug=debug,
+                stage=1
+            )
+            self.stage1_reduce_path.write_text(content)
+            self.stage1_reduce_path.chmod(0o755)
+        if self.stage2:
+            content = template.format(
+                base=str(self.base_dir),
+                config=str(self.config_path),
+                debug=debug,
+                stage=2
+            )
+            self.stage2_reduce_path.write_text(content)
+            self.stage2_reduce_path.chmod(0o755)
 
     def _move_log_file(self):
         logging.shutdown()
@@ -382,6 +411,35 @@ class QsubJob(Job):
         return int(math.ceil(num_items / num_jobs))
 
 
+class ReduceJob(Job):
+    def __init__(self, conf, stage1, stage2, debug):
+        super().__init__(conf, stage1, stage2)
+        self.debug = debug
+        self.stage1_jobs = self.stage2_jobs = None
+
+    def _run(self):
+        if self.stage1_jobs:
+            LOGGER.info("Stage 1: Running reduce")
+            self.stage1.begin()
+            self.stage1.reduce()
+            self.stage1.end()
+
+        if self.stage2_jobs:
+            LOGGER.info("Stage 2: Running reduce")
+            self.stage2.begin()
+            self.stage2.reduce()
+            self.stage2.end()
+
+        return Report()
+
+
+class JobType(enum.Enum):
+    """Patapsco supports map reduce for parallel cluster jobs or normal local runs"""
+    NORMAL = enum.auto()
+    MAP = enum.auto()
+    REDUCE = enum.auto()
+
+
 class JobBuilder:
     """Builds a Job based on stage 1 and stage 2 pipelines
 
@@ -390,10 +448,11 @@ class JobBuilder:
     Handles restarting a run where it left off.
     Will create pipelines for partial runs (that end early or start from artifacts).
     """
-    def __init__(self, conf, **kwargs):
+    def __init__(self, conf, job_type=JobType.NORMAL, **kwargs):
         """
         Args:
             conf (RunnerConfig): Configuration for the runner.
+            job_type (JobType): Normal, map, reduce
         """
         self.conf = conf
         self.parallel_args = kwargs
@@ -401,6 +460,7 @@ class JobBuilder:
         self.artifact_helper = ArtifactHelper()
         self.doc_lang = None
         self.query_lang = None
+        self.job_type = job_type
         self._update_config_for_grid_jobs()
 
     def _update_config_for_grid_jobs(self):
@@ -487,6 +547,8 @@ class JobBuilder:
                 return QsubJob(self.conf, stage1, stage2, debug)
             else:
                 raise ConfigError(f"Unknown parallel job type: {self.conf.run.parallel.name}")
+        elif self.job_type == JobType.REDUCE:
+            return ReduceJob(self.conf, stage1, stage2, debug)
         else:
             return SerialJob(self.conf, stage1, stage2)
 

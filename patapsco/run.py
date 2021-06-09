@@ -4,29 +4,29 @@ import pathlib
 
 from .__version__ import __version__
 from .helpers import ConfigHelper
-from .job import JobBuilder
+from .job import JobBuilder, JobType
 from .util import LoggingFilter
 
 LOGGER = logging.getLogger(__name__)
 
 
 class Runner:
-    def __init__(self, config_filename, debug=False, overrides=None, grid=False, **kwargs):
-        self.setup_logging(debug, grid)
+    def __init__(self, config_filename, debug=False, overrides=None, job_type=JobType.NORMAL, **kwargs):
+        self.setup_logging(debug, job_type)
         LOGGER.info(f"Patapsco version {__version__}")
         LOGGER.info(f"Configuration: {pathlib.Path(config_filename).absolute()}")
         conf = ConfigHelper.load(config_filename, overrides)
         LOGGER.info(f"Writing output to: {pathlib.Path(conf.run.path).absolute()}")
-        if not grid:
+        if job_type != JobType.NORMAL:
             # no need to log to file with grid jobs
             self.add_file_logging(conf.run.path)
-        self.job = JobBuilder(conf, **kwargs).build(debug)
+        self.job = JobBuilder(conf, job_type, **kwargs).build(debug)
 
     def run(self):
         self.job.run()
 
     @staticmethod
-    def setup_logging(debug, grid):
+    def setup_logging(debug, job_type):
         log_level = logging.DEBUG if debug else logging.INFO
         logger = logging.getLogger('patapsco')
         logger.setLevel(log_level)
@@ -36,7 +36,7 @@ class Runner:
         console.setFormatter(formatter)
         console.addFilter(LoggingFilter())
         logger.addHandler(console)
-        if not grid:
+        if job_type == JobType.NORMAL:
             buffer = logging.handlers.MemoryHandler(1024)
             buffer.setLevel(log_level)
             buffer.setFormatter(formatter)
