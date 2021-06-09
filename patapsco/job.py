@@ -363,7 +363,6 @@ class QsubJob(Job):
                 base=str(self.base_dir),
                 config=str(self.config_path),
                 debug=debug,
-                email=self.email,
                 increment=increment,
                 num_jobs=num_jobs,
                 stage=1
@@ -378,7 +377,6 @@ class QsubJob(Job):
                 base=str(self.base_dir),
                 config=str(self.config_path),
                 debug=debug,
-                email=self.email,
                 increment=increment,
                 num_jobs=num_jobs,
                 stage=2

@@ -5,7 +5,6 @@
 #$ -o {base}
 #$ -l h_rt=12:00:00
 #$ -t 1-{num_jobs}
-{email}
 
 # we want zero-based job ids
 JOB_ID=$(($SGE_TASK_ID-1))
