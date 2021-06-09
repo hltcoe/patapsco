@@ -211,6 +211,7 @@ class ParallelConfig(BaseConfig):
     name: str  # mp or qsub
     queue: Optional[str] = "all.q"  # used for qsub jobs
     email: Optional[str]  # email address for job completion notifications
+    resources: str = "h_rt=12:00:00"  # default to 12 hours as an upper limit
 
 
 class RunConfig(SectionConfig):

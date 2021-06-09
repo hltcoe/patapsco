@@ -3,7 +3,7 @@
 #$ -N patapsco-map-stage-{stage}
 #$ -j y
 #$ -o {base}
-#$ -l h_rt=12:00:00
+#$ -l {resources}
 #$ -t 1-{num_jobs}
 
 # we want zero-based job ids

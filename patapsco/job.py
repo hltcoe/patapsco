@@ -365,6 +365,7 @@ class QsubJob(Job):
                 debug=debug,
                 increment=increment,
                 num_jobs=num_jobs,
+                resources=self.qsub_config.resources,
                 stage=1
             )
             self.stage1_map_path.write_text(content)
@@ -379,6 +380,7 @@ class QsubJob(Job):
                 debug=debug,
                 increment=increment,
                 num_jobs=num_jobs,
+                resources=self.qsub_config.resources,
                 stage=2
             )
             self.stage2_map_path.write_text(content)
@@ -394,6 +396,7 @@ class QsubJob(Job):
                 config=str(self.config_path),
                 debug=debug,
                 email=self.email,
+                resources=self.qsub_config.resources,
                 stage=1
             )
             self.stage1_reduce_path.write_text(content)
@@ -404,6 +407,7 @@ class QsubJob(Job):
                 config=str(self.config_path),
                 debug=debug,
                 email=self.email,
+                resources=self.qsub_config.resources,
                 stage=2
             )
             self.stage2_reduce_path.write_text(content)
