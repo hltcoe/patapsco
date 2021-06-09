@@ -12,6 +12,7 @@ LOGGER = logging.getLogger(__name__)
 
 class Runner:
     def __init__(self, config_filename, debug=False, overrides=None, job_type=JobType.NORMAL, **kwargs):
+        self.job_type = job_type
         self.setup_logging(debug, job_type)
         LOGGER.info(f"Patapsco version {__version__}")
         LOGGER.info(f"Configuration: {pathlib.Path(config_filename).absolute()}")
@@ -23,7 +24,8 @@ class Runner:
         self.job = JobBuilder(conf, job_type, **kwargs).build(debug)
 
     def run(self):
-        self.job.run()
+        sub_job_flag = self.job_type == JobType.MAP
+        self.job.run(sub_job=sub_job_flag)
 
     @staticmethod
     def setup_logging(debug, job_type):
