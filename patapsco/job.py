@@ -300,7 +300,9 @@ class QsubJob(Job):
         super().__init__(conf, stage1, stage2)
         self.debug = debug
         conf.run.path = str(pathlib.Path(self.run_path).absolute())
-        conf.run.parallel = None
+        self.qsub_config = conf.run.parallel.copy()
+        self.email = f"#$ -m ea -M {self.qsub_config.email}" if self.qsub_config.email else ''
+        conf.run.parallel = None  # blank out parallel for all the sub-jobs
         self.base_dir = (pathlib.Path(self.run_path) / 'qsub').absolute()
         try:
             self.base_dir.mkdir(parents=True)
@@ -334,7 +336,7 @@ class QsubJob(Job):
 
     def _launch_job(self, script_path, hold=None):
         """Launch a qsub job and return the job id"""
-        args = ['qsub', '-terse', '-q', 'all.q']
+        args = ['qsub', '-terse', '-q', self.qsub_config.queue]
         if hold:
             args.extend(['-hold_jid', hold])
         args.append(str(script_path))

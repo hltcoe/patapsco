@@ -210,6 +210,7 @@ class StageConfig(BaseConfig):
 class ParallelConfig(BaseConfig):
     name: str  # mp or qsub
     queue: Optional[str] = "all.q"  # used for qsub jobs
+    email: Optional[str]  # email address for job completion notifications
 
 
 class RunConfig(SectionConfig):
