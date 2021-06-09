@@ -17,7 +17,7 @@ class Runner:
         LOGGER.info(f"Configuration: {pathlib.Path(config_filename).absolute()}")
         conf = ConfigHelper.load(config_filename, overrides)
         LOGGER.info(f"Writing output to: {pathlib.Path(conf.run.path).absolute()}")
-        if job_type != JobType.NORMAL:
+        if job_type == JobType.NORMAL:
             # no need to log to file with grid jobs
             self.add_file_logging(conf.run.path)
         self.job = JobBuilder(conf, job_type, **kwargs).build(debug)
