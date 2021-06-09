@@ -315,10 +315,12 @@ class QsubJob(Job):
         job_id = None
         if self.stage1:
             job_id = self._launch_job(self.stage1_map_path)
+            LOGGER.info(f"Job {job_id} submitted")
             job_id = self._launch_job(self.stage1_reduce_path, job_id)
             LOGGER.info(f"Job {job_id} submitted")
         if self.stage2:
             job_id = self._launch_job(self.stage2_map_path, job_id)
+            LOGGER.info(f"Job {job_id} submitted")
             job_id = self._launch_job(self.stage2_reduce_path, job_id)
             LOGGER.info(f"Job {job_id} submitted")
         self._move_log_file()
