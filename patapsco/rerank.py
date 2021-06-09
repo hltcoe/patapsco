@@ -3,7 +3,6 @@ import itertools
 import json
 import pathlib
 import logging
-import random
 import subprocess
 
 from .error import BadDataError, ConfigError, PatapscoError
@@ -64,7 +63,6 @@ class MockReranker(Reranker):
                 docs.pop()
         except BadDataError as e:
             LOGGER.error(str(e))
-        random.shuffle(new_results)
         return Results(results.query, results.doc_lang, 'MockReranker', new_results)
 
 
