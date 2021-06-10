@@ -5,6 +5,7 @@ import gzip
 import json
 import logging
 import pathlib
+from typing import Optional
 
 import sqlitedict
 
@@ -14,7 +15,7 @@ from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
-from .util.file import count_lines, count_lines_with, delete_dir, path_append, is_complete, touch_complete
+from .util.file import count_lines, count_lines_with, path_append, is_complete, touch_complete
 from .util.formats import parse_sgml_documents, parse_hamshahri_documents
 from .util.normalize import compare_strings
 
@@ -26,7 +27,7 @@ class Doc:
     id: str
     lang: str
     text: str
-    date: str
+    date: Optional[str]
 
 
 class DocumentReaderFactory(ReaderFactory):
@@ -139,7 +140,7 @@ class HamshahriDocumentReader(InputIterator):
 
     def __next__(self):
         doc = next(self.docs_iter)
-        return Doc(doc[0], self.lang, doc[1])
+        return Doc(doc[0], self.lang, doc[1], None)
 
     def __len__(self):
         return count_lines_with('.DID', self.path, self.encoding)
@@ -305,7 +306,8 @@ class DocumentProcessor(TextProcessor):
         tokens = self.stem(tokens)
         tokens = self.remove_stop_words(tokens, stopword_indices)
         text = self.post_normalize(' '.join(tokens))
-        return Doc(doc.id, doc.lang, text, None)
+        new_doc = Doc(doc.id, doc.lang, text, doc.date)
+        return new_doc
 
     def end(self):
         self.db.end()
