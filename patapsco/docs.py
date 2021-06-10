@@ -236,11 +236,11 @@ class DocumentDatabase(sqlitedict.SqliteDict):
     def __setitem__(self, key, value):
         if self.readonly:
             return
-        super().__setitem__(key, json.dumps(value))
+        super().__setitem__(key, json.dumps(value, cls=DataclassJSONEncoder))
 
     def __getitem__(self, key):
         try:
-            return json.loads(super().__getitem__(key))
+            return json.loads(super().__getitem__(key), object_hook=lambda d: Doc(**d))
         except KeyError:
             raise BadDataError(f"Unable to retrieve doc {key} from the database")
 
@@ -298,16 +298,17 @@ class DocumentProcessor(TextProcessor):
         if self.save_report:
             self.diffs += compare_strings(original_text, text)
 
+        doc.text = text
+        self.db[doc.id] = doc
+
         tokens = self.tokenize(text)
         if self.run_lowercase:
             tokens = self.lowercase(tokens)
-        self.db[doc.id] = ' '.join(tokens)
         stopword_indices = self.identify_stop_words(tokens, self.run_lowercase)
         tokens = self.stem(tokens)
         tokens = self.remove_stop_words(tokens, stopword_indices)
         text = self.post_normalize(' '.join(tokens))
-        new_doc = Doc(doc.id, doc.lang, text, doc.date)
-        return new_doc
+        return Doc(doc.id, doc.lang, text, doc.date)
 
     def end(self):
         self.db.end()
