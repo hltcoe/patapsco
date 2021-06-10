@@ -71,7 +71,7 @@ class Scorer:
             pytrec_eval.RelevanceEvaluator({}, metrics)
         except ValueError as e:
             raise ConfigError(e)
-    
+
     @staticmethod
     def _filter_dict(d, filter):
         for i in filter:
