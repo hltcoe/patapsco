@@ -1,6 +1,7 @@
 import tempfile
 
-from patapsco.docs import Doc, DocumentDatabase
+from patapsco.database import DocumentDatabase
+from patapsco.docs import Doc
 from patapsco.util.file import delete_dir
 
 

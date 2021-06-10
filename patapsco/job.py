@@ -13,7 +13,8 @@ import subprocess
 import psutil
 
 from .config import ConfigService
-from .docs import DocumentProcessor, DocumentReaderFactory, DocumentDatabaseFactory, DocReader, DocWriter
+from .database import DocumentDatabaseFactory
+from .docs import DocumentProcessor, DocumentReaderFactory, DocReader, DocWriter
 from .error import ConfigError
 from .helpers import ArtifactHelper
 from .index import IndexerFactory
