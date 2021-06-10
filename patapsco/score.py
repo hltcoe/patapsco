@@ -92,11 +92,11 @@ class Scorer:
         remove_from_run = set(system_output.keys()) - set(self.qrels.keys())
         if remove_from_run:
             LOGGER.warning('Omitting topics in the run that are not in the qrels')
-            _filter_dict(system_output, remove_from_run)
+            self._filter_dict(system_output, remove_from_run)
         remove_from_qrels = set(self.qrels.keys()) - set(system_output.keys())
         if remove_from_qrels:
             LOGGER.warning('Omitting topics in the qrels that are not in the run')
-            _filter_dict(system_output, remove_from_qrels)
+            self._filter_dict(system_output, remove_from_qrels)
         measures = {s for s in self.metrics}
         ndcg_prime_results = {}
         if "ndcg_prime" in measures:
