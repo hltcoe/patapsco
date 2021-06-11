@@ -72,6 +72,11 @@ class Scorer:
         except ValueError as e:
             raise ConfigError(e)
 
+    @staticmethod
+    def _filter_dict(d, filter):
+        for i in filter:
+            d.pop(i)
+
     def score(self, results_path, scores_path):
         """Calculate scores at the end of the run.
 
@@ -84,10 +89,14 @@ class Scorer:
 
         with open(results_path, 'r') as fp:
             system_output = pytrec_eval.parse_run(fp)
-        if set(system_output.keys()) - set(self.qrels.keys()):
-            LOGGER.warning('There are queries in the run that are not in the qrels')
-        if set(self.qrels.keys()) - set(system_output.keys()):
-            LOGGER.warning('There are queries in the qrels that are not in the run')
+        remove_from_run = set(system_output.keys()) - set(self.qrels.keys())
+        if remove_from_run:
+            LOGGER.warning(f'Omitting {len(remove_from_run)} topics in the run that are not in the qrels')
+            self._filter_dict(system_output, remove_from_run)
+        remove_from_qrels = set(self.qrels.keys()) - set(system_output.keys())
+        if remove_from_qrels:
+            LOGGER.warning(f'Omitting {len(remove_from_qrels)} topics in the qrels that are not in the run')
+            self._filter_dict(system_output, remove_from_qrels)
         measures = {s for s in self.metrics}
         ndcg_prime_results = {}
         if "ndcg_prime" in measures:
