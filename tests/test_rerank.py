@@ -31,7 +31,7 @@ class TestShellReranker:
 
     def create_config(self, script, **kwargs):
         return RerankConfig(
-            input=RerankInputConfig(db=self.path_config, results=None),
+            input=RerankInputConfig(database=self.path_config, results=None),
             name='shell',
             script=script,
             output=self.temp_dir,

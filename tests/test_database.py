@@ -13,7 +13,7 @@ class TestDocumentDatabase:
         delete_dir(self.temp_dir)
 
     def test_adding_doc(self):
-        db = DocumentDatabase(self.temp_dir, 'database', None, readonly=False)
+        db = DocumentDatabase(self.temp_dir, 'database', readonly=False)
         db['doc1'] = Doc('doc1', lang='eng', text='hello world', date='2020-12-25')
         doc = db['doc1']
         assert doc.id == 'doc1'

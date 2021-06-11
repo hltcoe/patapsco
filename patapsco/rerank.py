@@ -61,7 +61,7 @@ class MockReranker(Reranker):
         try:
             docs = [self.db[result.doc_id] for result in new_results]
             if docs:
-                docs.pop()
+                a = docs.pop()
         except BadDataError as e:
             LOGGER.error(str(e))
         return Results(results.query, results.doc_lang, 'MockReranker', new_results)

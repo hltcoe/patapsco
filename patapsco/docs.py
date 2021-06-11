@@ -159,6 +159,9 @@ class DocWriter(Task):
         Returns:
             Doc
         """
+        # if no database, we remove the extra text object before serializing
+        if hasattr(doc, 'original_text'):
+            del doc.original_text
         self.file.write(json.dumps(doc, cls=DataclassJSONEncoder) + "\n")
         return doc
 
@@ -201,16 +204,14 @@ class DocReader(InputIterator):
 class DocumentProcessor(TextProcessor):
     """Document Preprocessing"""
 
-    def __init__(self, run_path, config, lang, db):
+    def __init__(self, run_path, config, lang):
         """
         Args:
             run_path (str): Root directory of the run.
             config (DocumentsConfig)
             lang (str): Language code for the documents.
-            db (DocumentDatabase): Document db for later retrieval.
         """
         super().__init__(run_path, config.process, lang)
-        self.db = db
         self.save_report = config.process.normalize.report
         self.diffs = collections.Counter()
 
@@ -224,11 +225,9 @@ class DocumentProcessor(TextProcessor):
         """
         text = original_text = doc.text
         text = self.pre_normalize(text)
+        doc.original_text = text  # this for the database to use
         if self.save_report:
             self.diffs += compare_strings(original_text, text)
-
-        doc.text = text
-        self.db[doc.id] = doc
 
         tokens = self.tokenize(text)
         if self.run_lowercase:
@@ -237,10 +236,10 @@ class DocumentProcessor(TextProcessor):
         tokens = self.stem(tokens)
         tokens = self.remove_stop_words(tokens, stopword_indices)
         text = self.post_normalize(' '.join(tokens))
-        return Doc(doc.id, doc.lang, text, doc.date)
+        doc.text = text
+        return doc
 
     def end(self):
-        self.db.end()
         if self.save_report:
             self._save_report()
 
@@ -249,6 +248,3 @@ class DocumentProcessor(TextProcessor):
             for change, count in self.diffs.most_common(len(self.diffs)):
                 if "\n" not in change:  # skip newline removal
                     fp.write(f"{repr(change)}\t{count}\n")
-
-    def run_reduce(self):
-        self.db.reduce()

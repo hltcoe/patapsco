@@ -3,6 +3,7 @@ run:
   path: tests/build_files/output/docs_complete/
 
 database:
+  name: sqlite
   output: db
 
 documents:

@@ -11,6 +11,7 @@ class PipelineMode(str, enum.Enum):
 class Tasks(str, enum.Enum):
     """Tasks that make up the system pipelines"""
     DOCUMENTS = 'documents'
+    DATABASE = 'database'
     INDEX = 'index'
     TOPICS = 'topics'
     QUERIES = 'queries'
@@ -63,6 +64,16 @@ class DocumentsConfig(SectionConfig):
 
 
 """""""""""""""""
+Database
+"""""""""""""""""
+
+
+class DatabaseConfig(SectionConfig):
+    name: str = 'sqlite'
+    output: Union[bool, str] = True
+
+
+"""""""""""""""""
 Topics & Queries
 """""""""""""""""
 
@@ -111,15 +122,6 @@ class QueriesConfig(SectionConfig):
 
 
 """""""""""""""""
-Database
-"""""""""""""""""
-
-
-class DatabaseConfig(SectionConfig):
-    output: Union[bool, str] = True
-
-
-"""""""""""""""""
 Index
 """""""""""""""""
 
@@ -162,7 +164,7 @@ Rerank
 
 class RerankInputConfig(BaseConfig):
     """Configuration of optional rerank inputs"""
-    db: Optional[PathConfig]  # if running both stages, runner will copy this from documents config
+    database: Optional[PathConfig]  # if running both stages, runner will copy this from documents config
     results: Optional[PathConfig]  # set if starting stage2 at reranking
 
 
@@ -227,8 +229,8 @@ class RunConfig(SectionConfig):
 class RunnerConfig(BaseConfig):
     """Configuration for the patapsco runner"""
     run: RunConfig
-    database: DatabaseConfig = DatabaseConfig()
     documents: Optional[DocumentsConfig]
+    database: Optional[DatabaseConfig]
     index: Optional[IndexConfig]
     topics: Optional[TopicsConfig]
     queries: Optional[QueriesConfig]

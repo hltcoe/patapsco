@@ -74,7 +74,7 @@ class ConfigHelper:
         cls._make_absolute(conf, 'queries.input')
         cls._make_absolute(conf, 'retrieve.input.index')
         cls._make_absolute(conf, 'retrieve.input.queries')
-        cls._make_absolute(conf, 'rerank.input.db')
+        cls._make_absolute(conf, 'rerank.input.database')
         cls._make_absolute(conf, 'rerank.input.results')
         cls._make_absolute(conf, 'score.input')
 
@@ -113,16 +113,16 @@ class ConfigHelper:
 
     @staticmethod
     def _set_rerank_db_path(conf):
-        # if db path for rerank is not set, we grab it from documents config
+        # if database path for rerank is not set, we grab it from documents config
         if conf.rerank:
-            if not conf.rerank.input or not conf.rerank.input.db:
+            if not conf.rerank.input or not conf.rerank.input.database:
                 if conf.database and conf.database.output:
                     if not conf.rerank.input:
-                        conf.rerank.input = RerankInputConfig(db=PathConfig(path=conf.database.output))
+                        conf.rerank.input = RerankInputConfig(database=PathConfig(path=conf.database.output))
                     else:
-                        conf.rerank.input.db = PathConfig(path=conf.database.output)
+                        conf.rerank.input.database = PathConfig(path=conf.database.output)
                 else:
-                    raise ConfigError("rerank.input.db.path needs to be set")
+                    raise ConfigError("rerank.input.database.path needs to be set")
 
 
 class ArtifactHelper:
@@ -130,11 +130,12 @@ class ArtifactHelper:
 
     def __init__(self):
         self.excludes = {
-            Tasks.DOCUMENTS: [Tasks.INDEX, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
+            Tasks.DOCUMENTS: [Tasks.DATABASE, Tasks.INDEX, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
+            Tasks.DATABASE: [Tasks.INDEX, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
             Tasks.INDEX: [Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
-            Tasks.TOPICS: [Tasks.DOCUMENTS, Tasks.INDEX, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
-            Tasks.QUERIES: [Tasks.DOCUMENTS, Tasks.INDEX, Tasks.RETRIEVE, Tasks.RERANK],
-            Tasks.RETRIEVE: [Tasks.RERANK],
+            Tasks.TOPICS: [Tasks.DOCUMENTS, Tasks.DATABASE, Tasks.INDEX, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
+            Tasks.QUERIES: [Tasks.DOCUMENTS, Tasks.DATABASE, Tasks.INDEX, Tasks.RETRIEVE, Tasks.RERANK],
+            Tasks.RETRIEVE: [Tasks.DATABASE, Tasks.RERANK],
             Tasks.RERANK: []
         }
 
