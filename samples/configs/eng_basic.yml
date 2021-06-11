@@ -13,6 +13,10 @@ documents:
     tokenize: whitespace
     stem: porter
   comment: Mini English dataset
+  output: true
+
+database:
+  name: sqlite
 
 index:
   name: lucene

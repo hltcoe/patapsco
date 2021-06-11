@@ -52,9 +52,9 @@ The documents are normalized (control characters removed, smart quotes normalize
 
 | field    | required | description |
 | -------- | -------- | ----------- |
-| output   | yes      | Path to database file or false to not create database. |
+| name     | yes      | Name of database type (only 'sqlite' currently). |
+| output   | no       | Path to database file, true for default or false to not create database. |
 
-If running the entire pipeline, this can usually be left out of the configuration.
 By default, a `database` directory is created under the output directory.
 
 ### documents

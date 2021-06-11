@@ -13,7 +13,8 @@ import subprocess
 import psutil
 
 from .config import ConfigService
-from .docs import DocumentProcessor, DocumentReaderFactory, DocumentDatabaseFactory, DocReader, DocWriter
+from .database import DatabaseWriter, DocumentDatabaseFactory
+from .docs import DocumentProcessor, DocumentReaderFactory, DocReader, DocWriter
 from .error import ConfigError
 from .helpers import ArtifactHelper
 from .index import IndexerFactory
@@ -579,6 +580,8 @@ class JobBuilder:
         if self.conf.documents:
             if not self.is_task_complete(self.conf.documents) and not index_complete:
                 stage1.append(Tasks.DOCUMENTS)
+        if self.conf.database and self.conf.database.output and not self.is_task_complete(self.conf.database):
+            stage1.append(Tasks.DATABASE)
         if self.conf.index:
             if not index_complete:
                 stage1.append(Tasks.INDEX)
@@ -603,17 +606,21 @@ class JobBuilder:
         tasks = []
 
         if Tasks.DOCUMENTS in plan:
-            # doc reader -> doc processor with doc db -> optional doc writer
+            # doc reader -> doc processor
             self.docs_lang = LangStandardizer.standardize(self.conf.documents.input.lang)
             self.conf.documents.input.lang = self.docs_lang
             self.clear_output(self.conf.documents)
+            doc_artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
+            tasks.append(DocumentProcessor(run_path, self.conf.documents, self.docs_lang))
+
+        if Tasks.DATABASE in plan:
             self.clear_output(self.conf.database)
-            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
-            db = DocumentDatabaseFactory.create(run_path, self.conf.database.output, artifact_conf)
-            tasks.append(DocumentProcessor(run_path, self.conf.documents, self.docs_lang, db))
+            artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DATABASE)
+            tasks.append(DatabaseWriter(run_path, self.conf.database, artifact_conf))
+
+        if Tasks.DOCUMENTS in plan and self.conf.documents.output:
             # add doc writer if user requesting that we save processed docs
-            if self.conf.documents.output:
-                tasks.append(DocWriter(run_path, self.conf.documents, artifact_conf))
+            tasks.append(DocWriter(run_path, self.conf.documents, doc_artifact_conf))
 
         if Tasks.INDEX in plan:
             # indexer or processed doc reader -> indexer
@@ -730,7 +737,7 @@ class JobBuilder:
         if Tasks.RERANK in plan:
             self.clear_output(self.conf.rerank)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
-            db = DocumentDatabaseFactory.create(run_path, self.conf.rerank.input.db.path, readonly=True)
+            db = DocumentDatabaseFactory.create(run_path, self.conf.rerank.input.database.path, readonly=True)
             tasks.append(RerankFactory.create(run_path, self.conf.rerank, db))
             if self.conf.rerank.output:
                 tasks.append(JsonResultsWriter(run_path, self.conf.rerank, artifact_conf))
@@ -814,7 +821,7 @@ class JobBuilder:
 
     def check_sources_of_documents(self):
         """The docs in the index and database must come from the same source"""
-        config_path = pathlib.Path(self.conf.run.path) / self.conf.rerank.input.db.path / 'config.yml'
+        config_path = pathlib.Path(self.conf.run.path) / self.conf.rerank.input.database.path / 'config.yml'
         try:
             artifact_config_dict = ConfigService().read_config_file(config_path)
         except FileNotFoundError:

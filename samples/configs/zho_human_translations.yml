@@ -12,6 +12,9 @@ documents:
   process:
     tokenize: spacy
 
+database:
+  name: sqlite
+
 index:
   name: lucene
 

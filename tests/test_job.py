@@ -51,7 +51,7 @@ class TestJobBuilder:
                 output="retrieve"
             ),
             rerank=RerankConfig(
-                input=RerankInputConfig(db=PathConfig(path="test")),
+                input=RerankInputConfig(database=PathConfig(path="test")),
                 name="test",
                 output="rerank"
             ),
@@ -226,12 +226,13 @@ class TestJobBuilder:
     def test_build_stage1_with_standard_docs_index(self):
         conf = self.create_config('test')
         builder = JobBuilder(conf)
-        plan = [Tasks.DOCUMENTS, Tasks.INDEX]
+        plan = [Tasks.DOCUMENTS, Tasks.DATABASE, Tasks.INDEX]
         tasks = builder._get_stage1_tasks(plan)
-        assert len(tasks) == 3
+        assert len(tasks) == 4
         assert isinstance(tasks[0], DocumentProcessor)
-        assert isinstance(tasks[1], DocWriter)
-        assert isinstance(tasks[2], LuceneIndexer)
+        assert isinstance(tasks[1], DatabaseWriter)
+        assert isinstance(tasks[2], DocWriter)
+        assert isinstance(tasks[3], LuceneIndexer)
 
     def test_build_stage1_with_bad_pipeline_mode(self):
         conf = self.create_config('test')
@@ -339,7 +340,7 @@ class TestJobBuilder:
         db_dir = pathlib.Path(__file__).parent / "build_files" / "output" / "database"
         conf = self.create_config('test')
         conf.documents.input.path = "docs.jsonl"
-        conf.rerank.input.db.path = str(db_dir)
+        conf.rerank.input.database.path = str(db_dir)
         builder = JobBuilder(conf)
         builder.check_sources_of_documents()
 
@@ -347,7 +348,7 @@ class TestJobBuilder:
         db_dir = pathlib.Path(__file__).parent / "build_files" / "output" / "database"
         conf = self.create_config('test')
         conf.documents.input.path = "docs_other_data.jsonl"
-        conf.rerank.input.db.path = str(db_dir)
+        conf.rerank.input.database.path = str(db_dir)
         builder = JobBuilder(conf)
         with pytest.raises(ConfigError):
             builder.check_sources_of_documents()
@@ -356,7 +357,7 @@ class TestJobBuilder:
         db_dir = pathlib.Path(__file__).parent / "build_files" / "output" / "database"
         conf = self.create_config('test')
         conf.documents.input.path = ["docs_other_data.jsonl", "more_docs.jsonl"]
-        conf.rerank.input.db.path = str(db_dir)
+        conf.rerank.input.database.path = str(db_dir)
         builder = JobBuilder(conf)
         with pytest.raises(ConfigError):
             builder.check_sources_of_documents()
@@ -365,7 +366,7 @@ class TestJobBuilder:
         db_dir = pathlib.Path(__file__).parent / "build_files" / "output" / "database_doc_list"
         conf = self.create_config('test')
         conf.documents.input.path = ["docs.jsonl", "docs2.jsonl"]
-        conf.rerank.input.db.path = str(db_dir)
+        conf.rerank.input.database.path = str(db_dir)
         builder = JobBuilder(conf)
         builder.check_sources_of_documents()
 
@@ -373,7 +374,7 @@ class TestJobBuilder:
         db_dir = pathlib.Path(__file__).parent / "build_files" / "output" / "database_doc_list"
         conf = self.create_config('test')
         conf.documents.input.path = ["docs.jsonl", "docs3.jsonl"]
-        conf.rerank.input.db.path = str(db_dir)
+        conf.rerank.input.database.path = str(db_dir)
         builder = JobBuilder(conf)
         with pytest.raises(ConfigError):
             builder.check_sources_of_documents()

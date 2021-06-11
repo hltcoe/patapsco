@@ -12,6 +12,9 @@ documents:
   process:
     tokenize: whitespace
 
+database:
+  name: sqlite
+
 index:
   name: lucene
 

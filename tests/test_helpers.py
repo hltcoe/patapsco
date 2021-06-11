@@ -28,6 +28,7 @@ class TestConfigHelper:
                 input=DocumentsInputConfig(format='jsonl', lang='eng', path='test'),
                 process=TextProcessorConfig(tokenize='whitespace'),
             ),
+            database=DatabaseConfig(name='sqlite'),
             index=IndexConfig(name='mock')
         )
         ConfigHelper._set_output_paths(conf)
@@ -74,12 +75,12 @@ class TestConfigHelper:
         conf = RunnerConfig(
             run=RunConfig(name='test'),
             rerank=RerankConfig(
-                input=RerankInputConfig(db=PathConfig(path='path_to_db')),
+                input=RerankInputConfig(database=PathConfig(path='path_to_db')),
                 name='mock'
             )
         )
         ConfigHelper._set_rerank_db_path(conf)
-        assert conf.rerank.input.db.path == 'path_to_db'
+        assert conf.rerank.input.database.path == 'path_to_db'
 
     def test_set_rerank_db_path_with_index(self):
         conf = RunnerConfig(
@@ -90,7 +91,7 @@ class TestConfigHelper:
             )
         )
         ConfigHelper._set_rerank_db_path(conf)
-        assert conf.rerank.input.db.path == 'db_path'
+        assert conf.rerank.input.database.path == 'db_path'
 
 
 class TestArtifactHelper:
@@ -118,7 +119,7 @@ class TestArtifactHelper:
                 output="retrieve"
             ),
             rerank=RerankConfig(
-                input=RerankInputConfig(db=PathConfig(path="test")),
+                input=RerankInputConfig(database=PathConfig(path="test")),
                 name="test",
                 output="rerank"
             ),
@@ -130,6 +131,15 @@ class TestArtifactHelper:
         conf = helper.get_config(self.create_config(), Tasks.DOCUMENTS)
         assert hasattr(conf, 'run')
         assert hasattr(conf, 'documents')
+        assert not hasattr(conf, 'database')
+        assert not hasattr(conf, 'index')
+
+    def test_get_config_database(self):
+        helper = ArtifactHelper()
+        conf = helper.get_config(self.create_config(), Tasks.DATABASE)
+        assert hasattr(conf, 'run')
+        assert hasattr(conf, 'documents')
+        assert hasattr(conf, 'database')
         assert not hasattr(conf, 'index')
 
     def test_get_config_index(self):
