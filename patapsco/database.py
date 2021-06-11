@@ -30,7 +30,7 @@ class DocumentDatabase(sqlitedict.SqliteDict):
         kwargs['autocommit'] = True
         self.readonly = readonly
         self.db_dir = pathlib.Path(run_path) / output_dir
-        self.path =  self.db_dir/ "docs.db"
+        self.path = self.db_dir / "docs.db"
         if readonly and not self.path.exists():
             raise ConfigError(f"Document database does not exist: {self.path}")
         elif not readonly:
