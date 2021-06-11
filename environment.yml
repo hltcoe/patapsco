@@ -13,6 +13,7 @@ dependencies:
   - pydantic>=1.7.1,<1.8.0
   - pyjnius
   - pymorphy2
+  - pytorch
   - pyyaml
   - sacremoses
   - spacy>=3.0.0
