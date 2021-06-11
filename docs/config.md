@@ -72,6 +72,10 @@ script normalization, tokenization, lowercasing, stopword removal, and stemming/
     stopwords: lucene
 ```
 
+stem: spacy, stanza, porter (for eng)
+stopwords: lucene, baidu (for zho)
+tokenize: whitespace, spacy, stanza, moses, ngram, jieba (for zho)
+
 ### index
 The name of the indexing method.
 Currently, only "lucene" is supported.
