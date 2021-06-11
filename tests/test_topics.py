@@ -83,6 +83,18 @@ class TestHc4JsonTopicReader:
         with pytest.raises(StopIteration):
             next(topic_iter)
 
+    def test_parse_json_topics_filter_by_lang(self):
+        directory = pathlib.Path(__file__).parent / 'json_files'
+        path = directory / 'topics_different_langs.jsonl'
+        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'zho')
+        topic = next(topic_iter)
+        assert topic.id == '001'
+        assert topic.title == '测试1'
+        assert topic.desc == '第一次测试'
+        assert topic.report == 'report 1'
+        with pytest.raises(StopIteration):
+            next(topic_iter)
+
 
 def test_query_reader():
     directory = pathlib.Path(__file__).parent / 'json_files'

@@ -1,6 +1,7 @@
 import csv
 import dataclasses
 import json
+import logging
 import pathlib
 from typing import Optional
 
@@ -11,6 +12,8 @@ from .text import TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
 from .util.formats import parse_xml_topics, parse_sgml_topics, parse_psq_table
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -143,6 +146,7 @@ class Hc4JsonTopicReader(InputIterator):
         self.path = path
         self.encoding = encoding
         self.lang = lang
+        self.num_skipped = 0
         self.topics = iter(self._parse(path, encoding))
 
     def __iter__(self):
@@ -159,7 +163,8 @@ class Hc4JsonTopicReader(InputIterator):
         try:
             if self.lang != "eng":
                 if self.lang not in data['lang_supported']:
-                    raise ConfigError(f"Language {self.lang} not supported in {self.path}")
+                    self.num_skipped += 1
+                    return None
                 title = data['lang_resources'][self.lang]['topic_title'].strip()
                 desc = data['lang_resources'][self.lang]['topic_description'].strip()
             else:
@@ -172,7 +177,14 @@ class Hc4JsonTopicReader(InputIterator):
     def _parse(self, path, encoding='utf8'):
         with open(path, 'r', encoding=encoding) as fp:
             try:
-                return [self._construct(json.loads(data)) for data in fp]
+                topics = [self._construct(json.loads(data)) for data in fp]
+                # filter topics that are not supported for this language
+                if self.num_skipped:
+                    LOGGER.info(f"Skipping {self.num_skipped} topics not supported for {self.lang}")
+                    topics = [topic for topic in topics if topic is not None]
+                if not topics:
+                    raise ConfigError(f"No topics available for language {self.lang}")
+                return topics
             except json.decoder.JSONDecodeError as e:
                 raise ParseError(f"Problem parsing json from {path}: {e}")
 
