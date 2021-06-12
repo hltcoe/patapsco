@@ -15,7 +15,7 @@ import psutil
 from .config import ConfigService
 from .database import DatabaseWriter, DocumentDatabaseFactory
 from .docs import DocumentProcessor, DocumentReaderFactory, DocReader, DocWriter
-from .error import ConfigError
+from .error import ConfigError, PatapscoError
 from .helpers import ArtifactHelper
 from .index import IndexerFactory
 from .pipeline import BatchPipeline, StreamingPipeline
@@ -205,8 +205,7 @@ class ParallelJob(Job):
             try:
                 return sum(executor.map(func, jobs))
             except Exception as e:
-                LOGGER.error(f"Parallel job failed with {e}")
-                sys.exit(-1)
+                raise PatapscoError(f"multiprocessing map failed from {type(e).__name__} {e}") from e
 
     @staticmethod
     def _fork(job, debug):
