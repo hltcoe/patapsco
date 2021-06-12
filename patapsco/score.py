@@ -75,7 +75,7 @@ class Scorer:
     @staticmethod
     def _filter_dict(d, filter):
         for i in filter:
-            d.pop(i)
+            d.pop(i, None)
 
     def score(self, results_path, scores_path):
         """Calculate scores at the end of the run.
