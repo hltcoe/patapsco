@@ -1,3 +1,4 @@
+import gzip
 import pathlib
 
 from ..error import ConfigError
@@ -53,6 +54,8 @@ def is_complete(path):
 
 def count_lines(path, encoding='utf8'):
     """Count lines in a text file"""
+    if path.endswith('.gz'):
+        return gzip_count_lines(path)
     count = 0
     with open(path, 'r', encoding=encoding) as fp:
         for _ in fp:
@@ -60,11 +63,31 @@ def count_lines(path, encoding='utf8'):
     return count
 
 
+def gzip_count_lines(path):
+    count = 0
+    with gzip.open(path, 'rb') as fp:
+        for _ in fp:
+            count += 1
+    return count
+
+
 def count_lines_with(string, path, encoding='utf8'):
     """Count lines in a text file with a particular string"""
+    if path.endswith('.gz'):
+        return gzip_count_lines_with(string, path, encoding)
     count = 0
     with open(path, 'r', encoding=encoding) as fp:
         for line in fp:
             if string in line:
+                count += 1
+    return count
+
+
+def gzip_count_lines_with(string, path, encoding):
+    bstr = string.encode(encoding)
+    count = 0
+    with gzip.open(path, 'rb') as fp:
+        for line in fp:
+            if bstr in line:
                 count += 1
     return count

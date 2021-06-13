@@ -15,7 +15,7 @@ import psutil
 from .config import ConfigService
 from .database import DatabaseWriter, DocumentDatabaseFactory
 from .docs import DocumentProcessor, DocumentReaderFactory, DocReader, DocWriter
-from .error import ConfigError
+from .error import ConfigError, PatapscoError
 from .helpers import ArtifactHelper
 from .index import IndexerFactory
 from .pipeline import BatchPipeline, StreamingPipeline
@@ -147,14 +147,14 @@ class SerialJob(Job):
 
 
 @dataclasses.dataclass
-class ParallelJobDef:
-    """Describes a parallel sub-job"""
+class MultiprocessingJobDef:
+    """Describes a multiprocessing parallel sub-job"""
     id: int  # zero based id counter for sub-jobs
     conf: RunnerConfig
 
 
-class ParallelJob(Job):
-    """Parallel job that uses multiple processes.
+class MultiprocessingJob(Job):
+    """Multiprocessing parallel job.
 
     This uses concurrent.futures to implement map/reduce over the input iterators.
     """
@@ -205,8 +205,7 @@ class ParallelJob(Job):
             try:
                 return sum(executor.map(func, jobs))
             except Exception as e:
-                LOGGER.error(f"Parallel job failed with {e}")
-                sys.exit(-1)
+                raise PatapscoError(f"multiprocessing map failed from {type(e).__name__} {e}") from e
 
     @staticmethod
     def _fork(job, debug):
@@ -241,7 +240,7 @@ class ParallelJob(Job):
             conf.run.parallel = None
             conf.run.stage2 = False
             self._update_stage1_output_paths(conf, sub_directory)
-            stage1_jobs.append(ParallelJobDef(part, conf))
+            stage1_jobs.append(MultiprocessingJobDef(part, conf))
         return stage1_jobs
 
     def _get_stage2_jobs(self, num_processes):
@@ -257,7 +256,7 @@ class ParallelJob(Job):
             conf.run.parallel = None
             conf.run.stage1 = False
             self._update_stage2_output_paths(conf, sub_directory)
-            stage2_jobs.append(ParallelJobDef(part, conf))
+            stage2_jobs.append(MultiprocessingJobDef(part, conf))
         return stage2_jobs
 
     @staticmethod
@@ -559,7 +558,7 @@ class JobBuilder:
         if self.conf.run.parallel:
             parallel_type = self.conf.run.parallel.name.lower()
             if parallel_type == "mp":
-                return ParallelJob(self.conf, stage1, stage2, debug)
+                return MultiprocessingJob(self.conf, stage1, stage2, debug)
             elif parallel_type == "qsub":
                 return QsubJob(self.conf, stage1, stage2, debug)
             else:
