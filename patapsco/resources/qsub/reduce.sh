@@ -12,4 +12,9 @@ PYTHON_EXE=$(which python)
 echo "$DATE - patapsco-reduce - INFO - $PYTHON_VERSION"
 echo "$DATE - patapsco-reduce - INFO - $PYTHON_EXE"
 
+if [ -z "$CUDA_VISIBLE_DEVICES" ];
+then
+  echo "$DATE - patapsco-reduce - INFO - Using gpus $CUDA_VISIBLE_DEVICES"
+fi
+
 patapsco-reduce {debug} --stage {stage} {config}

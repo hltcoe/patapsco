@@ -15,4 +15,9 @@ PYTHON_EXE=$(which python)
 echo "$DATE - patapsco-map - INFO - $PYTHON_VERSION"
 echo "$DATE - patapsco-map - INFO - $PYTHON_EXE"
 
+if [ -z "$CUDA_VISIBLE_DEVICES" ];
+then
+  echo "$DATE - patapsco-map - INFO - Using gpus $CUDA_VISIBLE_DEVICES"
+fi
+
 patapsco-map {debug} --stage {stage} --job $JOB_ID --increment {increment} {config}

@@ -22,6 +22,10 @@ module add java
 ### Create a Python virtual environment using venv or conda.
 
 #### With conda
+Installing with conda is recommended and will install the gpu-enabled version of pytorch.
+As of June 2021, CUDA 11.1.1 will be installed into the environment by default.
+You do not need to load any CUDA modules on the grid to use the GPUs.
+
 Create and activate the conda environment:
 ```
 conda env create --file environment.yml
