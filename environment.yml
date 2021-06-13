@@ -1,5 +1,6 @@
 name: patapsco
 channels:
+  - pytorch
   - conda-forge
 dependencies:
   - python>=3.6
