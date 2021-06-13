@@ -194,7 +194,7 @@ class MultiprocessingJob(Job):
     def map(self, jobs, debug):
         """
         Args:
-            jobs (list of ParallelJobDef): Job definitions to be mapped over.
+            jobs (list of MultiprocessingJobDef): Job definitions to be mapped over.
             debug (bool): Whether to run in debug mode.
         Returns:
             Report
