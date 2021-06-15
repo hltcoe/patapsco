@@ -10,6 +10,16 @@ from .util import DataclassJSONEncoder
 from .util.file import is_complete
 
 
+def encode(doc):
+    """Encode an object as json for the database"""
+    return json.dumps(doc, cls=DataclassJSONEncoder)
+
+
+def decode(s):
+    """Decode a json string to Doc object"""
+    return json.loads(s, object_hook=lambda d: Doc(**d))
+
+
 class DocumentDatabase(sqlitedict.SqliteDict):
     """Key value database for documents
 
@@ -35,16 +45,18 @@ class DocumentDatabase(sqlitedict.SqliteDict):
             raise ConfigError(f"Document database does not exist: {self.path}")
         elif not readonly:
             self.db_dir.mkdir(parents=True, exist_ok=True)
+        kwargs['encode'] = encode
+        kwargs['decode'] = decode
         super().__init__(str(self.path), *args, **kwargs)
 
     def __setitem__(self, key, value):
         if self.readonly:
             return
-        super().__setitem__(key, json.dumps(value, cls=DataclassJSONEncoder))
+        super().__setitem__(key, value)
 
     def __getitem__(self, key):
         try:
-            return json.loads(super().__getitem__(key), object_hook=lambda d: Doc(**d))
+            return super().__getitem__(key)
         except KeyError:
             raise BadDataError(f"Unable to retrieve doc {key} from the database")
 

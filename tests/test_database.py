@@ -1,3 +1,6 @@
+import json
+import pathlib
+import sqlite3
 import tempfile
 
 from patapsco.database import DocumentDatabase
@@ -20,3 +23,14 @@ class TestDocumentDatabase:
         assert doc.date == '2020-12-25'
         assert doc.lang == 'eng'
         assert doc.text == 'hello world'
+
+        # and check retrieving from file
+        conn = sqlite3.connect(str(pathlib.Path(self.temp_dir) / 'database' / 'docs.db'))
+        cursor = conn.execute(f'SELECT value FROM unnamed WHERE key = ?', ('doc1',))
+        result = cursor.fetchone()
+        assert result is not None
+        loaded_doc = json.loads(result[0])
+        assert loaded_doc['id'] == doc.id
+        assert loaded_doc['date'] == doc.date
+        assert loaded_doc['lang'] == doc.lang
+        assert loaded_doc['text'] == doc.text
