@@ -33,7 +33,10 @@ If an implementation does not support the specified language pairs, use a non-ze
 
 ### Document database
 The document format is described in `formats.md`.
-It is built as a key-value store and sample python code for retrieving documents will be provided.
+It is built as a key-value store using sqlite3.
+The path to this database is provided.
+The table name is `patapsco` and the column names are `key` and `value`.
+The document is stored as JSON.
 
 ### Results data
 The results format is described in `formats.md`.
