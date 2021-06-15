@@ -42,18 +42,24 @@ class Java:
         except Exception as e:
             msg = "Problem with Java. Likely no Java or an older JVM. Run with debug flag for more details."
             raise PatapscoError(msg) from e
+        self.String = jnius.autoclass('java.lang.String')
+        self.CharSequence = jnius.autoclass('java.lang.CharSequence')
         self.Document = jnius.autoclass('org.apache.lucene.document.Document')
         self.StoreEnum = jnius.autoclass('org.apache.lucene.document.Field$Store')
-        self.BytesRef = jnius.autoclass('org.apache.lucene.util.BytesRef')
         self.SortedDocValuesField = jnius.autoclass('org.apache.lucene.document.SortedDocValuesField')
+        self.Field = jnius.autoclass('org.apache.lucene.document.Field')
+        self.FieldType = jnius.autoclass('org.apache.lucene.document.FieldType')
         self.StringField = jnius.autoclass('org.apache.lucene.document.StringField')
         self.TextField = jnius.autoclass('org.apache.lucene.document.TextField')
-        self.FSDirectory = jnius.autoclass('org.apache.lucene.store.FSDirectory')
         self.Paths = jnius.autoclass('java.nio.file.Paths')
         self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
+        self.IndexOptions = jnius.autoclass('org.apache.lucene.index.IndexOptions')
         self.IndexWriter = jnius.autoclass('org.apache.lucene.index.IndexWriter')
         self.IndexWriterConfig = jnius.autoclass('org.apache.lucene.index.IndexWriterConfig')
+        self.FSDirectory = jnius.autoclass('org.apache.lucene.store.FSDirectory')
+        self.BytesRef = jnius.autoclass('org.apache.lucene.util.BytesRef')
         self.JavaException = jnius.JavaException
+        self.cast = jnius.cast
 
 
 class LuceneIndexer(Task):
@@ -71,6 +77,7 @@ class LuceneIndexer(Task):
         self._writer = None
         self.java = Java()
         self.lang = None
+        self.field_type = None
 
     @property
     def writer(self):
@@ -82,6 +89,14 @@ class LuceneIndexer(Task):
                 raise PatapscoError(e)
         return self._writer
 
+    def _create_field_type(self):
+        self.field_type = self.java.FieldType()
+        self.field_type.setStored(True)
+        self.field_type.setTokenized(True)
+        self.field_type.setStoreTermVectors(True)
+        self.field_type.setIndexOptions(self.java.IndexOptions.DOCS_AND_FREQS)
+        self.field_type.freeze()
+
     def process(self, doc):
         """
         Args:
@@ -92,10 +107,14 @@ class LuceneIndexer(Task):
         """
         if not self.lang:
             self.lang = doc.lang
+        if not self.field_type:
+            self._create_field_type()
+
         lucene_doc = self.java.Document()
         lucene_doc.add(self.java.StringField("id", doc.id, self.java.StoreEnum.YES))
         lucene_doc.add(self.java.SortedDocValuesField("id", self.java.BytesRef(doc.id.encode())))
-        lucene_doc.add(self.java.TextField("contents", doc.text, self.java.StoreEnum.NO))
+        text = self.java.cast(self.java.CharSequence, self.java.String(doc.text))  # jnius requires this cast
+        lucene_doc.add(self.java.Field("contents", text, self.field_type))
         self.writer.addDocument(lucene_doc)
         return doc
 
