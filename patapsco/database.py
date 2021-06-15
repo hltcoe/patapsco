@@ -47,6 +47,7 @@ class DocumentDatabase(sqlitedict.SqliteDict):
             self.db_dir.mkdir(parents=True, exist_ok=True)
         kwargs['encode'] = encode
         kwargs['decode'] = decode
+        kwargs['tablename'] = 'patapsco'
         super().__init__(str(self.path), *args, **kwargs)
 
     def __setitem__(self, key, value):

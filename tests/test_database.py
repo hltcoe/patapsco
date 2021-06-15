@@ -26,7 +26,7 @@ class TestDocumentDatabase:
 
         # and check retrieving from file
         conn = sqlite3.connect(str(pathlib.Path(self.temp_dir) / 'database' / 'docs.db'))
-        cursor = conn.execute(f'SELECT value FROM unnamed WHERE key = ?', ('doc1',))
+        cursor = conn.execute(f'SELECT value FROM patapsco WHERE key = ?', ('doc1',))
         result = cursor.fetchone()
         assert result is not None
         loaded_doc = json.loads(result[0])
