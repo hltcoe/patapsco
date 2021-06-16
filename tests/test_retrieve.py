@@ -53,9 +53,7 @@ class TestPyseriniRetriever:
         qld = QLDRetriever(run_path=self.temp_dir, config=conf)
         rm3 = RM3Retriever(run_path=self.temp_dir, config=conf)
         pr = BM25Retriever(run_path=self.temp_dir, config=conf)
-        analyzer = analysis.Analyzer(analysis.get_lucene_analyzer())
-        query_text = "inform retriev"
-        query = Query(123, "eng", query_text, "", report=None)
+        query = Query(123, "eng", "inform retriev", "", report=None)
         # check equivalence against pyserini results up to 5 digits
         assert isclose(bm25.process(query).results[0].score, 4.76550, abs_tol=10**-5)
         assert isclose(qld.process(query).results[0].score, 3.68030, abs_tol=10**-5)
