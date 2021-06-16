@@ -77,6 +77,8 @@ class TopicProcessor(Task):
             Query
         """
         text = ' '.join([getattr(topic, f).strip() for f in self.fields])
+        if not text:
+            LOGGER.warning(f"Query from topic {topic.id} has no text.")
         return Query(topic.id, topic.lang, text, text, topic.report)
 
     @classmethod
