@@ -68,6 +68,7 @@ class ConfigHelper:
     @classmethod
     def _make_input_paths_absolute(cls, conf):
         # if user configured any input paths, make them absolute
+        # also resolve symbolic links
         cls._make_absolute(conf, 'documents.input')
         cls._make_absolute(conf, 'index.input.documents')
         cls._make_absolute(conf, 'topics.input')
@@ -92,7 +93,7 @@ class ConfigHelper:
                 obj.path = {key: str(pathlib.Path(path).absolute()) for key, path in obj.path.items()}
             else:
                 # make path absolute if not relative to root run directory
-                path = pathlib.Path(obj.path).absolute()
+                path = pathlib.Path(obj.path).resolve().absolute()
                 if path.exists():
                     obj.path = str(path)
         except AttributeError:
