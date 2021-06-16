@@ -29,7 +29,7 @@ class TestPyseriniRetriever:
         with pytest.raises(PatapscoError):
             pr.begin()
 
-    #@pytest.mark.slow(reason="downloads pre-built index to validate against pyserini")
+    @pytest.mark.slow(reason="downloads pre-built index to validate against pyserini")
     def test_sparse_retrieval(self):
         # see https://github.com/castorini/pyserini/blob/3cd6b7ee8e77d699726756938fac0714c10ad0a9/tests/test_index_reader.py#L33
         import tarfile
