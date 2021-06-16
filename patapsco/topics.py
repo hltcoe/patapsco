@@ -132,6 +132,11 @@ class XmlTopicReader(InputIterator):
         return count_lines_with('<topic', self.path, self.encoding)
 
 
+class SkipEntry(Exception):
+    # Indicates that a topic should be skipped
+    pass
+
+
 class Hc4JsonTopicReader(InputIterator):
     """Iterator over topics from jsonl file """
 
@@ -163,16 +168,26 @@ class Hc4JsonTopicReader(InputIterator):
         try:
             if self.lang != "eng":
                 if self.lang not in data['lang_supported']:
-                    self.num_skipped += 1
-                    return None
+                    raise SkipEntry()
+                self._validate(data['topic_id'], data['lang_resources'][self.lang])
                 title = data['lang_resources'][self.lang]['topic_title'].strip()
                 desc = data['lang_resources'][self.lang]['topic_description'].strip()
             else:
+                self._validate(data['topic_id'], data)
                 title = data['topic_title'].strip()
                 desc = data['topic_description'].strip()
             return Topic(data['topic_id'], self.lang, title, desc, None, data['report_text'])
+        except SkipEntry:
+            self.num_skipped += 1
+            return None
         except KeyError as e:
             raise ParseError(f"Missing field {e} in json docs element: {data}")
+
+    def _validate(self, topic_id, data):
+        # None is not allowed for title or description
+        if data['topic_title'] is None or data['topic_description'] is None:
+            LOGGER.warning(f"Skipping topic {topic_id} because of null title or description")
+            raise SkipEntry()
 
     def _parse(self, path, encoding='utf8'):
         with open(path, 'r', encoding=encoding) as fp:
