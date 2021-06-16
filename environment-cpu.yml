@@ -1,0 +1,28 @@
+name: patapsco
+channels:
+  - pytorch
+  - stanfordnlp
+  - conda-forge
+dependencies:
+  - python>=3.6
+  - beautifulsoup4
+  - ftfy
+  - jieba
+  - more-itertools
+  - nltk>=3.6.0
+  - numpy
+  - psutil
+  - pydantic>=1.7.1,<1.8.0
+  - pyjnius
+  - pymorphy2
+  - pytorch-cpu
+  - pyyaml
+  - sacremoses
+  - spacy>=3.0.0
+  - spacy-pkuseg>=0.0.27,<0.1.0
+  - sqlitedict
+  - stanza>=1.2.0
+  - pip
+  - pip:
+    - pyserini
+    - pytrec_eval
