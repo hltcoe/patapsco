@@ -50,19 +50,24 @@ class TestPyseriniRetriever:
         # see https://github.com/castorini/pyserini/blob/3cd6b7ee8e77d699726756938fac0714c10ad0a9/tests/test_index_reader.py#L33
         index_path = self._prepare_cacm_index()
         query = Query("123", "eng", query="inform retriev", text="", report=None)
-        conf = RetrieveConfig(name="rm3", input=RetrieveInputConfig(index=PathConfig(path=str(index_path))))
+        conf = RetrieveConfig(name="bm25", input=RetrieveInputConfig(index=PathConfig(path=str(index_path))))
 
-        bm25 = BM25Retriever(run_path=self.temp_dir, config=conf)
+        conf.name = "bm25"
+        bm25 = PyseriniRetriever(run_path=self.temp_dir, config=conf)
         results = bm25.process(query)
         assert 'CACM-3134' == results.results[0].doc_id
         assert pytest.approx(4.76550, results.results[0].score, 1e-5)
 
-        qld = QLDRetriever(run_path=self.temp_dir, config=conf)
-        results = qld.process(query)
-        assert 'CACM-3134' == results.results[0].doc_id
-        assert pytest.approx(3.68030, results.results[0].score, 1e-5)
-
-        rm3 = RM3Retriever(run_path=self.temp_dir, config=conf)
+        conf.name = "bm25"
+        conf.rm3 = True
+        rm3 = PyseriniRetriever(run_path=self.temp_dir, config=conf)
         results = rm3.process(query)
         assert 'CACM-3134' == results.results[0].doc_id
         assert pytest.approx(2.18010, results.results[0].score, 1e-5)
+
+        conf.name = "qld"
+        conf.rm3 = False
+        qld = PyseriniRetriever(run_path=self.temp_dir, config=conf)
+        results = qld.process(query)
+        assert 'CACM-3134' == results.results[0].doc_id
+        assert pytest.approx(3.68030, results.results[0].score, 1e-5)

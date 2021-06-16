@@ -145,23 +145,26 @@ class RetrieveInputConfig(BaseConfig):
     """Configuration of optional retrieval inputs"""
     index: Union[None, PathConfig]
     queries: Optional[PathConfig]
-    # bm25
-    k1: float = 0.9
-    b: float = 0.4
-    # rm3
-    fb_terms = 10
-    fb_docs = 10
-    original_query_weight = float(0.5)
-    # qld
-    mu: int = 1000
 
 
 class RetrieveConfig(SectionConfig):
     """Configuration for retrieval"""
-    name: str
+    name: str  # bm25 or qld
     number: int = 1000
     input: Optional[RetrieveInputConfig]
     output: Union[bool, str] = True
+
+    # Parameters for retrieval approaches
+    # bm25
+    k1: float = 0.9
+    b: float = 0.4
+    # qld - Query likelihood with Dirichlet smoothing
+    mu: int = 1000
+    # rm3 query expansion
+    rm3: bool = False
+    fb_terms = 10
+    fb_docs = 10
+    original_query_weight = float(0.5)
 
 
 """""""""""""""""

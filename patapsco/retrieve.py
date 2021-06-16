@@ -1,4 +1,3 @@
-import abc
 import logging
 import pathlib
 
@@ -15,9 +14,8 @@ LOGGER = logging.getLogger(__name__)
 
 class RetrieverFactory(TaskFactory):
     classes = {
-        'bm25': 'BM25Retriever',
-        'qld': 'QLDRetriever',
-        'rm3': 'RM3Retriever',
+        'bm25': 'PyseriniRetriever',
+        'qld': 'PyseriniRetriever',
     }
     config_class = RetrieveConfig
 
@@ -71,9 +69,28 @@ class PyseriniRetriever(Task):
         self.lang = None  # documents language
 
     @property
-    @abc.abstractmethod
     def searcher(self):
-        raise NotImplementedError
+        if not self._searcher:
+            self._searcher = self.java.SimpleSearcher(str(self.index_dir))
+            self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
+            if self.config.name == "qld":
+                mu = self.config.mu
+                self._searcher.set_qld(mu)
+                LOGGER.info(f'Using QLD with parameter mu={mu}')
+            else:
+                k1 = self.config.k1
+                b = self.config.b
+                self._searcher.set_bm25(k1, b)
+                LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
+
+            if self.config.rm3:
+                fb_terms = self.config.fb_terms
+                fb_docs = self.config.fb_docs
+                weight = self.config.original_query_weight
+                self._searcher.set_rm3(fb_terms, fb_docs, weight)
+                LOGGER.info(f'Adding RM3: fb_terms={fb_terms}, fb_docs={fb_docs}, original_query_weight={weight}')
+
+        return self._searcher
 
     def begin(self):
         try:
@@ -99,59 +116,3 @@ class PyseriniRetriever(Task):
 
     def end(self):
         self.searcher.close()
-
-
-class BM25Retriever(PyseriniRetriever):
-    """Use Lucene to retrieve documents from an index"""
-
-    def __init__(self, run_path, config):
-        super().__init__(run_path, config)
-
-    @property
-    def searcher(self):
-        if not self._searcher:
-            k1 = self.config.input.k1
-            b = self.config.input.b
-            self._searcher = self.java.SimpleSearcher(str(self.index_dir))
-            self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
-            self._searcher.set_bm25(k1, b)
-            LOGGER.info(f'Using BM25 parameters k1={k1} and b={b}')
-        return self._searcher
-
-
-class QLDRetriever(PyseriniRetriever):
-    """Use Query Likelihood to retrieve documents from an index"""
-
-    def __init__(self, run_path, config):
-        super().__init__(run_path, config)
-
-    @property
-    def searcher(self):
-        if not self._searcher:
-            mu = self.config.input.mu
-            self._searcher = self.java.SimpleSearcher(str(self.index_dir))
-            self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
-            self._searcher.set_qld(mu)
-            LOGGER.info(f'Using QLD parameter mu={mu}')
-        return self._searcher
-
-
-class RM3Retriever(PyseriniRetriever):
-    """Use RM3 query expansion with Lucene to retrieve documents from an index"""
-
-    def __init__(self, run_path, config):
-        super().__init__(run_path, config)
-
-    @property
-    def searcher(self):
-        if not self._searcher:
-            k1 = self.config.input.k1
-            b = self.config.input.b
-            fb_terms = self.config.input.fb_terms
-            fb_docs = self.config.input.fb_docs
-            original_query_weight = self.config.input.original_query_weight
-            self._searcher = self.java.SimpleSearcher(str(self.index_dir))
-            self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
-            self._searcher.set_bm25(k1, b)
-            self._searcher.set_rm3(fb_terms, fb_docs, original_query_weight)
-        return self._searcher
