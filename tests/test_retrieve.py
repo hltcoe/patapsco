@@ -2,6 +2,7 @@ import tempfile
 
 import pytest
 
+from patapsco.topics import Query
 from patapsco.retrieve import *
 from patapsco.schema import PathConfig, RetrieveInputConfig
 from patapsco.util.file import delete_dir
@@ -29,9 +30,10 @@ class TestPyseriniRetriever:
             pr.begin()
 
     #@pytest.mark.slow(reason="downloads pre-built index to validate against pyserini")
-    def test_rm3(self):
+    def test_sparse_retrieval(self):
         # see https://github.com/castorini/pyserini/blob/3cd6b7ee8e77d699726756938fac0714c10ad0a9/tests/test_index_reader.py#L33
         import tarfile
+        from math import isclose
         from pyserini import index, search
         from random import randint
         from urllib.request import urlretrieve
@@ -47,8 +49,14 @@ class TestPyseriniRetriever:
         lang_path = self.temp_dir / ".lang"
         lang_path.write_text("eng")
         conf = RetrieveConfig(name="rm3", input=RetrieveInputConfig(index=PathConfig(path=str(index_path))))
-        pr = RM3Retriever(run_path=self.temp_dir, config=conf)
-        print(pr.process(type("query", (object,), {"query": "information retrieval", "id": "123"})))
-        #searcher = search.SimpleSearcher(index_path)
-        #index_reader = index.IndexReader(index_path)
-        
+        bm25 = BM25Retriever(run_path=self.temp_dir, config=conf)
+        qld = QLDRetriever(run_path=self.temp_dir, config=conf)
+        rm3 = RM3Retriever(run_path=self.temp_dir, config=conf)
+        pr = BM25Retriever(run_path=self.temp_dir, config=conf)
+        analyzer = analysis.Analyzer(analysis.get_lucene_analyzer())
+        query_text = "inform retriev"
+        query = Query(123, "eng", query_text, "", report=None)
+        # check equivalence against pyserini results up to 5 digits
+        assert isclose(bm25.process(query).results[0].score, 4.76550, abs_tol=10**-5)
+        assert isclose(qld.process(query).results[0].score, 3.68030, abs_tol=10**-5)
+        assert isclose(rm3.process(query).results[0].score, 2.18010, abs_tol=10**-5)

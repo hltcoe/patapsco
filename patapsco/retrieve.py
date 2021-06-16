@@ -130,6 +130,7 @@ class QLDRetriever(PyseriniRetriever):
         if not self._searcher:
             mu = self.config.input.mu
             self._searcher = self.java.SimpleSearcher(str(self.index_dir))
+            self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
             self._searcher.set_qld(mu)
             LOGGER.info(f'Using QLD parameter mu={mu}')
         return self._searcher
