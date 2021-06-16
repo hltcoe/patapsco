@@ -96,6 +96,14 @@ def test_parse_qrels():
         next(qrels_iter)
 
 
+def test_parse_qrels_with_float_judgment():
+    directory = pathlib.Path(__file__).parent / 'trec_files'
+    path = directory / 'qrels_bad'
+    qrels_iter = parse_qrels(str(path))
+    with pytest.raises(ParseError):
+        next(qrels_iter)
+
+
 def test_parse_qrels_tsv():
     directory = pathlib.Path(__file__).parent / 'trec_files'
     path = directory / 'qrels_2020.tsv'
