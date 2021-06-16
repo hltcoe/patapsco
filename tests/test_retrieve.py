@@ -29,34 +29,40 @@ class TestPyseriniRetriever:
         with pytest.raises(PatapscoError):
             pr.begin()
 
+    def _prepare_cacm_index(self):
+        # downloads an index from anserini to test against
+        import tarfile
+        from urllib.request import urlretrieve
+        url = 'https://github.com/castorini/anserini-data/raw/master/CACM/lucene-index.cacm.tar.gz'
+        tarball_path = str(self.temp_dir / 'lucene-index.cacm.tar.gz')
+        _, _ = urlretrieve(url, tarball_path)
+        tarball = tarfile.open(tarball_path)
+        tarball.extractall(self.temp_dir)
+        tarball.close()
+        index_path = self.temp_dir / 'lucene-index.cacm'
+        lang_path = index_path / ".lang"
+        lang_path.write_text("eng")
+        return index_path
+
     @pytest.mark.slow(reason="downloads pre-built index to validate against pyserini")
     def test_sparse_retrieval(self):
-        # see https://github.com/castorini/pyserini/blob/3cd6b7ee8e77d699726756938fac0714c10ad0a9/tests/test_index_reader.py#L33
-        import os
-        import tarfile
-        from math import isclose
-        from pyserini import index, search
-        from random import randint
-        from urllib.request import urlretrieve
-        r = randint(0, 10000000)
-        url = 'https://github.com/castorini/anserini-data/raw/master/CACM/lucene-index.cacm.tar.gz'
-        tarball_name = 'lucene-index.cacm-{}.tar.gz'.format(r)
-        index_dir = self.temp_dir / 'index{}'.format(r)
-        _, _ = urlretrieve(url, tarball_name)
-        tarball = tarfile.open(tarball_name)
-        tarball.extractall(index_dir)
-        tarball.close()
-        index_path = index_dir / 'lucene-index.cacm'
-        lang_path = self.temp_dir / ".lang"
-        lang_path.write_text("eng")
-        conf = RetrieveConfig(name="rm3", input=RetrieveInputConfig(index=PathConfig(path=str(index_path))))
-        bm25 = BM25Retriever(run_path=self.temp_dir, config=conf)
-        qld = QLDRetriever(run_path=self.temp_dir, config=conf)
-        rm3 = RM3Retriever(run_path=self.temp_dir, config=conf)
-        pr = BM25Retriever(run_path=self.temp_dir, config=conf)
-        query = Query(123, "eng", "inform retriev", "", report=None)
-        os.remove(f"./lucene-index.cacm-{r}.tar.gz")
         # check equivalence against pyserini results up to 5 digits
-        assert isclose(bm25.process(query).results[0].score, 4.76550, abs_tol=10**-5)
-        assert isclose(qld.process(query).results[0].score, 3.68030, abs_tol=10**-5)
-        assert isclose(rm3.process(query).results[0].score, 2.18010, abs_tol=10**-5)
+        # see https://github.com/castorini/pyserini/blob/3cd6b7ee8e77d699726756938fac0714c10ad0a9/tests/test_index_reader.py#L33
+        index_path = self._prepare_cacm_index()
+        query = Query("123", "eng", query="inform retriev", text="", report=None)
+        conf = RetrieveConfig(name="rm3", input=RetrieveInputConfig(index=PathConfig(path=str(index_path))))
+
+        bm25 = BM25Retriever(run_path=self.temp_dir, config=conf)
+        results = bm25.process(query)
+        assert 'CACM-3134' == results.results[0].doc_id
+        assert pytest.approx(4.76550, results.results[0].score, 1e-5)
+
+        qld = QLDRetriever(run_path=self.temp_dir, config=conf)
+        results = qld.process(query)
+        assert 'CACM-3134' == results.results[0].doc_id
+        assert pytest.approx(3.68030, results.results[0].score, 1e-5)
+
+        rm3 = RM3Retriever(run_path=self.temp_dir, config=conf)
+        results = rm3.process(query)
+        assert 'CACM-3134' == results.results[0].doc_id
+        assert pytest.approx(2.18010, results.results[0].score, 1e-5)
