@@ -32,6 +32,7 @@ class TestPyseriniRetriever:
     @pytest.mark.slow(reason="downloads pre-built index to validate against pyserini")
     def test_sparse_retrieval(self):
         # see https://github.com/castorini/pyserini/blob/3cd6b7ee8e77d699726756938fac0714c10ad0a9/tests/test_index_reader.py#L33
+        import os
         import tarfile
         from math import isclose
         from pyserini import index, search
@@ -54,6 +55,7 @@ class TestPyseriniRetriever:
         rm3 = RM3Retriever(run_path=self.temp_dir, config=conf)
         pr = BM25Retriever(run_path=self.temp_dir, config=conf)
         query = Query(123, "eng", "inform retriev", "", report=None)
+        os.remove(f"./lucene-index.cacm-{r}.tar.gz")
         # check equivalence against pyserini results up to 5 digits
         assert isclose(bm25.process(query).results[0].score, 4.76550, abs_tol=10**-5)
         assert isclose(qld.process(query).results[0].score, 3.68030, abs_tol=10**-5)
