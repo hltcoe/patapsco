@@ -124,13 +124,46 @@ queries:
 ```
 
 ### retrieve
-The only retrieve component currently is lucene with bm25 (k=1.2, b=0.75).
+The only retrieve component currently is lucene through pyserini.
+The most basic config for retrieve looks like this:
 
 ```yaml
 retrieve:
   name: bm25
   number: 1000
 ```
+
+Supported names:
+ * bm25 - Okapi Best Match
+ * qld - Query Likelihood with Dirichlet smoothing
+
+bm25 parameters:
+```yaml
+  k1: 0.9
+  b: 0.4
+```
+
+qld parameter:
+```yaml
+  mu: 1000
+```
+
+Query expansion with relevance model 3 (rm3):
+```yaml
+  rm3: true
+  fb_terms: 10
+  fb_docs: 10
+  original_query_weight: 0.5
+```
+
+An example that uses bm25 with rm3:
+```yaml
+retrieve:
+  name: bm25
+  number: 1000
+  rm3: true
+```
+This uses default parameters for both bm25 and rm3.
 
 ### rerank
 Rerank will usually call an external script.

@@ -15,6 +15,7 @@ LOGGER = logging.getLogger(__name__)
 class RetrieverFactory(TaskFactory):
     classes = {
         'bm25': 'PyseriniRetriever',
+        'qld': 'PyseriniRetriever',
     }
     config_class = RetrieveConfig
 
@@ -25,6 +26,7 @@ class Java:
     This class delays loading the JVM until needed.
     This prevents issues with multiprocessing where a child process inherits a parent's JVM.
     """
+
     def __init__(self):
         self.initialized = False
 
@@ -44,7 +46,7 @@ class Java:
         except Exception as e:
             msg = "Problem with Java. Likely no Java or an older JVM. Run with debug flag for more details."
             raise PatapscoError(msg) from e
-        # TDOD can remove analyzer when newest version of pyserini is released
+        # TODO can remove analyzer when newest version of pyserini is released
         self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
         self.SimpleSearcher = pyserini.search.SimpleSearcher
 
@@ -59,8 +61,9 @@ class PyseriniRetriever(Task):
             config (RetrieveConfig)
         """
         super().__init__(run_path)
-        self.number = config.number
-        self.index_dir = pathlib.Path(run_path) / config.input.index.path
+        self.config = config
+        self.number = self.config.number
+        self.index_dir = pathlib.Path(run_path) / self.config.input.index.path
         self._searcher = None
         self.java = Java()
         self.lang = None  # documents language
@@ -70,6 +73,23 @@ class PyseriniRetriever(Task):
         if not self._searcher:
             self._searcher = self.java.SimpleSearcher(str(self.index_dir))
             self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
+            if self.config.name == "qld":
+                mu = self.config.mu
+                self._searcher.set_qld(mu)
+                LOGGER.info(f'Using QLD with parameter mu={mu}')
+            else:
+                k1 = self.config.k1
+                b = self.config.b
+                self._searcher.set_bm25(k1, b)
+                LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
+
+            if self.config.rm3:
+                fb_terms = self.config.fb_terms
+                fb_docs = self.config.fb_docs
+                weight = self.config.original_query_weight
+                self._searcher.set_rm3(fb_terms, fb_docs, weight)
+                LOGGER.info(f'Adding RM3: fb_terms={fb_terms}, fb_docs={fb_docs}, original_query_weight={weight}')
+
         return self._searcher
 
     def begin(self):
@@ -88,6 +108,7 @@ class PyseriniRetriever(Task):
         Returns:
             Results
         """
+
         hits = self.searcher.search(query.query, k=self.number)
         LOGGER.debug(f"Retrieved {len(hits)} documents for {query.id}: {query.query}")
         results = [Result(hit.docid, rank, hit.score) for rank, hit in enumerate(hits)]
