@@ -1,4 +1,9 @@
 
+## 0.9.2
+ * Adds support in retrieval for query likelihood model and pseudo relevance feedback
+ * Topics can now be filtered by lang_supported field
+ * Additional validation added for catching bad data in topics and qrels
+
 ## 0.9.1
  * Symbolic links are resolved for input paths (documents, topics, qrels)
 
