@@ -168,20 +168,21 @@ class Hc4JsonTopicReader(InputIterator):
         return count_lines(self.path, self.encoding)
 
     def _construct(self, data):
-        # the default language in a topics file is always English
+        # if language is not specified, assume it is English
+        primary_lang = data['lang'] if 'lang' in data else 'eng'
         try:
             if self.filter_lang and self.filter_lang not in data['lang_supported']:
                 raise SkipEntry()
-            if self.lang != "eng":
+            if self.lang == primary_lang:
+                self._validate(data['topic_id'], data)
+                title = data['topic_title'].strip()
+                desc = data['topic_description'].strip()
+            else:
                 if self.lang not in data['lang_supported']:
                     raise SkipEntry()
                 self._validate(data['topic_id'], data['lang_resources'][self.lang])
                 title = data['lang_resources'][self.lang]['topic_title'].strip()
                 desc = data['lang_resources'][self.lang]['topic_description'].strip()
-            else:
-                self._validate(data['topic_id'], data)
-                title = data['topic_title'].strip()
-                desc = data['topic_description'].strip()
             return Topic(data['topic_id'], self.lang, title, desc, None, data['report_text'])
         except SkipEntry:
             self.num_skipped += 1

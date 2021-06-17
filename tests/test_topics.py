@@ -125,6 +125,21 @@ class TestHc4JsonTopicReader:
         topic = next(topic_iter)
         assert topic.id == '002'
 
+    def test_parse_json_topics_with_lang(self):
+        directory = pathlib.Path(__file__).parent / 'json_files'
+        path = directory / 'topics_new_lang_field.jsonl'
+        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'rus')
+        topic = next(topic_iter)
+        assert topic.id == '001'
+        topic = next(topic_iter)
+        assert topic.id == '002'
+
+    def test_parse_json_topics_with_lang_misatch(self):
+        directory = pathlib.Path(__file__).parent / 'json_files'
+        path = directory / 'topics_new_lang_field.jsonl'
+        with pytest.raises(ConfigError):
+            Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng')
+
 
 def test_query_reader():
     directory = pathlib.Path(__file__).parent / 'json_files'
