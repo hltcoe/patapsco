@@ -112,6 +112,20 @@ topics:
   fields: title
 ```
 
+To filter out topics that do not have qrels for that language, use the parameter `filter_lang`.
+For example, you may want to use English topics, but only those that have judgments for Russian:
+
+```yaml
+topics:
+  input:
+    format: json
+    lang: eng
+    filter_lang: rus
+    encoding: utf8
+    path: /exp/scale21/path/to/topics
+  fields: title
+```
+
 ### queries
 Prepare the queries for retrieval.
 This includes text normalization and query enrichment.

@@ -142,17 +142,19 @@ class SkipEntry(Exception):
 class Hc4JsonTopicReader(InputIterator):
     """Iterator over topics from jsonl file """
 
-    def __init__(self, path, encoding, lang, **kwargs):
+    def __init__(self, path, encoding, lang, filter_lang=None, **kwargs):
         """
         Args:
             path (str): Path to topics file.
             encoding (str): File encoding.
             lang (str): Language of the topics.
+            filter_lang (str): Remove topics that do not have this lang in lang_supported
             **kwargs (dict): Unused
         """
         self.path = path
         self.encoding = encoding
         self.lang = lang
+        self.filter_lang = filter_lang
         self.num_skipped = 0
         self.topics = iter(self._parse(path, encoding))
 
@@ -168,6 +170,8 @@ class Hc4JsonTopicReader(InputIterator):
     def _construct(self, data):
         # the default language in a topics file is always English
         try:
+            if self.filter_lang and self.filter_lang not in data['lang_supported']:
+                raise SkipEntry()
             if self.lang != "eng":
                 if self.lang not in data['lang_supported']:
                     raise SkipEntry()
@@ -195,10 +199,10 @@ class Hc4JsonTopicReader(InputIterator):
         with open(path, 'r', encoding=encoding) as fp:
             try:
                 topics = [self._construct(json.loads(data)) for data in fp]
-                # filter topics that are not supported for this language
+                # filter topics that are not supported for this language or have errors
+                topics = [topic for topic in topics if topic is not None]
                 if self.num_skipped:
                     LOGGER.info(f"Skipping {self.num_skipped} topics not supported for {self.lang}")
-                    topics = [topic for topic in topics if topic is not None]
                 if not topics:
                     raise ConfigError(f"No topics available for language {self.lang}")
                 return topics

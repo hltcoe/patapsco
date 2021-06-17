@@ -83,6 +83,7 @@ class TopicsInputConfig(BaseConfig):
     format: str
     lang: str
     encoding: str = "utf8"
+    filter_lang: Optional[str]  # language code - filter out topics that do not have this language in lang_supported
     strip_non_digits: bool = False
     prefix: Union[bool, str] = "EN-"
     path: Union[str, list]
