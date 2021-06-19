@@ -5,7 +5,7 @@ run:
     batch_size: 10
   stage2:
     mode: batch
-    batch_size: 1
+    batch_size: 0
 
 documents:
   input:
@@ -38,13 +38,6 @@ retrieve:
   name: bm25
   number: 5
 
-rerank:
-  name: mock
-
 score:
   input:
     path: samples/data/eng_mini_qrels
-  metrics:
-    - map
-    - P@20
-    - ndcg
