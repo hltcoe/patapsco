@@ -25,7 +25,7 @@ More information on configurable optional arguments below.
 | ----------- | ----------- |
 | doc_lang    | ISO 639-3 |
 | query_lang  | ISO 639-3 |
-| dp_path     | Path to sqlite3 db file |
+| db_path     | Path to sqlite3 db file |
 | input_path  | Path to jsonl file with retrieval results |
 | output_path | Path to trec output file to write |
 
@@ -60,3 +60,14 @@ The script will be called with those as an argument and value pair:
 This supports doing experiments through configuration.
 Different models or processing could occur based on these parameters.
 Debugging could be turned on or off.
+
+### Debugging
+Turn on output in the rerank section of the Patapsco config:
+```yaml
+rerank:
+  name: shell
+  script: /path/to/my/script
+  output: true
+```
+This will create a rerank sub-directory under the run directory. 
+In that directory will be a shell directory with a log file of everything written to stdout or stderr.

@@ -110,7 +110,7 @@ class ShellReranker(Reranker):
         self.batch += 1
         query_lang = self._get_query_lang(items)
         doc_lang = self._get_doc_lang(items)
-        input_path = str(self.dir / f"input_{self.batch}.json")
+        input_path = str(self.dir / f"input_{self.batch}.jsonl")
         output_path = str(self.dir / f"output_{self.batch}.txt")
         log_path = str(self.dir / f"log_{self.batch}.log")
         self._write_input(items, input_path)
@@ -146,7 +146,9 @@ class ShellReranker(Reranker):
     @staticmethod
     def _write_input(items, input_path):
         with open(input_path, 'w') as fp:
-            json.dump(items, fp, cls=DataclassJSONEncoder)
+            for item in items:
+                fp.write(json.dumps(item, cls=DataclassJSONEncoder))
+                fp.write("\n")
 
     @staticmethod
     def _read_output(output_path, lang):
