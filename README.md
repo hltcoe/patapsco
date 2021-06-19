@@ -120,7 +120,7 @@ patapsco --set run.name=my_test_run samples/configs/eng_basic.yml
 
 ## Submitting Results
 A run's output file plus the configuration used to generate the run can be submitted at the website: 
-https://scale21.org (not ready yet)
+https://scale21.org
 
 ## Bug Reports
 Use issues on Gitlab to report bugs or request new features.
