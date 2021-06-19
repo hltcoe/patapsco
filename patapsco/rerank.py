@@ -150,7 +150,6 @@ class ShellReranker(Reranker):
                 fp.write(json.dumps(item, cls=DataclassJSONEncoder))
                 fp.write("\n")
 
-
     @staticmethod
     def _read_output(output_path, lang):
         reader = TrecResultsReader(output_path, lang=lang)
