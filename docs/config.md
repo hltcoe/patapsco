@@ -214,9 +214,9 @@ score:
 
 ## Command line overrides
 Use the `--set` flag to override parameters in the configuration file.
-It excepts key, value pairs separated by a comma:
+Use `--set` for each parameter overriding:
 ```
---set retrieve.number=500,documents.process.tokenize=stanza
+--set retrieve.number=500 --set documents.process.tokenize=stanza
 ```
 
 ## Comments
