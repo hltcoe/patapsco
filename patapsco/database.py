@@ -1,4 +1,5 @@
 import json
+import logging
 import pathlib
 
 import sqlitedict
@@ -8,6 +9,8 @@ from .error import BadDataError, ConfigError
 from .pipeline import Task
 from .util import DataclassJSONEncoder
 from .util.file import is_complete
+
+LOGGER = logging.getLogger(__name__)
 
 
 def encode(doc):
@@ -99,8 +102,14 @@ class DatabaseWriter(Task):
         return doc
 
     def reduce(self, dirs):
+        LOGGER.debug("Reducing to a sqlite db from %s", ', '.join(str(x) for x in dirs))
         for base in dirs:
             path = base / 'docs.db'
-            db = sqlitedict.SqliteDict(str(path))
+            kwargs = {
+                'encode': encode,
+                'decode': decode,
+                'tablename': 'patapsco'
+            }
+            db = sqlitedict.SqliteDict(str(path), **kwargs)
             for doc_id in db:
                 self.db[doc_id] = db[doc_id]
