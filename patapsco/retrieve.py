@@ -49,6 +49,7 @@ class Java:
         # TODO can remove analyzer when newest version of pyserini is released
         self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
         self.SimpleSearcher = pyserini.search.SimpleSearcher
+        self.PSQIndexSearcher = jnius.autoclass('edu.jhu.hlt.psq.search.PSQIndexSearcher')
 
 
 class PyseriniRetriever(Task):
@@ -78,10 +79,15 @@ class PyseriniRetriever(Task):
                 self._searcher.set_qld(mu)
                 LOGGER.info(f'Using QLD with parameter mu={mu}')
             else:
-                k1 = self.config.k1
-                b = self.config.b
-                self._searcher.set_bm25(k1, b)
-                LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
+                if self.config.name == "psq":
+                    self._searcher = self.java.PSQIndexSearcher(str(self.index_dir))
+                    LOGGER.info(f'Using PSQ'
+                                f'')
+                else:
+                    k1 = self.config.k1
+                    b = self.config.b
+                    self._searcher.set_bm25(k1, b)
+                    LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
 
             if self.config.rm3:
                 fb_terms = self.config.fb_terms
@@ -109,7 +115,10 @@ class PyseriniRetriever(Task):
             Results
         """
 
-        hits = self.searcher.search(query.query, k=self.number)
+        if self.config.name == 'psq':
+            hits = self.searcher.searchPsq(query.query, self.number)
+        else:
+            hits = self.searcher.search(query.query, k=self.number)
         LOGGER.debug(f"Retrieved {len(hits)} documents for {query.id}: {query.query}")
         results = [Result(hit.docid, rank, hit.score) for rank, hit in enumerate(hits)]
         return Results(query, self.lang, str(self), results)
