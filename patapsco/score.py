@@ -141,13 +141,10 @@ class Scorer:
     def _write_scores(self, scores, scores_path):
         with open(scores_path, 'w') as fp:
             for q, results_dict in sorted(scores.items()):
-                # assume length of query_id is constant
-                query_str_len = len(q)
-                field_size = 8 * int(-(-query_str_len // 8))
                 for measure, value in sorted(results_dict.items()):
-                    print(('{:25s}{:' + str(field_size) + 's}{:.4f}').format(measure, q, value), file=fp)
+                    print('{:25s}\t{}\t{:.4f}'.format(measure, q, value), file=fp)
 
             for measure in sorted(self.metrics):
                 query_scores = [results_dict[measure] for results_dict in scores.values()]
                 agg = pytrec_eval.compute_aggregated_measure(measure, query_scores)
-                print('{:25s}{:8s}{:.4f}'.format(measure, 'all', agg), file=fp)
+                print('{:25s}\t{}\t{:.4f}'.format(measure, 'all', agg), file=fp)
