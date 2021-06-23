@@ -142,9 +142,9 @@ class Scorer:
         with open(scores_path, 'w') as fp:
             for q, results_dict in sorted(scores.items()):
                 for measure, value in sorted(results_dict.items()):
-                    print('{:25s}{:8s}{:.4f}'.format(measure, q, value), file=fp)
+                    print('{:25s}\t{}\t{:.4f}'.format(measure, q, value), file=fp)
 
             for measure in sorted(self.metrics):
                 query_scores = [results_dict[measure] for results_dict in scores.values()]
                 agg = pytrec_eval.compute_aggregated_measure(measure, query_scores)
-                print('{:25s}{:8s}{:.4f}'.format(measure, 'all', agg), file=fp)
+                print('{:25s}\t{}\t{:.4f}'.format(measure, 'all', agg), file=fp)
