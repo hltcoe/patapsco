@@ -1,5 +1,5 @@
-## !! Beware, this is a monkey patch to allow adding PSQ Java functionality to Pyserini without having to rewrite
-## !! portions of the search package !! ##
+# !! Beware, this is a monkey patch to allow adding PSQ Java functionality to Pyserini without having to rewrite !!
+# !! portions of the search package !!
 
 import glob
 import os
@@ -7,6 +7,7 @@ from pathlib import Path
 
 import jnius_config
 import pyserini.setup
+
 
 def configure_classpath_psq(anserini_root="."):
     """
@@ -24,7 +25,7 @@ def configure_classpath_psq(anserini_root="."):
     jnius_config.set_classpath(latest)
     jnius_config.add_classpath(str(list((Path(__file__).parent / 'resources' / 'jars').glob('psq*.jar'))[0]))
 
-## !! Beware, this is a monkey patch to allow adding PSQ Java functionality to Pyserini without having to rewrite
-## !! portions of the search package !! ##
-pyserini.setup.configure_classpath = configure_classpath_psq
 
+# !! Beware, this is a monkey patch to allow adding PSQ Java functionality to Pyserini without having to rewrite !!
+# !! portions of the search package !!
+pyserini.setup.configure_classpath = configure_classpath_psq

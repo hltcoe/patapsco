@@ -17,6 +17,7 @@ class IndexerFactory(TaskFactory):
     }
     config_class = IndexConfig
 
+
 class Java:
     """Wraps JVM access
 
@@ -59,7 +60,7 @@ class Java:
         self.BytesRef = jnius.autoclass('org.apache.lucene.util.BytesRef')
         self.JavaException = jnius.JavaException
         self.cast = jnius.cast
-        self.PSQIndexerSearcher = jnius.autoclass('edu.jhu.hlt.psq.search.PSQIndexSearcher')
+
 
 class LuceneIndexer(Task):
     """Lucene inverted index"""

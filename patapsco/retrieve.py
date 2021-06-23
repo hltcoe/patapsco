@@ -81,8 +81,7 @@ class PyseriniRetriever(Task):
             else:
                 if self.config.name == "psq":
                     self._searcher = self.java.PSQIndexSearcher(str(self.index_dir))
-                    LOGGER.info(f'Using PSQ'
-                                f'')
+                    LOGGER.info('Using PSQ')
                 else:
                     k1 = self.config.k1
                     b = self.config.b

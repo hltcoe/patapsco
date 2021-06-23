@@ -35,32 +35,6 @@ class TestLuceneIndex:
         lang_file = lucene_directory / ".lang"
         assert lang_file.read_text() == "eng"
 
-    # def test_two_indexes(self):
-    #     run_directory = self.temp_dir
-    #     output_directory = run_directory / pathlib.Path('testIndex') / 'part_0'
-    #     conf = IndexConfig(name='lucene', output=str(output_directory))
-    #     li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
-    #     li.begin()
-    #     li.process(Doc("1234", "eng", "this is a another test", None))
-    #     li.end()
-    #     assert output_directory.exists()
-    #
-    #     output_directory = run_directory / pathlib.Path('testIndex') / 'part_1'
-    #     conf = IndexConfig(name='lucene', output=str(output_directory))
-    #     li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
-    #     li.begin()
-    #     li.process(Doc("5678", "eng", "this is a test", None))
-    #     li.end()
-    #     assert output_directory.exists()
-    #
-    #     output_directory = run_directory / pathlib.Path('testIndex')
-    #     conf = IndexConfig(name='lucene', output=str(output_directory))
-    #     li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
-    #     li.begin()
-    #     li.reduce([str(output_directory / 'part_0'), str(output_directory / 'part_1')])
-    #     li.end()
-    #     assert output_directory.exists()
-    #
         ret_config = RetrieveConfig(
             input=RetrieveInputConfig(index=PathConfig(path=str(self.temp_dir / "testIndex"))),
             name="psq",
@@ -71,11 +45,4 @@ class TestLuceneIndex:
         assert len(results.results) == 4
         assert '2' == results.results[0].doc_id
         assert pytest.approx(0.5117189, results.results[0].score, 1e-5)
-
-
-    #
-    #     other_results = retriever.process(Query('124', 'eng', 'another', 'test', None))
-    #     assert len(other_results.results) == 1
-    #     assert other_results.results[0].doc_id == '1234'
-    #
         retriever.end()
