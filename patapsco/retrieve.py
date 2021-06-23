@@ -148,4 +148,5 @@ class PyseriniRetriever(Task):
         return Results(query, self.lang, str(self), results)
 
     def end(self):
-        self.searcher.close()
+        if self._searcher:
+            self._searcher.close()
