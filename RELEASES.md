@@ -3,6 +3,7 @@
  * Fixes reranker shell input so that jsonl is used
  * Adds a lang field to the top level of topic jsonl object
  * Fixes creation of sqlite database for parallel jobs
+ * Using tabs to separate columns in scoring output to match trec_eval
 
 ## 0.9.2
  * Adds support in retrieval for query likelihood model and pseudo relevance feedback
