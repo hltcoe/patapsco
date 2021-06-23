@@ -168,6 +168,7 @@ class RetrieveConfig(SectionConfig):
     fb_terms = 10
     fb_docs = 10
     original_query_weight = float(0.5)
+    rm3_logging: bool = False  # log expanded queries to rm3.log
 
 
 """""""""""""""""

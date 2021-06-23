@@ -87,7 +87,8 @@ class PyseriniRetriever(Task):
                 fb_terms = self.config.fb_terms
                 fb_docs = self.config.fb_docs
                 weight = self.config.original_query_weight
-                self._searcher.set_rm3(fb_terms, fb_docs, weight)
+                logging = self.config.rm3_logging
+                self._searcher.set_rm3(fb_terms, fb_docs, weight, logging)
                 LOGGER.info(f'Adding RM3: fb_terms={fb_terms}, fb_docs={fb_docs}, original_query_weight={weight}')
 
         return self._searcher
@@ -115,4 +116,5 @@ class PyseriniRetriever(Task):
         return Results(query, self.lang, str(self), results)
 
     def end(self):
-        self.searcher.close()
+        if self._searcher:
+            self._searcher.close()

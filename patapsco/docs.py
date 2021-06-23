@@ -230,9 +230,7 @@ class DocumentProcessor(TextProcessor):
             self.diffs += compare_strings(original_text, text)
 
         tokens = self.tokenize(text)
-        if self.run_lowercase:
-            tokens = self.lowercase(tokens)
-        stopword_indices = self.identify_stop_words(tokens, self.run_lowercase)
+        stopword_indices = self.identify_stop_words(tokens)
         tokens = self.stem(tokens)
         tokens = self.remove_stop_words(tokens, stopword_indices)
         text = self.post_normalize(' '.join(tokens))

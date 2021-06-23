@@ -308,9 +308,7 @@ class QueryGenerator:
         self.processor = processor
 
     def generate(self, query, text, tokens):
-        if self.processor.run_lowercase:
-            tokens = self.processor.lowercase(tokens)
-        stopword_indices = self.processor.identify_stop_words(tokens, self.processor.run_lowercase)
+        stopword_indices = self.processor.identify_stop_words(tokens)
         tokens = self.processor.stem(tokens)
         tokens = self.processor.remove_stop_words(tokens, stopword_indices)
         query_syntax = self.processor.post_normalize(' '.join(tokens))
@@ -334,7 +332,7 @@ class PSQGenerator(QueryGenerator):
 
     def generate(self, query, text, tokens):
         """Post process the tokens (stem, stop words, normalize) and generate PSQ"""
-        psq_tokens = self._project(self.processor.lowercase(tokens))
+        psq_tokens = self._project(token.lower() for token in tokens)
 
         # remove stop words and stem and apply to PSQ tokens
         text_tokens = [token.text for token in psq_tokens]
