@@ -351,8 +351,8 @@ class PSQGenerator(QueryGenerator):
 
         # formulate the query syntax for weighted query
         terms = [self._format_term(psq_token) for psq_token in psq_tokens]
-        query_syntax = self.processor.post_normalize(' '.join(terms))
-        return Query(query.id, query.lang, query_syntax, text, query.report)
+        query_syntax = self.processor.post_normalize(') ('.join(terms))
+        return Query(query.id, query.lang, 'psq AND (' + query_syntax + ')', text, query.report)
 
     def _format_term(self, psq_token):
         """mock PSQ syntax with Lucene boost syntax"""

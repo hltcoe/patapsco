@@ -16,6 +16,7 @@ class RetrieverFactory(TaskFactory):
     classes = {
         'bm25': 'PyseriniRetriever',
         'qld': 'PyseriniRetriever',
+        'psq': 'PyseriniRetriever',
     }
     config_class = RetrieveConfig
 
