@@ -125,6 +125,8 @@ class PyseriniRetriever(Task):
 
     def _log_explanation(self, query_text, hits):
         # this mimics how pyserini generates the lucene query object to gain access to explanations
+        if not hits:
+            return
         gen = self.java.BagOfWordsQueryGenerator()
         query = gen.buildQuery("contents", self.searcher.object.analyzer, query_text)
         LOGGER.info(self.searcher.object.searcher.explain(query, hits[0].lucene_docid).toString())
