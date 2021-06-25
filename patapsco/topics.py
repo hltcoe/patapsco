@@ -336,6 +336,11 @@ class PSQGenerator(QueryGenerator):
         """Post process the tokens (stem, stop words, normalize) and generate PSQ"""
         psq_tokens = self._project(self.processor.lowercase(tokens))
 
+        terms = [' '.join(self.process_psq(psq_clause)) for psq_clause in psq_tokens]
+        query_syntax = self.processor.post_normalize(') AND ('.join(terms))
+        return Query(query.id, query.lang, 'psq AND (' + query_syntax + ')', text, query.report)
+
+    def process_psq(self, psq_tokens):
         # remove stop words and stem and apply to PSQ tokens
         text_tokens = [token.text for token in psq_tokens]
         stopword_indices = self.processor.identify_stop_words(text_tokens, is_lower=True)
@@ -343,16 +348,13 @@ class PSQGenerator(QueryGenerator):
         for index in range(len(psq_tokens)):
             psq_tokens[index].text = text_tokens[index]
         psq_tokens = self.processor.remove_stop_words(psq_tokens, stopword_indices)
-
         # normalize the text of the PSQ tokens and remove those that are now empty
         for psq_token in psq_tokens:
             psq_token.text = self.processor.post_normalize(psq_token.text)
         psq_tokens = [psq_token for psq_token in psq_tokens if psq_token.text]
-
         # formulate the query syntax for weighted query
         terms = [self._format_term(psq_token) for psq_token in psq_tokens]
-        query_syntax = self.processor.post_normalize(') ('.join(terms))
-        return Query(query.id, query.lang, 'psq AND (' + query_syntax + ')', text, query.report)
+        return terms
 
     def _format_term(self, psq_token):
         """mock PSQ syntax with Lucene boost syntax"""
@@ -366,7 +368,7 @@ class PSQGenerator(QueryGenerator):
         eng_tokens = []
         for token in tokens:
             if token in self.psq_table:
-                eng_tokens.extend([PSQToken(text, prob) for text, prob in self.psq_table[token].items()])
+                eng_tokens.append([PSQToken(text, prob) for text, prob in self.psq_table[token].items()])
             else:
                 eng_tokens.append(PSQToken(token, None))
         return eng_tokens
