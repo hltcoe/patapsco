@@ -49,6 +49,7 @@ class Java:
         # TODO can remove analyzer when newest version of pyserini is released
         self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
         self.SimpleSearcher = pyserini.search.SimpleSearcher
+        self.BagOfWordsQueryGenerator = jnius.autoclass('io.anserini.search.query.BagOfWordsQueryGenerator')
 
 
 class PyseriniRetriever(Task):
@@ -67,6 +68,7 @@ class PyseriniRetriever(Task):
         self._searcher = None
         self.java = Java()
         self.lang = None  # documents language
+        self.log_explanations = config.log_explanations
 
     @property
     def searcher(self):
@@ -112,9 +114,17 @@ class PyseriniRetriever(Task):
 
         hits = self.searcher.search(query.query, k=self.number)
         LOGGER.debug(f"Retrieved {len(hits)} documents for {query.id}: {query.query}")
+        if self.log_explanations:
+            self._log_explanation(query.query, hits)
         results = [Result(hit.docid, rank, hit.score) for rank, hit in enumerate(hits)]
         return Results(query, self.lang, str(self), results)
 
     def end(self):
         if self._searcher:
             self._searcher.close()
+
+    def _log_explanation(self, query_text, hits):
+        # this mimics how pyserini generates the lucene query object to gain access to explanations
+        gen = self.java.BagOfWordsQueryGenerator()
+        query = gen.buildQuery("contents", self.searcher.object.analyzer, query_text)
+        LOGGER.info(self.searcher.object.searcher.explain(query, hits[0].lucene_docid).toString())
