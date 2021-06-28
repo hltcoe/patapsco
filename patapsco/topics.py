@@ -361,7 +361,7 @@ class PSQGenerator(QueryGenerator):
         if psq_token.prob:
             return f"{psq_token.text}^{psq_token.prob:.4f}"
         else:
-            return psq_token.text
+            return f"{psq_token.text}^{1.0}"
 
     def _project(self, tokens):
         """project the query into the target language"""
@@ -370,7 +370,7 @@ class PSQGenerator(QueryGenerator):
             if token in self.psq_table:
                 eng_tokens.append([PSQToken(text, prob) for text, prob in self.psq_table[token].items()])
             else:
-                eng_tokens.append(PSQToken(token, None))
+                eng_tokens.append([PSQToken(token, None)])
         return eng_tokens
 
 
