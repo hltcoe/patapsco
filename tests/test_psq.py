@@ -41,7 +41,7 @@ class TestLuceneIndex:
             output="retrieve")
         retriever = PyseriniRetriever(run_path='.', config=ret_config)
         retriever.begin()
-        results = retriever.process(Query('123', 'eng', '(gato^0.8 felino^0.2) AND (extra^0.9 words^0.1)', 'test', None))
+        results = retriever.process(Query('123', 'eng', 'psq AND (gato^0.8 felino^0.2) AND (extra^0.9 words^0.1)', 'test', None))
         assert len(results.results) == 4
         assert '2' == results.results[0].doc_id
         assert pytest.approx(0.5117189, results.results[0].score, 1e-5)

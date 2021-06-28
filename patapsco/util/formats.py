@@ -118,7 +118,11 @@ def normalize_psq_entry(entry, cum_thresh=0.97, elem_thresh=1e-5):
     entry = dict(sorted(entry.items(), key=lambda item: item[1], reverse=True))
     if cum_thresh < 1:
         probs = np.array(list(entry.values()), dtype='float')
-        index = np.where(np.cumsum(probs) > cum_thresh)[0][0]
+        cum_index = np.where(np.cumsum(probs) > cum_thresh)
+        if cum_index[0].size == 0:
+            index = len(entry) - 1
+        else:
+            index = np.where(np.cumsum(probs) > cum_thresh)[0][0]
         entry = dict(itertools.islice(entry.items(), int(index) + 1))
         total = sum(entry.values())
         entry = {word: prob / total for word, prob in entry.items()}
