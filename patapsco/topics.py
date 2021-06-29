@@ -356,12 +356,32 @@ class PSQGenerator(QueryGenerator):
         terms = [self._format_term(psq_token) for psq_token in psq_tokens]
         return terms
 
+    def escape_term(self, term):
+        return term.translate(str.maketrans({"-":  r"\-",
+                                             "]":  r"\]",
+                                             "[":  r"\[",
+                                             "+":  r"\+",
+                                             "|":  r"\|",
+                                             "!":  r"\!",
+                                             "(":  r"\(",
+                                             ")":  r"\)",
+                                             "}":  r"\}",
+                                             "{":  r"\{",
+                                             "\"":  r"\\\"",
+                                             "~":  r"\~",
+                                             "?":  r"\?",
+                                             "\\": r"\\",
+                                             "^":  r"\^",
+                                             "*":  r"\*",
+                                             "&":  r"\&",
+                                             ":":  r"\:"}))
+
     def _format_term(self, psq_token):
         """mock PSQ syntax with Lucene boost syntax"""
         if psq_token.prob:
-            return f"{psq_token.text}^{psq_token.prob:.4f}"
+            return f"{escapse_term(psq_token.text)}^{psq_token.prob:.4f}"
         else:
-            return f"{psq_token.text}^{1.0}"
+            return f"{escapse_term(psq_token.text)}^{1.0}"
 
     def _project(self, tokens):
         """project the query into the target language"""
