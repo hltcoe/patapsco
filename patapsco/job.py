@@ -302,7 +302,6 @@ class QsubJob(Job):
         conf.run.path = str(pathlib.Path(self.run_path).absolute())
         self.qsub_config = conf.run.parallel.copy()
         self.email = f"#$ -m ea -M {self.qsub_config.email}" if self.qsub_config.email else ''
-        conf.run.parallel = None  # blank out parallel for all the sub-jobs
         self.base_dir = (pathlib.Path(self.run_path) / 'qsub').absolute()
         try:
             self.base_dir.mkdir(parents=True)
@@ -555,7 +554,17 @@ class JobBuilder:
         if stage2 and Tasks.RETRIEVE in stage2_plan:
             self.check_text_processing()
 
-        if self.conf.run.parallel:
+        if self.job_type == JobType.MAP:
+            # Map jobs are always plain serial jobs
+            return SerialJob(self.conf, stage1, stage2)
+        elif self.job_type == JobType.REDUCE:
+            # Reduce jobs have their own type
+            if self.parallel_args['stage'] == 1:
+                return ReduceJob(self.conf, stage1, None, debug)
+            else:
+                return ReduceJob(self.conf, None, stage2, debug)
+        elif self.conf.run.parallel:
+            # this is the parent job for multiprocessing, qsub, etc.
             parallel_type = self.conf.run.parallel.name.lower()
             if parallel_type == "mp":
                 return MultiprocessingJob(self.conf, stage1, stage2, debug)
@@ -563,12 +572,8 @@ class JobBuilder:
                 return QsubJob(self.conf, stage1, stage2, debug)
             else:
                 raise ConfigError(f"Unknown parallel job type: {self.conf.run.parallel.name}")
-        elif self.job_type == JobType.REDUCE:
-            if self.parallel_args['stage'] == 1:
-                return ReduceJob(self.conf, stage1, None, debug)
-            else:
-                return ReduceJob(self.conf, None, stage2, debug)
         else:
+            # plain old single threaded job
             return SerialJob(self.conf, stage1, stage2)
 
     def _create_stage1_plan(self):
