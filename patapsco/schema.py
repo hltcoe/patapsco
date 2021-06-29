@@ -157,6 +157,7 @@ class RetrieveConfig(SectionConfig):
     input: Optional[RetrieveInputConfig]
     output: Union[bool, str] = True
     log_explanations: bool = False
+    log_explanations_cutoff: int = 10
 
     # Parameters for retrieval approaches
     # bm25

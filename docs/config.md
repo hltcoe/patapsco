@@ -179,6 +179,21 @@ retrieve:
 ```
 This uses default parameters for both bm25 and rm3.
 
+#### logging
+Lucene explanations can be logged using the parameters:
+```yaml
+  log_explanations: true
+  log_explanations_cutoff: 10
+```
+The cutoff controls how many of the top documents have their explanations logged.
+
+RM3 query expansion can be logged also:
+```yaml
+  rm3_logging: true
+```
+
+Note that the RM3 expanded queries are not included in the Lucene explanations.
+
 ### rerank
 Rerank will usually call an external script.
 The path to the script and parameters for it are configured here.

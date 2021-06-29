@@ -69,6 +69,7 @@ class PyseriniRetriever(Task):
         self.java = Java()
         self.lang = None  # documents language
         self.log_explanations = config.log_explanations
+        self.log_explanations_cutoff = config.log_explanations_cutoff
 
     @property
     def searcher(self):
@@ -129,4 +130,6 @@ class PyseriniRetriever(Task):
             return
         gen = self.java.BagOfWordsQueryGenerator()
         query = gen.buildQuery("contents", self.searcher.object.analyzer, query_text)
-        LOGGER.info(self.searcher.object.searcher.explain(query, hits[0].lucene_docid).toString())
+        for index in range(min(len(hits), self.log_explanations_cutoff)):
+            explanation = self.searcher.object.searcher.explain(query, hits[index].lucene_docid).toString()
+            LOGGER.info(f"doc_id: {hits[index].docid} - explanation: {explanation}")
