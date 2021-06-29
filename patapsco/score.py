@@ -96,6 +96,7 @@ class Scorer:
         remove_from_qrels = set(self.qrels.keys()) - set(system_output.keys())
         if remove_from_qrels:
             LOGGER.warning(f'Omitting {len(remove_from_qrels)} topics in the qrels that are not in the run')
+            LOGGER.warning(f"Omitted queries are {', '.join(remove_from_qrels)}")
             self._filter_dict(system_output, remove_from_qrels)
         measures = {s for s in self.metrics}
         ndcg_prime_results = {}
