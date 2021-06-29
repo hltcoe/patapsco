@@ -70,6 +70,7 @@ class PyseriniRetriever(Task):
         self.lang = None  # documents language
         self.log_explanations = config.log_explanations
         self.log_explanations_cutoff = config.log_explanations_cutoff
+        LOGGER.info(f"Index location: {self.index_dir}")
 
     @property
     def searcher(self):
