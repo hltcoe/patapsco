@@ -357,24 +357,24 @@ class PSQGenerator(QueryGenerator):
         return terms
 
     def escape_term(self, term):
-        return term.translate(str.maketrans({"-":  r"\-",
-                                             "]":  r"\]",
-                                             "[":  r"\[",
-                                             "+":  r"\+",
-                                             "|":  r"\|",
-                                             "!":  r"\!",
-                                             "(":  r"\(",
-                                             ")":  r"\)",
-                                             "}":  r"\}",
-                                             "{":  r"\{",
-                                             "\"":  r"\\\"",
-                                             "~":  r"\~",
-                                             "?":  r"\?",
+        return term.translate(str.maketrans({"-": r"\-",
+                                             "]": r"\]",
+                                             "[": r"\[",
+                                             "+": r"\+",
+                                             "|": r"\|",
+                                             "!": r"\!",
+                                             "(": r"\(",
+                                             ")": r"\)",
+                                             "}": r"\}",
+                                             "{": r"\{",
+                                             "\"": r"\\\"",
+                                             "~": r"\~",
+                                             "?": r"\?",
                                              "\\": r"\\",
-                                             "^":  r"\^",
-                                             "*":  r"\*",
-                                             "&":  r"\&",
-                                             ":":  r"\:"}))
+                                             "^": r"\^",
+                                             "*": r"\*",
+                                             "&": r"\&",
+                                             ":": r"\:"}))
 
     def _format_term(self, psq_token):
         """mock PSQ syntax with Lucene boost syntax"""
