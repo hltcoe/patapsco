@@ -379,9 +379,9 @@ class PSQGenerator(QueryGenerator):
     def _format_term(self, psq_token):
         """mock PSQ syntax with Lucene boost syntax"""
         if psq_token.prob:
-            return f"{escape_term(psq_token.text)}^{psq_token.prob:.4f}"
+            return f"{self.escape_term(psq_token.text)}^{psq_token.prob:.4f}"
         else:
-            return f"{escape_term(psq_token.text)}^{1.0}"
+            return f"{self.escape_term(psq_token.text)}^{1.0}"
 
     def _project(self, tokens):
         """project the query into the target language"""
