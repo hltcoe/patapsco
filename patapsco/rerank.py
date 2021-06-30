@@ -131,7 +131,7 @@ class ShellReranker(Reranker):
         # get fields not included in the config definition and add them after the script path
         fields = set(RerankConfig.__fields__.keys())
         attributes = [attribute for attribute in self.config.__fields_set__ if attribute not in fields]
-        pairs = [['--' + attribute, getattr(self.config, attribute)] for attribute in attributes]
+        pairs = [['--' + attribute, str(getattr(self.config, attribute))] for attribute in attributes]
         pairs = itertools.chain(*pairs)
         # make sure all paths are absolute
         db_path = str(pathlib.Path(self.db.path).absolute())
