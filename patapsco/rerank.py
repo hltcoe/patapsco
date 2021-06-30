@@ -4,6 +4,7 @@ import json
 import pathlib
 import logging
 import subprocess
+import os
 from tempfile import TemporaryDirectory
 
 from .error import BadDataError, ConfigError, PatapscoError
@@ -116,7 +117,7 @@ class ShellReranker(Reranker):
         self._write_input(items, input_path)
         args = self._create_args(doc_lang, query_lang, input_path, output_path)
         try:
-            record = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+            record = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True, env=os.environ.copy())
             self._write_log(log_path, record.args, record.stdout)
         except subprocess.CalledProcessError as e:
             self._write_log(log_path, e.cmd, e.output)
@@ -131,7 +132,7 @@ class ShellReranker(Reranker):
         # get fields not included in the config definition and add them after the script path
         fields = set(RerankConfig.__fields__.keys())
         attributes = [attribute for attribute in self.config.__fields_set__ if attribute not in fields]
-        pairs = [['--' + attribute, getattr(self.config, attribute)] for attribute in attributes]
+        pairs = [['--' + attribute, str(getattr(self.config, attribute))] for attribute in attributes]
         pairs = itertools.chain(*pairs)
         # make sure all paths are absolute
         db_path = str(pathlib.Path(self.db.path).absolute())
