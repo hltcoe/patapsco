@@ -4,7 +4,6 @@ import json
 import pathlib
 import logging
 import subprocess
-import os
 from tempfile import TemporaryDirectory
 
 from .error import BadDataError, ConfigError, PatapscoError
