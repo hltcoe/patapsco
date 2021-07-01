@@ -158,6 +158,9 @@ queries:
 ```
 The jsonl format for queries is defined in `formats.md`.
 
+If you want to do different text processing on the documents and queries, set `strict_check` under `process` to false.
+This is useful if preprocessing the queries in specific ways outside of Patapsco.
+
 ### retrieve
 The only retrieve component currently is lucene through pyserini.
 The most basic config for retrieve looks like this:

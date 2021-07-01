@@ -1,12 +1,6 @@
 run:
   name: English basic run
 
-text:
-  normalize:
-    lowercase: true
-  tokenize: whitespace
-  stem: porter
-
 documents:
   input:
     format: json
@@ -14,7 +8,10 @@ documents:
     encoding: utf8
     path: samples/data/eng_mini_docs.jsonl
   process:
-    inherit: text
+    normalize:
+      lowercase: true
+    tokenize: whitespace
+    stem: porter
   comment: Mini English dataset
   output: true
 
@@ -34,7 +31,11 @@ topics:
 
 queries:
   process:
-    inherit: text
+    normalize:
+      lowercase: true
+    tokenize: spacy
+    stem: spacy
+    strict_check: off
 
 retrieve:
   name: bm25
