@@ -557,7 +557,7 @@ class JobBuilder:
 
         if not stage1 and stage2 and Tasks.RERANK in stage2_plan:
             self.check_sources_of_documents()
-        if stage2 and Tasks.RETRIEVE in stage2_plan:
+        if stage2 and Tasks.RETRIEVE in stage2_plan and self.conf.queries.process.strict_check:
             self.check_text_processing()
 
         if self.job_type == JobType.MAP:
