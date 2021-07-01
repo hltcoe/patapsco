@@ -3,7 +3,7 @@ A Patapsco run is configured with a YAML or JSON file.
 The schema for the configuration is defined in [schema.py](../patapsco/schema.py).
 
 ## Structure
-A configuration file contains a section for the specific run and then a section per task (documents, index, topics, queries, retrieve, rerank, score).
+A configuration file contains a section for the specific run and then a section per task (documents, database, index, topics, queries, retrieve, rerank, score).
 Partial runs are possible by only including a subset of the tasks.
 
 
@@ -57,6 +57,7 @@ run:
 ```
 
 ### database
+The document database is for the rerankers and only needs to be created once per dataset.
 The documents are normalized (control characters removed, smart quotes normalized) and stored in a database.
 
 | field    | required | description |
@@ -146,6 +147,17 @@ queries:
     inherit: documents.process
 ```
 
+If you have queries that you want to run directly (and skip the query creation processing in the topics task),
+set the input path to point to the jsonl file of the queries:
+```yaml
+queries:
+  input:
+    path: /path/to/queries.jsonl
+  process:
+    inherit: documents.process
+```
+The jsonl format for queries is defined in `formats.md`.
+
 ### retrieve
 The only retrieve component currently is lucene through pyserini.
 The most basic config for retrieve looks like this:
@@ -203,6 +215,16 @@ RM3 query expansion can be logged also:
 
 Note that the RM3 expanded queries are not included in the Lucene explanations.
 
+### prebuilt index
+If running just stage 2 of Patapsco, you need to configure the location of the index:
+```yaml
+retrieve:
+  input:
+    index:
+      path: /path/to/lucene/directory
+```
+This is generally the `index` directory from a previous run. 
+
 ### rerank
 Rerank will usually call an external script.
 The path to the script and parameters for it are configured here.
@@ -215,6 +237,17 @@ rerank:
   embedding: my_favorite_embedding
   secret: 42
 ```
+
+### prebuilt index
+If running just stage 2 of Patapsco, you need to configure the location of the document database:
+```yaml
+retrieve:
+  input:
+    database:
+      path: /path/to/database/directory
+```
+This is generally the `database` directory from a previous run. 
+
 
 ### score
 If there are available qrels, config them here.
