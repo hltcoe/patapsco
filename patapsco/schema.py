@@ -41,6 +41,7 @@ class TextProcessorConfig(SectionConfig):
     tokenize: str
     stopwords: Union[bool, str] = "lucene"
     stem: Union[bool, str] = False
+    strict_check: bool = True  # check whether the processing is the same for documents and queries
 
 
 """""""""""""""""
