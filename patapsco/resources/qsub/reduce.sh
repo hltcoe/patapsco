@@ -6,6 +6,8 @@
 #$ -l {resources}
 {email}
 
+{code}
+
 DATE=$(date '+%Y-%m-%d %H:%M:%S,%3N')
 PYTHON_VERSION=$(python --version)
 PYTHON_EXE=$(which python)
