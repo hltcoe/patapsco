@@ -33,7 +33,16 @@ Defines properties of the run and how the pipelines work.
 | queue             | no       | Defaults to all.q. |
 | email             | no       | Your email address if desire notifications. |
 | resources         | no       | qsub resources. Default is 'h_rt=12:00:00'. |
+| code              | no       | additional code to insert into the bash scripts. |
 
+The `code` parameter is useful if you need to configure the environment that your job is running in.
+Examples include activating a conda environment, adding modules, or setting environment variables.
+To insert multiple lines for the code parameter use a `|`:
+```yaml
+  code: |
+    export MY_VAR=12345
+    module add java
+```
 
 #### example
 ```yaml

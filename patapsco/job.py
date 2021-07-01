@@ -354,12 +354,14 @@ class QsubJob(Job):
         template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'map.sh'
         template = template_path.read_text()
         debug = '-d' if debug else ''
+        code = self.qsub_config.code if self.qsub_config.code else ''
         if self.stage1:
             num_jobs = self.conf.run.stage1.num_jobs
             LOGGER.debug(f"Stage 1 is using {num_jobs} jobs")
             increment = self._get_stage1_increment(num_jobs)
             content = template.format(
                 base=str(self.base_dir),
+                code=code,
                 config=str(self.config_path),
                 debug=debug,
                 increment=increment,
@@ -375,6 +377,7 @@ class QsubJob(Job):
             increment = self._get_stage2_increment(num_jobs)
             content = template.format(
                 base=str(self.base_dir),
+                code=code,
                 config=str(self.config_path),
                 debug=debug,
                 increment=increment,
@@ -389,9 +392,11 @@ class QsubJob(Job):
         template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'reduce.sh'
         template = template_path.read_text()
         debug = '-d' if debug else ''
+        code = self.qsub_config.code if self.qsub_config.code else ''
         if self.stage1:
             content = template.format(
                 base=str(self.base_dir),
+                code=code,
                 config=str(self.config_path),
                 debug=debug,
                 email=self.email,
@@ -403,6 +408,7 @@ class QsubJob(Job):
         if self.stage2:
             content = template.format(
                 base=str(self.base_dir),
+                code=code,
                 config=str(self.config_path),
                 debug=debug,
                 email=self.email,
