@@ -34,7 +34,7 @@ class NormalizationConfig(BaseConfig):
     lowercase: bool = True
 
 
-class TextProcessorConfig(BaseConfig):
+class TextProcessorConfig(SectionConfig):
     """Configuration for the text processing"""
     model_path: Optional[str]  # path to spacy or stanza model directory
     normalize: NormalizationConfig = NormalizationConfig()
@@ -246,6 +246,7 @@ class RunConfig(SectionConfig):
 class RunnerConfig(BaseConfig):
     """Configuration for the patapsco runner"""
     run: RunConfig
+    text: Optional[TextProcessorConfig]
     documents: Optional[DocumentsConfig]
     database: Optional[DatabaseConfig]
     index: Optional[IndexConfig]
