@@ -117,7 +117,7 @@ class ShellReranker(Reranker):
         self._write_input(items, input_path)
         args = self._create_args(doc_lang, query_lang, input_path, output_path)
         try:
-            record = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True, env=os.environ.copy())
+            record = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
             self._write_log(log_path, record.args, record.stdout)
         except subprocess.CalledProcessError as e:
             self._write_log(log_path, e.cmd, e.output)
