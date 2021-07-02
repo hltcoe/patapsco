@@ -1,7 +1,6 @@
 #!/bin/bash
 
 #SBATCH --job-name=patapsco-map-stage-{stage}
-#SBATCH --output={base}
 #SBATCH {resources}
 #SBATCH --array=1-{num_jobs}
 

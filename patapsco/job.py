@@ -348,15 +348,15 @@ class QsubJob(Job):
 
     def _launch_job(self, script_path, hold=None):
         """Launch a qsub job and return the job id"""
-        args = ['qsub', '-terse', '-q', self.qsub_config.queue]
+        args = ['sbatch', '-p', self.qsub_config.queue]
         if hold:
-            args.extend(['-hold_jid', hold])
+            args.extend(['--depend=afterok:' + hold])
         args.append(str(script_path))
         if self.debug:
             LOGGER.debug(' '.join([str(arg) for arg in args]))
         try:
             ps = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
-            job_id = ps.stdout.decode().strip()
+            job_id = ps.stdout.decode().strip().split()[-1]
             # array jobs have ids of xxxxxxx.1-num_jobs
             return job_id.split('.')[0]
         except subprocess.CalledProcessError as e:
