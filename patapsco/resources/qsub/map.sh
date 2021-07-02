@@ -1,8 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=patapsco-map-stage-{stage}
+#$ -N patapsco-map-stage-{stage}
+#$ -j y
 #$ -o {base}
-#$ -l {resources}
+{resources}
 #$ -t 1-{num_jobs}
 
 {code}

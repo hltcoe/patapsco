@@ -227,10 +227,10 @@ class StageConfig(BaseConfig):
 
 
 class ParallelConfig(BaseConfig):
-    name: str  # mp or qsub
-    queue: Optional[str] = "normal"  # used for qsub jobs
+    name: str  # mp, qsub, or sbatch
+    queue: Optional[str] = "all.q"  # used for qsub jobs
     email: Optional[str]  # email address for job completion notifications
-    resources: str = "-t 12:00:00"  # default to 12 hours as an upper limit
+    resources: str = "h_rt=12:00:00"  # default to 12 hours as an upper limit (this is qsub format)
     code: Optional[str]  # extra lines to add to bash scripts
 
 

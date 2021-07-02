@@ -1,10 +1,11 @@
 #!/bin/bash
 
 #SBATCH --job-name=patapsco-map-stage-{stage}
-#SBATCH {resources}
+#SBATCH -o {base}/patapsco-map-stage-{stage}-%j.out
+{resources}
 #SBATCH --array=1-{num_jobs}
 
-# we want zero-based job ids
+# we want zero-based job ids (slurm supports 0-based array job ids so we could change this)
 JOB_ID=$(($SLURM_ARRAY_TASK_ID-1))
 
 DATE=$(date '+%Y-%m-%d %H:%M:%S,%3N')
