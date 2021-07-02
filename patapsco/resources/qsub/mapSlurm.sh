@@ -1,14 +1,12 @@
 #!/bin/bash
 
 #SBATCH --job-name=patapsco-map-stage-{stage}
-#$ -o {base}
-#$ -l {resources}
-#$ -t 1-{num_jobs}
-
-{code}
+#SBATCH --output={base}
+#SBATCH {resources}
+#SBATCH --array=1-{num_jobs}
 
 # we want zero-based job ids
-JOB_ID=$(($SGE_TASK_ID-1))
+JOB_ID=$(($SLURM_ARRAY_TASK_ID-1))
 
 DATE=$(date '+%Y-%m-%d %H:%M:%S,%3N')
 PYTHON_VERSION=$(python --version)

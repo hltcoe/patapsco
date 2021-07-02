@@ -293,7 +293,18 @@ class MultiprocessingJob(Job):
         base_dir = pathlib.Path(self.run_path)
         [delete_dir(item) for item in base_dir.glob('part*')]
 
+# #SBATCH --job-name=patapsco-reduce-stage-1    # Job name
+# #SBATCH --mail-type=END,FAIL          # Mail events (NONE, BEGIN, END, FAIL, ALL)
+# #SBATCH --mail-user=email@ufl.edu     # Where to send mail
+# #SBATCH --ntasks=1                    # Run on a single CPU
+# #SBATCH --mem=1gb                     # Job memory request
+# #SBATCH --time=12:00:00               # Time limit hrs:min:sec
+# #SBATCH --output=/home/marc/dev/scale2021/infrastructure/pipeline/runs/English-qsub/qsub   # Standard output and error log
 
+# #$ -N patapsco-reduce-stage-1
+# #$ -j y
+# #$ -o /home/marc/dev/scale2021/infrastructure/pipeline/runs/English-qsub/qsub
+# #$ -l h_rt=12:00:00
 class QsubJob(Job):
     """Parallel job that uses qsub."""
     def __init__(self, conf, stage1, stage2, debug):
