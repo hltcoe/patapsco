@@ -301,7 +301,7 @@ class ClusterJob(Job):
         self.debug = debug
         conf.run.path = str(pathlib.Path(self.run_path).absolute())
         self.cluster_config = conf.run.parallel.copy()
-        self.scheduler = 'qsub' if self.cluster_config == 'qsub' else 'sbatch'
+        self.scheduler = 'qsub' if self.cluster_config.name == 'qsub' else 'sbatch'
         self.email = self._prepare_email()
         self.base_dir = (pathlib.Path(self.run_path) / self.scheduler).absolute()
         try:
