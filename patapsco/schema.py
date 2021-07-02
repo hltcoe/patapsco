@@ -34,13 +34,14 @@ class NormalizationConfig(BaseConfig):
     lowercase: bool = True
 
 
-class TextProcessorConfig(BaseConfig):
+class TextProcessorConfig(SectionConfig):
     """Configuration for the text processing"""
     model_path: Optional[str]  # path to spacy or stanza model directory
     normalize: NormalizationConfig = NormalizationConfig()
     tokenize: str
     stopwords: Union[bool, str] = "lucene"
     stem: Union[bool, str] = False
+    strict_check: bool = True  # check whether the processing is the same for documents and queries
 
 
 """""""""""""""""
@@ -156,6 +157,8 @@ class RetrieveConfig(SectionConfig):
     number: int = 1000
     input: Optional[RetrieveInputConfig]
     output: Union[bool, str] = True
+    log_explanations: bool = False
+    log_explanations_cutoff: int = 10
 
     # Parameters for retrieval approaches
     # bm25
@@ -168,6 +171,7 @@ class RetrieveConfig(SectionConfig):
     fb_terms = 10
     fb_docs = 10
     original_query_weight = float(0.5)
+    rm3_logging: bool = False  # log expanded queries to rm3.log
 
 
 """""""""""""""""
@@ -227,6 +231,7 @@ class ParallelConfig(BaseConfig):
     queue: Optional[str] = "all.q"  # used for qsub jobs
     email: Optional[str]  # email address for job completion notifications
     resources: str = "h_rt=12:00:00"  # default to 12 hours as an upper limit
+    code: Optional[str]  # extra lines to add to bash scripts
 
 
 class RunConfig(SectionConfig):
@@ -242,6 +247,7 @@ class RunConfig(SectionConfig):
 class RunnerConfig(BaseConfig):
     """Configuration for the patapsco runner"""
     run: RunConfig
+    text: Optional[TextProcessorConfig]
     documents: Optional[DocumentsConfig]
     database: Optional[DatabaseConfig]
     index: Optional[IndexConfig]

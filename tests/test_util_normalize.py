@@ -1,3 +1,4 @@
+from patapsco.schema import NormalizationConfig
 from patapsco.util.normalize import *
 
 
@@ -18,6 +19,14 @@ class TestCompare:
 
 
 class TestNormalizer:
+    def test_post_normalize_lowercase(self):
+        normalizer = GenericNormalizer(NormalizationConfig(lowercase=True))
+        assert normalizer.post_normalize("Test test") == "test test"
+
+    def test_post_normalize_no_casing(self):
+        normalizer = GenericNormalizer(NormalizationConfig(lowercase=False))
+        assert normalizer.post_normalize("Test test") == "Test test"
+
     def test_spaces_tabs(self):
         assert Normalizer.update_spaces("a\t\tb") == "a b"
 
@@ -32,8 +41,8 @@ class TestNormalizer:
             assert Normalizer.update_spaces(f"a{space}b") == "a b"
 
     def test_remove_rtl(self):
-        assert Normalizer().remove_format_chars('a\u200eb') == "ab"
-        assert Normalizer().remove_format_chars('a\u202cb') == "ab"
+        assert Normalizer(NormalizationConfig()).remove_format_chars('a\u200eb') == "ab"
+        assert Normalizer(NormalizationConfig()).remove_format_chars('a\u202cb') == "ab"
 
     def test_remove_control_chars(self):
         assert Normalizer.remove_control_chars("a\uFEFFb") == "ab"

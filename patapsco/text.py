@@ -43,7 +43,13 @@ class PorterStemmer(Stemmer):
         self.stemmer = nltk.stem.porter.PorterStemmer()
 
     def stem(self, tokens):
-        return [self.stemmer.stem(token, to_lowercase=False) for token in tokens]
+        return [self._stem(token) for token in tokens]
+
+    def _stem(self, token):
+        try:
+            return self.stemmer.stem(token, to_lowercase=False)
+        except RecursionError:
+            return token
 
 
 class Tokenizer:
@@ -500,7 +506,6 @@ class TextProcessor(Task):
         super().__init__(run_path)
         self.lang = lang
         self.processor_config = config
-        self.run_lowercase = config.normalize.lowercase
         TokenizerStemmerFactory.validate(config, lang)
         self.normalizer = None
         self.tokenizer = None
@@ -508,7 +513,7 @@ class TextProcessor(Task):
         self.stopword_remover = None
 
     def begin(self):
-        self.normalizer = NormalizerFactory.create(self.lang)
+        self.normalizer = NormalizerFactory.create(self.lang, self.processor_config.normalize)
         self.tokenizer = TokenizerStemmerFactory.create_tokenizer(self.processor_config, self.lang)
         self.stemmer = TokenizerStemmerFactory.create_stemmer(self.processor_config, self.lang)
         if self.processor_config.stopwords:
@@ -526,9 +531,6 @@ class TextProcessor(Task):
 
     def tokenize(self, text):
         return self.tokenizer.tokenize(text)
-
-    def lowercase(self, tokens):
-        return [token.lower() for token in tokens]
 
     def identify_stop_words(self, tokens, is_lower=False):
         if self.stopword_remover:

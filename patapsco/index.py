@@ -91,7 +91,7 @@ class LuceneIndexer(Task):
 
     def _create_field_type(self):
         self.field_type = self.java.FieldType()
-        self.field_type.setStored(True)
+        self.field_type.setStored(False)
         self.field_type.setTokenized(True)
         self.field_type.setStoreTermVectors(True)
         self.field_type.setIndexOptions(self.java.IndexOptions.DOCS_AND_FREQS)

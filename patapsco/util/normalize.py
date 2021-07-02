@@ -190,10 +190,10 @@ class NormalizerFactory:
     }
 
     @classmethod
-    def create(cls, lang):
+    def create(cls, lang, config):
         if lang in cls.classes:
             namespace = vars(sys.modules[cls.__module__])
-            return namespace[cls.classes[lang]]()
+            return namespace[cls.classes[lang]](config)
         else:
             raise ValueError(f"Unknown language: {lang}")
 
@@ -208,7 +208,8 @@ class Normalizer:
         '\u00a0', '\u00ad', '\u200b-\u200d', '\u2060-\u2063',  # Joiners, non-joiners, etc.
     ]
 
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
         format_chars = ''.join(self._expand_chars(x) for x in self.FORMAT_RANGE)
         self.format_trans = str.maketrans('', '', format_chars)
 
@@ -261,6 +262,8 @@ class GenericNormalizer(Normalizer):
 
         This could operate on token text or entire an document.
         """
+        if self.config.lowercase:
+            return text.lower()
         return text
 
 

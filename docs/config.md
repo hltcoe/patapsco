@@ -3,7 +3,7 @@ A Patapsco run is configured with a YAML or JSON file.
 The schema for the configuration is defined in [schema.py](../patapsco/schema.py).
 
 ## Structure
-A configuration file contains a section for the specific run and then a section per task (documents, index, topics, queries, retrieve, rerank, score).
+A configuration file contains a section for the specific run and then a section per task (documents, database, index, topics, queries, retrieve, rerank, score).
 Partial runs are possible by only including a subset of the tasks.
 
 
@@ -33,7 +33,16 @@ Defines properties of the run and how the pipelines work.
 | queue             | no       | Defaults to all.q. |
 | email             | no       | Your email address if desire notifications. |
 | resources         | no       | qsub resources. Default is 'h_rt=12:00:00'. |
+| code              | no       | additional code to insert into the bash scripts. |
 
+The `code` parameter is useful if you need to configure the environment that your job is running in.
+Examples include activating a conda environment, adding modules, or setting environment variables.
+To insert multiple lines for the code parameter use a `|`:
+```yaml
+  code: |
+    export MY_VAR=12345
+    module add java
+```
 
 #### example
 ```yaml
@@ -48,6 +57,7 @@ run:
 ```
 
 ### database
+The document database is for the rerankers and only needs to be created once per dataset.
 The documents are normalized (control characters removed, smart quotes normalized) and stored in a database.
 
 | field    | required | description |
@@ -137,6 +147,20 @@ queries:
     inherit: documents.process
 ```
 
+If you have queries that you want to run directly (and skip the query creation processing in the topics task),
+set the input path to point to the jsonl file of the queries:
+```yaml
+queries:
+  input:
+    path: /path/to/queries.jsonl
+  process:
+    inherit: documents.process
+```
+The jsonl format for queries is defined in `formats.md`.
+
+If you want to do different text processing on the documents and queries, set `strict_check` under `process` to false.
+This is useful if preprocessing the queries in specific ways outside of Patapsco.
+
 ### retrieve
 The only retrieve component currently is lucene through pyserini.
 The most basic config for retrieve looks like this:
@@ -179,6 +203,31 @@ retrieve:
 ```
 This uses default parameters for both bm25 and rm3.
 
+#### logging
+Lucene explanations can be logged using the parameters:
+```yaml
+  log_explanations: true
+  log_explanations_cutoff: 10
+```
+The cutoff controls how many of the top documents have their explanations logged.
+
+RM3 query expansion can be logged also:
+```yaml
+  rm3_logging: true
+```
+
+Note that the RM3 expanded queries are not included in the Lucene explanations.
+
+### prebuilt index
+If running just stage 2 of Patapsco, you need to configure the location of the index:
+```yaml
+retrieve:
+  input:
+    index:
+      path: /path/to/lucene/directory
+```
+This is generally the `index` directory from a previous run. 
+
 ### rerank
 Rerank will usually call an external script.
 The path to the script and parameters for it are configured here.
@@ -191,6 +240,17 @@ rerank:
   embedding: my_favorite_embedding
   secret: 42
 ```
+
+### prebuilt index
+If running just stage 2 of Patapsco, you need to configure the location of the document database:
+```yaml
+retrieve:
+  input:
+    database:
+      path: /path/to/database/directory
+```
+This is generally the `database` directory from a previous run. 
+
 
 ### score
 If there are available qrels, config them here.
@@ -214,9 +274,9 @@ score:
 
 ## Command line overrides
 Use the `--set` flag to override parameters in the configuration file.
-It excepts key, value pairs separated by a comma:
+Use `--set` for each parameter overriding:
 ```
---set retrieve.number=500,documents.process.tokenize=stanza
+--set retrieve.number=500 --set documents.process.tokenize=stanza
 ```
 
 ## Comments
