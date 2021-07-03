@@ -1,0 +1,47 @@
+run:
+  name: English sbatch
+  parallel:
+    name: sbatch
+    queue: htc
+    resources: --time 1:00:00
+
+text:
+  normalize:
+    lowercase: true
+  tokenize: whitespace
+  stem: porter
+
+documents:
+  input:
+    format: json
+    lang: eng
+    encoding: utf8
+    path: samples/data/eng_mini_docs.jsonl
+  process:
+    inherit: text
+
+database:
+  name: sqlite
+
+index:
+  name: lucene
+
+topics:
+  input:
+    format: json
+    lang: eng
+    encoding: utf8
+    path: samples/data/eng_mini_topics.jsonl
+  fields: title
+
+queries:
+  process:
+    inherit: text
+
+retrieve:
+  name: bm25
+  number: 5
+
+score:
+  input:
+    path: samples/data/eng_mini_qrels
