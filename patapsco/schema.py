@@ -24,9 +24,9 @@ class PathConfig(BaseConfig):
     path: str
 
 
-"""""""""""""""""
-Text Processing
-"""""""""""""""""
+# """""""""""""""""
+# Text Processing
+# """""""""""""""""
 
 
 class NormalizationConfig(BaseConfig):
@@ -44,9 +44,9 @@ class TextProcessorConfig(SectionConfig):
     strict_check: bool = True  # check whether the processing is the same for documents and queries
 
 
-"""""""""""""""""
-Documents
-"""""""""""""""""
+# """""""""""""""""
+# Documents
+# """""""""""""""""
 
 
 class DocumentsInputConfig(BaseConfig):
@@ -64,9 +64,9 @@ class DocumentsConfig(SectionConfig):
     output: Union[bool, str] = False
 
 
-"""""""""""""""""
-Database
-"""""""""""""""""
+# """""""""""""""""
+# Database
+# """""""""""""""""
 
 
 class DatabaseConfig(SectionConfig):
@@ -74,9 +74,9 @@ class DatabaseConfig(SectionConfig):
     output: Union[bool, str] = True
 
 
-"""""""""""""""""
-Topics & Queries
-"""""""""""""""""
+# """""""""""""""""
+# Topics & Queries
+# """""""""""""""""
 
 
 class TopicsInputConfig(BaseConfig):
@@ -123,9 +123,9 @@ class QueriesConfig(SectionConfig):
     output: Union[bool, str] = True
 
 
-"""""""""""""""""
-Index
-"""""""""""""""""
+# """""""""""""""""
+# Index
+# """""""""""""""""
 
 
 class IndexInputConfig(BaseConfig):
@@ -140,9 +140,9 @@ class IndexConfig(SectionConfig):
     output: Union[bool, str] = True
 
 
-"""""""""""""""""
-Retrieve
-"""""""""""""""""
+# """""""""""""""""
+# Retrieve
+# """""""""""""""""
 
 
 class RetrieveInputConfig(BaseConfig):
@@ -174,9 +174,9 @@ class RetrieveConfig(SectionConfig):
     rm3_logging: bool = False  # log expanded queries to rm3.log
 
 
-"""""""""""""""""
-Rerank
-"""""""""""""""""
+# """""""""""""""""
+# Rerank
+# """""""""""""""""
 
 
 class RerankInputConfig(BaseConfig):
@@ -193,9 +193,9 @@ class RerankConfig(UncheckedSectionConfig):
     output: Union[bool, str] = False
 
 
-"""""""""""""""""
-Score
-"""""""""""""""""
+# """""""""""""""""
+# Score
+# """""""""""""""""
 
 
 class ScoreInputConfig(BaseConfig):
@@ -210,9 +210,9 @@ class ScoreConfig(SectionConfig):
     input: ScoreInputConfig
 
 
-"""""""""""""""""
-Main
-"""""""""""""""""
+# """""""""""""""""
+# Main
+# """""""""""""""""
 
 
 class StageConfig(BaseConfig):
