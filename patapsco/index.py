@@ -35,7 +35,7 @@ class Java:
     def initialize(self):
         self.initialized = True
         if not jnius_config.vm_running:
-            jnius_config.add_options('-Xmx500m')  # restrict Java to 500 MB which is enough for Anserini/Lucene
+            jnius_config.add_options('-Xmx1024m')  # restrict Java's heap size as requested by HLTCOE IT staff
         try:
             import pyserini.index  # required to initialize the JVM
             import jnius
