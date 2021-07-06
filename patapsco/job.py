@@ -27,7 +27,7 @@ from .score import Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
 from .util import DataclassJSONEncoder, get_human_readable_size, ignore_exception, LangStandardizer, LoggingFilter,\
     SlicedIterator, Timer
-from .util.file import delete_dir, is_complete, path_append, touch_complete
+from .util.file import delete_dir, is_complete, is_dir_empty, path_append, touch_complete
 
 LOGGER = logging.getLogger(__name__)
 
@@ -861,7 +861,7 @@ class JobBuilder:
         """
         if task_conf.output:
             path = self.run_path / task_conf.output
-            if path.exists():
+            if path.exists() and not is_dir_empty(path):
                 delete_dir(path)
 
     def check_sources_of_documents(self):
