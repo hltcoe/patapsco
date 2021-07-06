@@ -1,5 +1,6 @@
 import gzip
 import pathlib
+import shutil
 
 from ..error import ConfigError
 
@@ -34,8 +35,12 @@ def validate_encoding(encoding):
 
 def delete_dir(path):
     """Recursively delete a directory"""
-    from shutil import rmtree
-    rmtree(path)
+    shutil.rmtree(path)
+
+
+def is_dir_empty(path):
+    """Test whether the directory is empty of files"""
+    return not any(pathlib.Path(path).iterdir())
 
 
 def touch_complete(path):
