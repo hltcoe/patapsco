@@ -42,7 +42,7 @@ setuptools.setup(
         "spacy>=3.0.0",
         "spacy-pkuseg>=0.0.27,<0.1.0",
         "sqlitedict",
-        "stanza==1.2.0",
+        "stanza>=1.2.1",
     ],
     extras_require={
         "dev": ["pytest", "flake8", "autopep8"]
