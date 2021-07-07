@@ -78,7 +78,6 @@ class PyseriniRetriever(Task):
     @property
     def searcher(self):
         if not self._searcher:
-            print(f"{self.config.name} {self.config.rm3}")
             self._searcher = self.java.SimpleSearcher(str(self.index_dir))
             self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
             if self.config.name == "qld":
