@@ -29,7 +29,7 @@ Defines properties of the run and how the pipelines work.
 #### parallel config
 | field             | required | description |
 | ----------------- | -------- | ----------- |
-| name              | yes      | 'mp' or 'qsub'. |
+| name              | yes      | 'mp', 'qsub', or 'sbatch'. |
 | queue             | no       | Defaults to all.q. |
 | email             | no       | Your email address if desire notifications. |
 | resources         | no       | qsub resources. Default is 'h_rt=12:00:00'. |
@@ -42,6 +42,13 @@ To insert multiple lines for the code parameter use a `|`:
   code: |
     export MY_VAR=12345
     module add java
+```
+
+If using slurm, set the name to `sbatch` and set the queue to the proper partition.
+In addition, the resources variable needs to be set as the default value only works with qsub.
+The resources can be set to a comma separate list of resources like so:
+```yaml
+  resources: --time 2:00:00, --mem 6G
 ```
 
 #### example

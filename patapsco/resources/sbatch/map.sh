@@ -1,15 +1,12 @@
 #!/bin/bash
 
-#$ -N patapsco-map-stage-{stage}
-#$ -j y
-#$ -o {base}
+#SBATCH --job-name=patapsco-map-stage-{stage}
+#SBATCH -o {base}/patapsco-map-stage-{stage}-%j.out
 {resources}
-#$ -t 1-{num_jobs}
+#SBATCH --array=1-{num_jobs}
 
-{code}
-
-# we want zero-based job ids
-JOB_ID=$(($SGE_TASK_ID-1))
+# we want zero-based job ids (slurm supports 0-based array job ids so we could change this)
+JOB_ID=$(($SLURM_ARRAY_TASK_ID-1))
 
 DATE=$(date '+%Y-%m-%d %H:%M:%S,%3N')
 PYTHON_VERSION=$(python --version)

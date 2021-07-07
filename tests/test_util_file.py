@@ -1,4 +1,5 @@
 import pathlib
+import tempfile
 
 import pytest
 
@@ -22,6 +23,17 @@ def test_validate_encoding():
     file.validate_encoding('ISO-8859-1')
     with pytest.raises(ConfigError):
         file.validate_encoding('abc')
+
+
+def test_is_dir_empty_with_non_empty_dir():
+    directory = pathlib.Path(__file__).parent / 'trec_files'
+    assert not file.is_dir_empty(directory)
+
+
+def test_is_dir_empty_with_empty_dir():
+    directory = tempfile.mkdtemp()
+    assert file.is_dir_empty(directory)
+    file.delete_dir(directory)
 
 
 def test_count_lines():

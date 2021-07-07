@@ -27,7 +27,7 @@ from .score import Scorer
 from .topics import TopicProcessor, TopicReaderFactory, QueryProcessor, QueryReader, QueryWriter
 from .util import DataclassJSONEncoder, get_human_readable_size, ignore_exception, LangStandardizer, LoggingFilter,\
     SlicedIterator, Timer
-from .util.file import delete_dir, is_complete, path_append, touch_complete
+from .util.file import delete_dir, is_complete, is_dir_empty, path_append, touch_complete
 
 LOGGER = logging.getLogger(__name__)
 
@@ -294,19 +294,20 @@ class MultiprocessingJob(Job):
         [delete_dir(item) for item in base_dir.glob('part*')]
 
 
-class QsubJob(Job):
-    """Parallel job that uses qsub."""
+class ClusterJob(Job):
+    """Parallel job that uses qsub or slurm."""
     def __init__(self, conf, stage1, stage2, debug):
         super().__init__(conf, stage1, stage2)
         self.debug = debug
         conf.run.path = str(pathlib.Path(self.run_path).absolute())
-        self.qsub_config = conf.run.parallel.copy()
-        self.email = f"#$ -m ea -M {self.qsub_config.email}" if self.qsub_config.email else ''
-        self.base_dir = (pathlib.Path(self.run_path) / 'qsub').absolute()
+        self.cluster_config = conf.run.parallel.copy()
+        self.scheduler = 'qsub' if self.cluster_config.name == 'qsub' else 'sbatch'
+        self.email = self._prepare_email()
+        self.base_dir = (pathlib.Path(self.run_path) / self.scheduler).absolute()
         try:
             self.base_dir.mkdir(parents=True)
         except FileExistsError:
-            raise ConfigError(f"A qsub directory already exists at {self.base_dir}")
+            raise ConfigError(f"A {self.scheduler} directory already exists at {self.base_dir}")
         self.stage1_map_path = self.base_dir / 'stage1_map.sh'
         self.stage2_map_path = self.base_dir / 'stage2_map.sh'
         self.stage1_reduce_path = self.base_dir / 'stage1_reduce.sh'
@@ -318,7 +319,7 @@ class QsubJob(Job):
         self._create_reduce_scripts(debug)
 
     def run(self, sub_job=False):
-        LOGGER.info("Launching qsub run: %s", self.conf.run.name)
+        LOGGER.info(f"Launching {self.scheduler} run: {self.conf.run.name}")
 
         job_id = None
         if self.stage1:
@@ -334,27 +335,61 @@ class QsubJob(Job):
         LOGGER.info("All jobs submitted")
 
     def _launch_job(self, script_path, hold=None):
-        """Launch a qsub job and return the job id"""
-        args = ['qsub', '-terse', '-q', self.qsub_config.queue]
-        if hold:
-            args.extend(['-hold_jid', hold])
+        """Launch a cluster job and return the job id"""
+        args = self._create_arguments(hold)
         args.append(str(script_path))
         if self.debug:
             LOGGER.debug(' '.join([str(arg) for arg in args]))
         try:
             ps = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
-            job_id = ps.stdout.decode().strip()
-            # array jobs have ids of xxxxxxx.1-num_jobs
-            return job_id.split('.')[0]
+            return self._extract_job_id(ps.stdout.decode())
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
             sys.exit(-1)
 
+    def _create_arguments(self, hold_id=None):
+        if self.scheduler == 'qsub':
+            args = ['qsub', '-terse', '-q', self.cluster_config.queue]
+            if hold_id:
+                args.extend(['-hold_jid', hold_id])
+        else:
+            args = ['sbatch', '-p', self.cluster_config.queue]
+            if hold_id:
+                args.append(f"--depend=afterok:{hold_id}")
+        return args
+
+    def _extract_job_id(self, stdout):
+        if self.scheduler == 'qsub':
+            # array jobs have ids of xxxxxxx.1-num_jobs
+            job_id = stdout.strip().split('.')[0]
+        else:
+            job_id = stdout.strip().split()[-1].split('.')[0]
+        return job_id
+
+    def _prepare_resources(self):
+        if self.scheduler == 'qsub':
+            # qsub accepts a command separate list of resources that include cpus, gpus, memory, and time
+            resources = f"#$ -l {self.cluster_config.resources}"
+        else:
+            # sbatch has different lines for different types of resources (time vs gpu)
+            resources = [f"#SBATCH {resource.strip()}" for resource in self.cluster_config.resources.split(',')]
+            resources = "\n".join(resources)
+        return resources
+
+    def _prepare_email(self):
+        if self.scheduler == 'qsub':
+            email = f"#$ -m ea -M {self.cluster_config.email}" if self.cluster_config.email else ''
+        else:
+            email = ''
+            if self.cluster_config.email:
+                email = f"#SBATCH --mail-user={self.cluster_config.email}\n#SBATCH --mail-type=END,FAIL"
+        return email
+
     def _create_map_scripts(self, debug):
-        template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'map.sh'
+        template_path = pathlib.Path(__file__).parent / 'resources' / self.scheduler / 'map.sh'
         template = template_path.read_text()
         debug = '-d' if debug else ''
-        code = self.qsub_config.code if self.qsub_config.code else ''
+        code = self.cluster_config.code if self.cluster_config.code else ''
         if self.stage1:
             num_jobs = self.conf.run.stage1.num_jobs
             LOGGER.debug(f"Stage 1 is using {num_jobs} jobs")
@@ -366,7 +401,7 @@ class QsubJob(Job):
                 debug=debug,
                 increment=increment,
                 num_jobs=num_jobs,
-                resources=self.qsub_config.resources,
+                resources=self._prepare_resources(),
                 stage=1
             )
             self.stage1_map_path.write_text(content)
@@ -382,17 +417,17 @@ class QsubJob(Job):
                 debug=debug,
                 increment=increment,
                 num_jobs=num_jobs,
-                resources=self.qsub_config.resources,
+                resources=self._prepare_resources(),
                 stage=2
             )
             self.stage2_map_path.write_text(content)
             self.stage2_map_path.chmod(0o755)
 
     def _create_reduce_scripts(self, debug):
-        template_path = pathlib.Path(__file__).parent / 'resources' / 'qsub' / 'reduce.sh'
+        template_path = pathlib.Path(__file__).parent / 'resources' / self.scheduler / 'reduce.sh'
         template = template_path.read_text()
         debug = '-d' if debug else ''
-        code = self.qsub_config.code if self.qsub_config.code else ''
+        code = self.cluster_config.code if self.cluster_config.code else ''
         if self.stage1:
             content = template.format(
                 base=str(self.base_dir),
@@ -400,7 +435,7 @@ class QsubJob(Job):
                 config=str(self.config_path),
                 debug=debug,
                 email=self.email,
-                resources=self.qsub_config.resources,
+                resources=self._prepare_resources(),
                 stage=1
             )
             self.stage1_reduce_path.write_text(content)
@@ -412,7 +447,7 @@ class QsubJob(Job):
                 config=str(self.config_path),
                 debug=debug,
                 email=self.email,
-                resources=self.qsub_config.resources,
+                resources=self._prepare_resources(),
                 stage=2
             )
             self.stage2_reduce_path.write_text(content)
@@ -574,8 +609,8 @@ class JobBuilder:
             parallel_type = self.conf.run.parallel.name.lower()
             if parallel_type == "mp":
                 return MultiprocessingJob(self.conf, stage1, stage2, debug)
-            elif parallel_type == "qsub":
-                return QsubJob(self.conf, stage1, stage2, debug)
+            elif parallel_type == "qsub" or parallel_type == "sbatch":
+                return ClusterJob(self.conf, stage1, stage2, debug)
             else:
                 raise ConfigError(f"Unknown parallel job type: {self.conf.run.parallel.name}")
         else:
@@ -826,7 +861,7 @@ class JobBuilder:
         """
         if task_conf.output:
             path = self.run_path / task_conf.output
-            if path.exists():
+            if path.exists() and not is_dir_empty(path):
                 delete_dir(path)
 
     def check_sources_of_documents(self):

@@ -1,8 +1,7 @@
 #!/bin/bash
 
-#$ -N patapsco-reduce-stage-{stage}
-#$ -j y
-#$ -o {base}
+#SBATCH --job-name=patapsco-reduce-stage-{stage}
+#SBATCH -o {base}/patapsco-reduce-stage-{stage}-%j.out
 {resources}
 {email}
 
