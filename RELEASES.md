@@ -1,3 +1,13 @@
+## 0.9.4
+ * Adds better logging of queries (query expansion and explanations)
+ * Handling recursion error in porter stemmer caused by bad MT decode
+ * Fixed arguments to reranker script so that ints and floats are accepted
+ * Not storing raw documents in Lucene to save space and memory
+ * Added flag to turn off text processing checks to support PSQ
+ * Added support for slurm
+ * Upped Java heap size to prevent out of memory errors due to large documents
+ * Fixed issue with using symbolic links as output directories
+ * Update stanza to 1.2.1 to fix a tokenization bug
 
 ## 0.9.3
  * Fixes reranker shell input so that jsonl is used
