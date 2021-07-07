@@ -4,6 +4,7 @@ import pathlib
 import jnius_config
 
 from .error import PatapscoError
+from .error import ConfigError
 from .pipeline import Task
 from .results import Result, Results
 from .schema import RetrieveConfig
@@ -16,6 +17,7 @@ class RetrieverFactory(TaskFactory):
     classes = {
         'bm25': 'PyseriniRetriever',
         'qld': 'PyseriniRetriever',
+        'psq': 'PyseriniRetriever',
     }
     config_class = RetrieveConfig
 
@@ -49,6 +51,7 @@ class Java:
         # TODO can remove analyzer when newest version of pyserini is released
         self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
         self.SimpleSearcher = pyserini.search.SimpleSearcher
+        self.PSQIndexSearcher = jnius.autoclass('edu.jhu.hlt.psq.search.PSQIndexSearcher')
         self.BagOfWordsQueryGenerator = jnius.autoclass('io.anserini.search.query.BagOfWordsQueryGenerator')
 
 
@@ -82,12 +85,19 @@ class PyseriniRetriever(Task):
                 self._searcher.set_qld(mu)
                 LOGGER.info(f'Using QLD with parameter mu={mu}')
             else:
-                k1 = self.config.k1
-                b = self.config.b
-                self._searcher.set_bm25(k1, b)
-                LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
+                if self.config.name == "psq":
+                    self._searcher = self.java.PSQIndexSearcher(str(self.index_dir))
+                    LOGGER.info('Using PSQ')
+                else:
+                    k1 = self.config.k1
+                    b = self.config.b
+                    self._searcher.set_bm25(k1, b)
+                    LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
 
             if self.config.rm3:
+                if self.config.name == "psq":
+                    raise ConfigError("Unsupported operation PSQ + RM3")
+
                 fb_terms = self.config.fb_terms
                 fb_docs = self.config.fb_docs
                 weight = self.config.original_query_weight
@@ -114,7 +124,10 @@ class PyseriniRetriever(Task):
             Results
         """
 
-        hits = self.searcher.search(query.query, k=self.number)
+        if self.config.name == 'psq':
+            hits = self.searcher.searchPsq(query.query, self.number)
+        else:
+            hits = self.searcher.search(query.query, k=self.number)
         LOGGER.debug(f"Retrieved {len(hits)} documents for {query.id}: {query.query}")
         if self.log_explanations:
             self._log_explanation(query.query, hits)
