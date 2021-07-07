@@ -4,6 +4,7 @@ import pathlib
 import jnius_config
 
 from .error import PatapscoError
+from .error import ConfigError
 from .pipeline import Task
 from .results import Result, Results
 from .schema import RetrieveConfig
@@ -77,6 +78,7 @@ class PyseriniRetriever(Task):
     @property
     def searcher(self):
         if not self._searcher:
+            print(f"{self.config.name} {self.config.rm3}")
             self._searcher = self.java.SimpleSearcher(str(self.index_dir))
             self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
             if self.config.name == "qld":
@@ -94,6 +96,9 @@ class PyseriniRetriever(Task):
                     LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
 
             if self.config.rm3:
+                if self.config.name == "psq":
+                    raise ConfigError("Unsupported operation PSQ + RM3")
+
                 fb_terms = self.config.fb_terms
                 fb_docs = self.config.fb_docs
                 weight = self.config.original_query_weight

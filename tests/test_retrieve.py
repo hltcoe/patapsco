@@ -2,9 +2,11 @@ import tempfile
 
 import pytest
 
+from patapsco.docs import Doc
 from patapsco.topics import Query
+from patapsco.index import LuceneIndexer
 from patapsco.retrieve import *
-from patapsco.schema import PathConfig, RetrieveInputConfig
+from patapsco.schema import PathConfig, RetrieveInputConfig, IndexConfig
 from patapsco.util.file import delete_dir
 
 
@@ -71,3 +73,24 @@ class TestPyseriniRetriever:
         results = qld.process(query)
         assert 'CACM-3134' == results.results[0].doc_id
         assert pytest.approx(3.68030, results.results[0].score, 1e-5)
+
+    def test_psq_rm3(self):
+        self.create_small_index()
+        lang_path = self.temp_dir / ".lang"
+        lang_path.write_text("eng")
+        conf = RetrieveConfig(name="psq", input=RetrieveInputConfig(index=PathConfig(path=str(self.temp_dir / 'index'))))
+        conf.rm3 = True
+        pr = PyseriniRetriever(run_path=self.temp_dir, config=conf)
+        with pytest.raises(ConfigError):
+            pr.begin()
+            a = pr.searcher
+
+    def create_small_index(self):
+        run_directory = self.temp_dir
+        output_directory = 'index'
+        lucene_directory = run_directory / output_directory
+        conf = IndexConfig(name='lucene', output=output_directory)
+        li = LuceneIndexer(run_path=run_directory, index_config=conf, artifact_config=conf)
+        li.begin()
+        li.process(Doc("1234", "eng", "this is a test", None))
+        li.end()

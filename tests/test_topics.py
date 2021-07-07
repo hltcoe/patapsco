@@ -1,8 +1,15 @@
+import tempfile
+
 import pathlib
 
 import pytest
 
 from patapsco.topics import *
+
+from patapsco.util.file import delete_dir
+from patapsco.schema import TextProcessorConfig
+from patapsco.text import TextProcessor
+from patapsco.topics import PSQGenerator, Query
 
 
 def test_topic_process():
@@ -156,3 +163,24 @@ def test_query_reader():
     assert query.report == 'report 2'
     with pytest.raises(StopIteration):
         next(query_iter)
+
+class TestPSQ:
+    def setup_method(self):
+        self.temp_dir = pathlib.Path(tempfile.mkdtemp())
+
+    def teardown_method(self):
+        delete_dir(self.temp_dir)
+
+    def test_psq_query_generation(self):
+        directory = pathlib.Path(__file__).parent / 'psq_files'
+        path = directory / 'psq.json'
+        text_config = TextProcessorConfig(
+            tokenize="whitespace",
+            stopwords=False,
+            stem=False
+        )
+        processor = TextProcessor(self.temp_dir, text_config, 'eng')
+        processor.begin()  # load models
+        generator = PSQGenerator(processor, path, 0.97)
+        query = generator.generate(Query(1, '', '', '', ''), '', ['cat', 'dog', 'bird', 'hello'])
+        assert query.query == "psq AND (gato^0.8421 felino^0.1579) AND (pero^0.8182 can^0.1818) AND (pájaro^0.6122 ave^0.3878) AND (hola^1.0000)"

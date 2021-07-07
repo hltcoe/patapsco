@@ -354,6 +354,7 @@ class PSQGenerator(QueryGenerator):
         terms = [self._format_term(psq_token) for psq_token in psq_tokens]
         return terms
 
+    # These characters have special meaning in Lucene so if we want to use them literally they need to be escaped
     def escape_term(self, term):
         return term.translate(str.maketrans({"-": r"\-",
                                              "]": r"\]",
@@ -375,7 +376,7 @@ class PSQGenerator(QueryGenerator):
                                              ":": r"\:"}))
 
     def _format_term(self, psq_token):
-        """mock PSQ syntax with Lucene boost syntax"""
+        """PSQ syntax with Lucene boost syntax"""
         if psq_token.prob:
             return f"{self.escape_term(psq_token.text)}^{psq_token.prob:.4f}"
         else:

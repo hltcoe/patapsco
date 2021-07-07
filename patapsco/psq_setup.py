@@ -23,7 +23,11 @@ def configure_classpath_psq(anserini_root="."):
 
     latest = max(paths, key=os.path.getctime)
     jnius_config.set_classpath(latest)
-    jnius_config.add_classpath(str(list((Path(__file__).parent / 'resources' / 'jars').glob('psq*.jar'))[0]))
+    psq_path = (Path(__file__).parent / 'resources' / 'jars').glob('psq*.jar')
+    if not psq_path:
+        raise Exception('No matching jar file found in resources/jars')
+
+    jnius_config.add_classpath(str(list(psq_path)[0]))
 
 
 # !! Beware, this is a monkey patch to allow adding PSQ Java functionality to Pyserini without having to rewrite !!
