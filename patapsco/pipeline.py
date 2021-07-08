@@ -38,6 +38,7 @@ class Task(abc.ABC):
 
         A task must implement this method.
         It must return a new item that resulted from processing or the original item.
+        Otherwise, return None to indicate a failure occurred.
         """
         pass
 
@@ -169,9 +170,10 @@ class StreamingPipeline(Pipeline):
                 # tasks can reject an item by returning None (they should log a warning/error)
                 if not item:
                     break
-            self.count += 1
-            if self.progress_interval and self.count % self.progress_interval == 0:
-                LOGGER.info(f"{self.count} iterations completed...")
+            if item:
+                self.count += 1
+                if self.progress_interval and self.count % self.progress_interval == 0:
+                    LOGGER.info(f"{self.count} iterations completed...")
         self.end()
 
 
@@ -191,11 +193,11 @@ class BatchPipeline(Pipeline):
     def run(self):
         self.begin()
         for chunk in self.iterator:
-            self.count += len(chunk)
             for task in self.tasks:
                 chunk = task.batch_process(chunk)
                 # a task can reject an item by returning None
                 chunk = [item for item in chunk if item is not None]
+            self.count += len(chunk)
             self._update_progress()
         self.end()
 

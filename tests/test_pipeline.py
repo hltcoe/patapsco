@@ -21,6 +21,7 @@ class CollectorTask(Task):
 
     def process(self, item):
         self.items.append(item)
+        return item
 
 
 class RejectorTask(Task):
@@ -62,7 +63,7 @@ def test_streaming_pipeline_reject_item():
     collector = CollectorTask()
     pipeline = StreamingPipeline(NumberGenerator(), [AddTask(), RejectorTask(), MultiplyTask(), collector])
     pipeline.run()
-    assert pipeline.count == 5
+    assert pipeline.count == 4
     assert collector.items == [2, 6, 8, 10]
 
 
@@ -80,5 +81,5 @@ def test_batch_pipeline_reject_item():
     collector = CollectorTask()
     pipeline = BatchPipeline(NumberGenerator(), [AddTask(), RejectorTask(), MultiplyTask(), collector], 2)
     pipeline.run()
-    assert pipeline.count == 5
+    assert pipeline.count == 4
     assert collector.items == [3, 9, 12, 15]
