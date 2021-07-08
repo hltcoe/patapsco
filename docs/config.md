@@ -324,6 +324,13 @@ documents:
     stem: porter
 ```
 
+YAML does not support starting a string with a `{` character so strings that start with an interpolated value
+need to be quoted like this:
+```yaml
+run:
+  name: "{retrieval.name} for English"
+```
+
 ## Validation
 Most sections of the config are strictly validated.
 Missing parameters, extra parameters, and incorrect types are detected.
