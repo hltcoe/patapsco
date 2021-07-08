@@ -166,6 +166,9 @@ class StreamingPipeline(Pipeline):
         for item in self.iterator:
             for task in self.tasks:
                 item = task.process(item)
+                # tasks can reject an item by returning None (they should log a warning/error)
+                if not item:
+                    break
             self.count += 1
             if self.progress_interval and self.count % self.progress_interval == 0:
                 LOGGER.info(f"{self.count} iterations completed...")
@@ -191,6 +194,8 @@ class BatchPipeline(Pipeline):
             self.count += len(chunk)
             for task in self.tasks:
                 chunk = task.batch_process(chunk)
+                # a task can reject an item by returning None
+                chunk = [item for item in chunk if item is not None]
             self._update_progress()
         self.end()
 
