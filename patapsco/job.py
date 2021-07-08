@@ -498,7 +498,7 @@ class ReduceJob(Job):
     def _collect_warnings(self):
         # only create the file if there are warnings or errors
         logs = self.job_dir / "*"
-        output = self.run_path / "warnings.txt"
+        output = pathlib.Path(self.run_path) / "warnings.txt"
         try:
             subprocess.run(f"grep -q -e WARNING -e ERROR {logs}", check=True)
             subprocess.run(f"grep -q -e WARNING -e ERROR {logs} > {output}")
