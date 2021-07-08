@@ -1,4 +1,5 @@
 {
-  "cat": {"gato":  0.8, "felino":  0.2},
-  "extra": {"extra": 0.9, "word": 0.1}
+  "cat": {"gato":  0.8, "felino":  0.15},
+  "extra": {"extra": 0.9, "word": 0.1},
+  "error": {}
 }

@@ -335,7 +335,7 @@ class PSQGenerator(QueryGenerator):
         psq_tokens = self._project(token.lower() for token in tokens)
 
         terms = [' '.join(self.process_psq(psq_clause)) for psq_clause in psq_tokens]
-        query_syntax = ') AND ('.join([self.processor.post_normalize(term) for term in terms])
+        query_syntax = ') AND ('.join([self.processor.post_normalize(term) for term in terms if term != ''])
         return Query(query.id, query.lang, 'psq AND (' + query_syntax + ')', text, query.report)
 
     def process_psq(self, psq_tokens):

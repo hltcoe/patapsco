@@ -184,3 +184,17 @@ class TestPSQ:
         generator = PSQGenerator(processor, path, 0.97)
         query = generator.generate(Query(1, '', '', '', ''), '', ['cat', 'dog', 'bird', 'hello'])
         assert query.query == "psq AND (gato^0.8421 felino^0.1579) AND (pero^0.8182 can^0.1818) AND (pájaro^0.6122 ave^0.3878) AND (hola^1.0000)"
+
+    def test_psq_generation_remove_empty_entry(self):
+        directory = pathlib.Path(__file__).parent / 'psq_files'
+        path = directory / 'psq_table.json'
+        text_config = TextProcessorConfig(
+            tokenize="whitespace",
+            stopwords=False,
+            stem=False
+        )
+        processor = TextProcessor(self.temp_dir, text_config, 'eng')
+        processor.begin()  # load models
+        generator = PSQGenerator(processor, path, 0.97)
+        query = generator.generate(Query(1, '', '', '', ''), '', ['cat', 'error'])
+        assert query.query == "psq AND (gato^0.8421 felino^0.1579)"
