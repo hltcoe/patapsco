@@ -182,6 +182,7 @@ class DocReader(InputIterator):
 
 class DocumentProcessor(TextProcessor):
     """Document Preprocessing"""
+    MAX_TEXT_LEN = 1000000  # throw out documents longer than a million characters
 
     def __init__(self, run_path, config, lang):
         """
@@ -203,6 +204,9 @@ class DocumentProcessor(TextProcessor):
             Doc
         """
         text = original_text = doc.text
+        if len(text) > self.MAX_TEXT_LEN:
+            LOGGER.warning(f"Rejecting {doc.id} because it exceeds the length limit with a length of {len(text)}")
+            return None
         text = self.pre_normalize(text)
         doc.original_text = text  # this for the database to use
         if self.save_report:
