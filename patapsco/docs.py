@@ -33,7 +33,6 @@ class DocumentReaderFactory(ReaderFactory):
         'json': 'Hc4JsonDocumentReader',
         'jsonl': 'Hc4JsonDocumentReader',
         'msmarco': 'TsvDocumentReader',
-        'clef0809': 'HamshahriDocumentReader'
     }
     config_class = DocumentsInputConfig
     name = "input document type"
@@ -121,26 +120,6 @@ class TsvDocumentReader(InputIterator):
 
     def __len__(self):
         return count_lines(self.path, self.encoding)
-
-
-class HamshahriDocumentReader(InputIterator):
-    """Iterator that reads CLEF Farsi documents"""
-
-    def __init__(self, path, encoding, lang, **kwargs):
-        self.path = path
-        self.encoding = encoding
-        self.lang = lang
-        self.docs_iter = iter(parse_hamshahri_documents(path, encoding))
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        doc = next(self.docs_iter)
-        return Doc(doc[0], self.lang, doc[1], None)
-
-    def __len__(self):
-        return count_lines_with('.DID', self.path, self.encoding)
 
 
 class DocWriter(Task):
