@@ -500,8 +500,8 @@ class ReduceJob(Job):
         logs = self.job_dir / "*"
         output = pathlib.Path(self.run_path) / "warnings.txt"
         try:
-            subprocess.run(f"grep -q -e WARNING -e ERROR {logs}", check=True)
-            subprocess.run(f"grep -q -e WARNING -e ERROR {logs} > {output}")
+            subprocess.run(f"grep -q -e WARNING -e ERROR {logs}", shell=True, check=True)
+            subprocess.run(f"grep -e WARNING -e ERROR {logs} > {output}", shell=True)
         except subprocess.CalledProcessError:
             pass
 
