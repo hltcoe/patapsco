@@ -862,7 +862,15 @@ class JobBuilder:
         if task_conf.output:
             path = self.run_path / task_conf.output
             if path.exists() and not is_dir_empty(path):
-                delete_dir(path)
+                if path.is_symlink():
+                    # we don't want to unlink symbolic link directory so delete contents
+                    for f in path.glob("*"):
+                        try:
+                            delete_dir(f)
+                        except OSError:
+                            f.unlink()
+                else:
+                    delete_dir(path)
 
     def check_sources_of_documents(self):
         """The docs in the index and database must come from the same source"""
