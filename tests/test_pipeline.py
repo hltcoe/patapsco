@@ -21,6 +21,14 @@ class CollectorTask(Task):
 
     def process(self, item):
         self.items.append(item)
+        return item
+
+
+class RejectorTask(Task):
+    def process(self, item):
+        if item == 2:
+            return None
+        return item
 
 
 class NumberGenerator:
@@ -50,6 +58,15 @@ def test_streaming_pipeline():
     assert collector.items == [2, 4, 6, 8, 10]
 
 
+def test_streaming_pipeline_reject_item():
+    # reject 2 before multiplying by 2 so the number 4 is dropped from the output
+    collector = CollectorTask()
+    pipeline = StreamingPipeline(NumberGenerator(), [AddTask(), RejectorTask(), MultiplyTask(), collector])
+    pipeline.run()
+    assert pipeline.count == 4
+    assert collector.items == [2, 6, 8, 10]
+
+
 def test_batch_pipeline():
     collector = CollectorTask()
     pipeline = BatchPipeline(NumberGenerator(), [AddTask(), MultiplyTask(), collector], 2)
@@ -57,3 +74,12 @@ def test_batch_pipeline():
     assert pipeline.count == 5
     # the batch_process() method for multiply uses a factor of 3
     assert collector.items == [3, 6, 9, 12, 15]
+
+
+def test_batch_pipeline_reject_item():
+    # reject 2 before multiplying by 2 so the number 4 is dropped from the output
+    collector = CollectorTask()
+    pipeline = BatchPipeline(NumberGenerator(), [AddTask(), RejectorTask(), MultiplyTask(), collector], 2)
+    pipeline.run()
+    assert pipeline.count == 4
+    assert collector.items == [3, 9, 12, 15]

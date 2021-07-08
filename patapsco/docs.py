@@ -33,7 +33,6 @@ class DocumentReaderFactory(ReaderFactory):
         'json': 'Hc4JsonDocumentReader',
         'jsonl': 'Hc4JsonDocumentReader',
         'msmarco': 'TsvDocumentReader',
-        'clef0809': 'HamshahriDocumentReader'
     }
     config_class = DocumentsInputConfig
     name = "input document type"
@@ -123,26 +122,6 @@ class TsvDocumentReader(InputIterator):
         return count_lines(self.path, self.encoding)
 
 
-class HamshahriDocumentReader(InputIterator):
-    """Iterator that reads CLEF Farsi documents"""
-
-    def __init__(self, path, encoding, lang, **kwargs):
-        self.path = path
-        self.encoding = encoding
-        self.lang = lang
-        self.docs_iter = iter(parse_hamshahri_documents(path, encoding))
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        doc = next(self.docs_iter)
-        return Doc(doc[0], self.lang, doc[1], None)
-
-    def __len__(self):
-        return count_lines_with('.DID', self.path, self.encoding)
-
-
 class DocWriter(Task):
     """Write documents to a json file using internal format"""
 
@@ -203,6 +182,7 @@ class DocReader(InputIterator):
 
 class DocumentProcessor(TextProcessor):
     """Document Preprocessing"""
+    MAX_TEXT_LEN = 1000000  # throw out documents longer than a million characters
 
     def __init__(self, run_path, config, lang):
         """
@@ -224,6 +204,9 @@ class DocumentProcessor(TextProcessor):
             Doc
         """
         text = original_text = doc.text
+        if len(text) > self.MAX_TEXT_LEN:
+            LOGGER.warning(f"Rejecting {doc.id} because it exceeds the length limit with a length of {len(text)}")
+            return None
         text = self.pre_normalize(text)
         doc.original_text = text  # this for the database to use
         if self.save_report:

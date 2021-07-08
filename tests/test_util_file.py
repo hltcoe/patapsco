@@ -38,11 +38,11 @@ def test_is_dir_empty_with_empty_dir():
 
 def test_count_lines():
     directory = pathlib.Path(__file__).parent / 'trec_files'
-    assert file.count_lines(str(directory / 'hamshahri_docs.txt')) == 10
+    assert file.count_lines(str(directory / 'topics.xml')) == 15
     assert file.count_lines(str(directory / 'results.txt')) == 4
 
 
 def test_count_lines_with():
     directory = pathlib.Path(__file__).parent / 'trec_files'
-    assert file.count_lines_with('.DID', str(directory / 'hamshahri_docs.txt')) == 2
+    assert file.count_lines_with('<topic', str(directory / 'topics.xml')) == 3
     assert file.count_lines_with('aaa', str(directory / 'results.txt')) == 2
