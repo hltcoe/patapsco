@@ -105,7 +105,7 @@ class PyseriniRetriever(Task):
     @property
     def searcher(self):
         if not self._searcher:
-            if self.config.name == 'psq':
+            if self.config.psq:
                 self._searcher = self.java.PSQSearcher(str(self.index_dir))
                 LOGGER.info('Using PSQ')
             else:
@@ -122,7 +122,7 @@ class PyseriniRetriever(Task):
                 LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
 
             if self.config.rm3:
-                if self.config.name == "psq":
+                if self.config.psq:
                     raise ConfigError("Unsupported operation PSQ + RM3")
 
                 fb_terms = self.config.fb_terms

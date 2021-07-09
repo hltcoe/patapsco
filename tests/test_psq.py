@@ -37,10 +37,11 @@ class TestLuceneIndex:
 
         ret_config = RetrieveConfig(
             input=RetrieveInputConfig(index=PathConfig(path=str(self.temp_dir / "testIndex"))),
-            name="psq",
+            name="bm25",
             k1=1.2,
             b=.75,
             output="retrieve")
+        ret_config.psq = True
         retriever = PyseriniRetriever(run_path='.', config=ret_config)
         retriever.begin()
         results = retriever.process(Query('123', 'eng', 'psq AND (gato^0.8 felino^0.2) AND (extra^0.9 words^0.1)', 'test', None))
@@ -52,10 +53,11 @@ class TestLuceneIndex:
         # test setting k1 and b
         ret_other_config = RetrieveConfig(
             input=RetrieveInputConfig(index=PathConfig(path=str(self.temp_dir / "testIndex"))),
-            name="psq",
+            name="bm25",
             k1=5,
             b=.1,
             output="retrieve")
+        ret_other_config.psq = True
         other_retriever = PyseriniRetriever(run_path='.', config=ret_other_config)
         other_retriever.begin()
         other_results = other_retriever.process(Query('123', 'eng', 'psq AND (gato^0.8 felino^0.2) AND (extra^0.9 words^0.1)', 'test', None))
