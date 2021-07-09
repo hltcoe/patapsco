@@ -81,6 +81,7 @@ class PSQSearcher:
     def close(self):
         return
 
+
 class PyseriniRetriever(Task):
     """Use Lucene to retrieve documents from an index"""
 
