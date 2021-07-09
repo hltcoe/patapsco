@@ -168,6 +168,35 @@ The jsonl format for queries is defined in `formats.md`.
 If you want to do different text processing on the documents and queries, set `strict_check` under `process` to false.
 This is useful if preprocessing the queries in specific ways outside of Patapsco.
 
+For PSQ queries:
+
+```
+queries:
+     process:
+       inherit: documents.process
+     psq:
+       path: eng_table.json
+       lang: eng
+       stem: porter
+```
+
+Where path points to a PSQ dictionary like:
+
+```
+{
+  "cat": {"gato":  0.8, "felino":  0.15},
+  "dog": {"pero":  0.9, "can":  0.20},
+  "bird": {"pájaro": 0.6, "ave": 0.38, "galla": 0.02},
+  "hello": {"hola": 0.8, "oiga":  0.000001}
+}
+```
+
+And in the retrieve part of the config use a name of 'psq':
+
+```
+retrieve:
+  name: psq
+```
 ### retrieve
 The only retrieve component currently is lucene through pyserini.
 The most basic config for retrieve looks like this:
@@ -181,6 +210,7 @@ retrieve:
 Supported names:
  * bm25 - Okapi Best Match
  * qld - Query Likelihood with Dirichlet smoothing
+ * psq - Probablistic Structured Query
 
 bm25 parameters:
 ```yaml

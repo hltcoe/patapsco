@@ -464,9 +464,13 @@ class ClusterJob(Job):
 
 
 class ReduceJob(Job):
+    """Reduce job run on cluster"""
+
     def __init__(self, conf, stage1, stage2, debug):
         super().__init__(conf, stage1, stage2)
         self.debug = debug
+        self.scheduler = 'qsub' if conf.run.parallel.name == 'qsub' else 'sbatch'
+        self.job_dir = (pathlib.Path(self.run_path) / self.scheduler).absolute()
 
     def _run(self):
         if self.stage1:
@@ -475,6 +479,7 @@ class ReduceJob(Job):
             self.stage1.reduce()
             self.stage1.end()
             self._del_reduce_directories()
+            self._collect_warnings()
 
         if self.stage2:
             LOGGER.info("Stage 2: Running reduce")
@@ -482,12 +487,23 @@ class ReduceJob(Job):
             self.stage2.reduce()
             self.stage2.end()
             self._del_reduce_directories()
+            self._collect_warnings()
 
         return Report()
 
     def _del_reduce_directories(self):
         base_dir = pathlib.Path(self.run_path)
         [delete_dir(item) for item in base_dir.glob('part*')]
+
+    def _collect_warnings(self):
+        # only create the file if there are warnings or errors
+        logs = self.job_dir / "*"
+        output = pathlib.Path(self.run_path) / "warnings.txt"
+        try:
+            subprocess.run(f"grep -q -e WARNING -e ERROR {logs}", shell=True, check=True)
+            subprocess.run(f"grep -h -e WARNING -e ERROR {logs} > {output}", shell=True)
+        except subprocess.CalledProcessError:
+            pass
 
 
 class JobType(enum.Enum):
