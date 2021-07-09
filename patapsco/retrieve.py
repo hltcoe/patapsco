@@ -9,6 +9,7 @@ from .pipeline import Task
 from .results import Result, Results
 from .schema import RetrieveConfig
 from .util import TaskFactory
+from .topics import Query
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,9 +52,34 @@ class Java:
         # TODO can remove analyzer when newest version of pyserini is released
         self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
         self.SimpleSearcher = pyserini.search.SimpleSearcher
-        self.PSQIndexSearcher = jnius.autoclass('edu.jhu.hlt.psq.search.PSQIndexSearcher')
+        self.PSQSearcher = PSQSearcher
         self.BagOfWordsQueryGenerator = jnius.autoclass('io.anserini.search.query.BagOfWordsQueryGenerator')
 
+
+class PSQSearcher:
+
+    def __init__(self, index_dir: str):
+        import jnius
+        self.index_dir = index_dir
+        self.object = jnius.autoclass('edu.jhu.hlt.psq.search.PSQIndexSearcher')(index_dir)
+
+    def set_bm25(self, k1=float(0.9), b=float(0.4)):
+        """Configure BM25 as the scoring function.
+
+        Parameters
+        ----------
+        k1 : float
+            BM25 k1 parameter.
+        b : float
+            BM25 b parameter.
+        """
+        self.object.setBM25(float(k1), float(b))
+
+    def search(self, q: str, k: int = 10):
+        return self.object.searchPsq(q, k)
+
+    def close(self):
+        return
 
 class PyseriniRetriever(Task):
     """Use Lucene to retrieve documents from an index"""
@@ -78,21 +104,21 @@ class PyseriniRetriever(Task):
     @property
     def searcher(self):
         if not self._searcher:
-            self._searcher = self.java.SimpleSearcher(str(self.index_dir))
-            self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
+            if self.config.name == 'psq':
+                self._searcher = self.java.PSQSearcher(str(self.index_dir))
+                LOGGER.info('Using PSQ')
+            else:
+                self._searcher = self.java.SimpleSearcher(str(self.index_dir))
+                self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
             if self.config.name == "qld":
                 mu = self.config.mu
                 self._searcher.set_qld(mu)
                 LOGGER.info(f'Using QLD with parameter mu={mu}')
             else:
-                if self.config.name == "psq":
-                    self._searcher = self.java.PSQIndexSearcher(str(self.index_dir))
-                    LOGGER.info('Using PSQ')
-                else:
-                    k1 = self.config.k1
-                    b = self.config.b
-                    self._searcher.set_bm25(k1, b)
-                    LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
+                k1 = self.config.k1
+                b = self.config.b
+                self._searcher.set_bm25(k1, b)
+                LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
 
             if self.config.rm3:
                 if self.config.name == "psq":
@@ -124,10 +150,7 @@ class PyseriniRetriever(Task):
             Results
         """
 
-        if self.config.name == 'psq':
-            hits = self.searcher.searchPsq(query.query, self.number)
-        else:
-            hits = self.searcher.search(query.query, k=self.number)
+        hits = self.searcher.search(query.query, k=self.number)
         LOGGER.debug(f"Retrieved {len(hits)} documents for {query.id}: {query.query}")
         if self.log_explanations:
             self._log_explanation(query.query, hits)
