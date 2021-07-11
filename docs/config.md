@@ -99,7 +99,7 @@ script normalization, tokenization, lowercasing, stopword removal, and stemming/
     stopwords: lucene
 ```
 
-* stem: spacy, stanza, porter (for eng)
+* stem: spacy, stanza, porter (for eng), parsivar (for fas)
 * stopwords: lucene, baidu (for zho)
 * tokenize: whitespace, spacy, stanza, moses, ngram, jieba (for zho)
 
