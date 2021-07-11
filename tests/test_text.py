@@ -77,6 +77,14 @@ class TestTokenizerStemmerFactory:
         with pytest.raises(ConfigError):
             TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="stanza", stem="porter"), "rus")
 
+    def test_validate_parsivar(self):
+        TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="moses", stem="parsivar"), "fas")
+        TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="spacy", stem="parsivar"), "fas")
+        TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="stanza", stem="parsivar"), "fas")
+        TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="whitespace", stem="parsivar"), "fas")
+        with pytest.raises(ConfigError):
+            TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="ngram", stem="parsivar"), "fas")
+
     def test_create_tokenizer_whitespace(self):
         conf = TextProcessorConfig(tokenize="whitespace", stem=False)
         tokenizer = TokenizerStemmerFactory.create_tokenizer(conf, "eng")

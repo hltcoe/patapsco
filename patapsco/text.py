@@ -415,11 +415,13 @@ class TokenizerStemmerFactory:
          - moses + porter (eng)
          - ngram + no stemming
          - whitespace + porter (eng)
+         - not ngram + parsivar (fas)
 
         Some language restrictions are left to the tokenizers or stemmers to check:
          - No Chinese stemming.
          - Spacy has no stemming for Arabic or Farsi.
          - Porter stemming only works for English.
+         - Parsivar stemming only works for Farsi.
         """
         if config.tokenize not in cls.tokenizers:
             raise ConfigError(f"Unknown tokenizer {config.tokenize}")
@@ -454,7 +456,7 @@ class TokenizerStemmerFactory:
 
         if tokenizer_name in ['spacy', 'stanza']:
             # if not porter stemming, the tokenizer also implements stemming
-            also_stemmer = use_stemmer and config.stem != 'porter'
+            also_stemmer = use_stemmer and config.stem != 'porter' and config.stem != 'parsivar'
             if tokenizer_name == 'spacy':
                 tokenizer = SpacyNLP(lang, model_path, stem=also_stemmer)
             elif tokenizer_name == 'stanza':
