@@ -36,7 +36,7 @@ setuptools.setup(
         "psutil",
         "pydantic>=1.7.1,<1.8.0",
         "pymorphy2",
-        "pyserini",
+        "pyserini>=0.13.0",
         "pytrec_eval",
         "pyyaml",
         "sacremoses",
