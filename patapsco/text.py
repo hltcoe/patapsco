@@ -52,6 +52,20 @@ class PorterStemmer(Stemmer):
             return token
 
 
+class FarsiStemmer(Stemmer):
+    """Porter stemmer from nltk"""
+
+    def __init__(self, lang):
+        if lang != "fas":
+            raise ConfigError("Parsivar stemmer only supports English")
+        import parsivar  # importing nltk is slow so lazy load
+        super().__init__(lang)
+        self.stemmer = parsivar.FindStems()
+
+    def stem(self, tokens):
+        return [self.stemmer.convert_to_stem(token) for token in tokens]
+
+
 class Tokenizer:
     """Tokenizer interface"""
 
@@ -384,7 +398,7 @@ class TokenizerStemmerFactory:
     """Constructs tokenizers and stemmers based on configurations."""
 
     tokenizers = {'jieba', 'moses', 'ngram', 'spacy', 'stanza', 'whitespace'}
-    stemmers = {'porter', 'spacy', 'stanza'}
+    stemmers = {'porter', 'spacy', 'stanza', 'parsivar'}
     # key is name:lang
     tokenizer_cache = {}
     stemmer_cache = {}
@@ -401,11 +415,13 @@ class TokenizerStemmerFactory:
          - moses + porter (eng)
          - ngram + no stemming
          - whitespace + porter (eng)
+         - not ngram + parsivar (fas)
 
         Some language restrictions are left to the tokenizers or stemmers to check:
          - No Chinese stemming.
          - Spacy has no stemming for Arabic or Farsi.
          - Porter stemming only works for English.
+         - Parsivar stemming only works for Farsi.
         """
         if config.tokenize not in cls.tokenizers:
             raise ConfigError(f"Unknown tokenizer {config.tokenize}")
@@ -414,7 +430,7 @@ class TokenizerStemmerFactory:
         if config.stem:
             if config.tokenize in ['jieba', 'ngram']:
                 raise ConfigError(f"Cannot tokenize with {config.tokenize} and also stem.")
-            if config.tokenize in ['moses', 'whitespace'] and config.stem != 'porter':
+            if config.tokenize in ['moses', 'whitespace'] and config.stem != 'porter' and config.stem != 'parsivar':
                 raise ConfigError(f"Incompatible tokenizer ({config.tokenize}) and stemmer ({config.stem})")
             if lang == "eng":
                 if config.tokenize == "spacy" and config.stem not in ['porter', 'spacy']:
@@ -422,7 +438,7 @@ class TokenizerStemmerFactory:
                 if config.tokenize == "stanza" and config.stem not in ['porter', 'stanza']:
                     raise ConfigError(f"Incompatible tokenizer ({config.tokenize}) and stemmer ({config.stem})")
             else:
-                if config.tokenize in ["spacy", "stanza"] and config.tokenize != config.stem:
+                if config.tokenize in ["spacy", "stanza"] and config.tokenize != config.stem and config.stem != 'parsivar':
                     raise ConfigError(f"Incompatible tokenizer ({config.tokenize}) and stemmer ({config.stem})")
 
     @classmethod
@@ -440,7 +456,7 @@ class TokenizerStemmerFactory:
 
         if tokenizer_name in ['spacy', 'stanza']:
             # if not porter stemming, the tokenizer also implements stemming
-            also_stemmer = use_stemmer and config.stem != 'porter'
+            also_stemmer = use_stemmer and config.stem != 'porter' and config.stem != 'parsivar'
             if tokenizer_name == 'spacy':
                 tokenizer = SpacyNLP(lang, model_path, stem=also_stemmer)
             elif tokenizer_name == 'stanza':
@@ -470,6 +486,8 @@ class TokenizerStemmerFactory:
             return cls.create_tokenizer(config, lang)
         elif stemmer_name == 'porter':
             stemmer = PorterStemmer(lang)
+        elif stemmer_name == 'parsivar':
+            stemmer = FarsiStemmer(lang)
 
         cls.stemmer_cache[key] = stemmer
         return stemmer

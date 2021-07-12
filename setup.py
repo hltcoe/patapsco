@@ -32,6 +32,7 @@ setuptools.setup(
         "more-itertools",
         "nltk>=3.6.0",
         "numpy",
+        "parsivar-scale",
         "psutil",
         "pydantic>=1.7.1,<1.8.0",
         "pymorphy2",
