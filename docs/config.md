@@ -103,6 +103,9 @@ script normalization, tokenization, lowercasing, stopword removal, and stemming/
 * stopwords: lucene, baidu (for zho)
 * tokenize: whitespace, spacy, stanza, moses, ngram, jieba (for zho)
 
+The default is to use lucene for stop words, to not stem, to lowercase when normalizing text.
+Tokenization must be specified.
+
 ### index
 The name of the indexing method.
 Currently, only "lucene" is supported.
@@ -198,7 +201,6 @@ retrieve:
   name: psq
 ```
 ### retrieve
-The only retrieve component currently is lucene through pyserini.
 The most basic config for retrieve looks like this:
 
 ```yaml
@@ -315,6 +317,10 @@ Use `--set` for each parameter overriding:
 ```
 --set retrieve.number=500 --set documents.process.tokenize=stanza
 ```
+
+Because of a limitation with the current config code, only parameters 
+in the config file can be overridden.
+We plan to add support for overriding all parameters including defaults.
 
 ## Comments
 A comment field can be added to any top level section.
