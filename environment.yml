@@ -25,5 +25,5 @@ dependencies:
   - pip
   - pip:
     - parsivar-scale
-    - pyserini
+    - pyserini>=0.13.0
     - pytrec_eval
