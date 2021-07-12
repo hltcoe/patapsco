@@ -75,6 +75,16 @@ class PSQSearcher:
         """
         self.object.setBM25(float(k1), float(b))
 
+    def set_qld(self, mu=float(1000)):
+        """Configure query likelihood with Dirichlet smoothing as the scoring function.
+
+        Parameters
+        ----------
+        mu : float
+            Dirichlet smoothing parameter mu.
+        """
+        self.object.setQLD(float(mu))
+
     def search(self, q: str, k: int = 10):
         return self.object.searchPsq(q, k)
 
