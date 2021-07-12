@@ -1,0 +1,41 @@
+run:
+  name: Russian sample run
+  comment: The translations in the topic file are from Google translate as stand in for human translations.
+    The actual hc4 topics have human generated translations in the trans_resources field.
+
+documents:
+  input:
+    format: json
+    lang: rus
+    encoding: utf8
+    path: samples/data/rus_mini_docs.jsonl
+  process:
+    tokenize: moses
+
+database:
+  name: sqlite
+
+index:
+  name: lucene
+
+topics:
+  input:
+    format: json
+    lang: rus
+    encoding: utf8
+    path: samples/data/eng_mini_topics.jsonl
+  fields: title
+
+queries:
+  process:
+    inherit: documents.process
+
+retrieve:
+  name: bm25
+  number: 5
+  rm3: true
+  rm3_logging: true
+
+score:
+  input:
+    path: samples/data/eng_mini_qrels
