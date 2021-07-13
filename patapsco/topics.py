@@ -343,8 +343,6 @@ class LuceneStemmer(luqum.visitor.TreeTransformer):
         if isinstance(node.expr, luqum.tree.Phrase):
             value = value.strip('"')
         # this handles single terms and phrases
-        a = value.split()
-        b = self.processor.stem(a)
         new_value = ' '.join(self.processor.stem(value.split()))
         if isinstance(node.expr, luqum.tree.Phrase):
             new_value = f'"{new_value}"'
