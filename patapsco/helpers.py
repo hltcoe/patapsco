@@ -144,7 +144,7 @@ class ArtifactHelper:
         """This excludes the parts of the configuration that were not used to create the artifact."""
         return config.copy(exclude=set(self.excludes[task]), deep=True)
 
-    def combine(self, config, path):
+    def combine(self, config, path, required=True):
         """Loads an artifact configuration and combines it with the base config"""
         path = pathlib.Path(path)
         if path.is_dir():
@@ -154,7 +154,10 @@ class ArtifactHelper:
         try:
             artifact_config_dict = ConfigService().read_config_file(path)
         except FileNotFoundError:
-            raise ConfigError(f"Unable to load artifact config {path}")
+            if required:
+                raise ConfigError(f"Unable to load artifact config {path}")
+            else:
+                return
         artifact_config = RunnerConfig(**artifact_config_dict)
         for task in Tasks:
             if getattr(artifact_config, task):

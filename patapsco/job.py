@@ -746,7 +746,8 @@ class JobBuilder:
             iterator = TopicReaderFactory.create(self.conf.topics.input)
         elif Tasks.QUERIES in plan:
             iterator = self._setup_input(QueryReader, 'queries.input.path', 'topics.output',
-                                         'query processor not configured with input')
+                                         'query processor not configured with input',
+                                         False)
             query = iterator.peek()
             self.query_lang = LangStandardizer.standardize(query.lang)
         elif Tasks.RETRIEVE in plan:
@@ -828,7 +829,7 @@ class JobBuilder:
         LOGGER.info("Stage 2 pipeline: %s", pipeline)
         return pipeline
 
-    def _setup_input(self, cls, input_path, output_path, error_msg):
+    def _setup_input(self, cls, input_path, output_path, error_msg, required=True):
         """Try two possible places for input path
 
         The input for this task could come from:
@@ -847,7 +848,7 @@ class JobBuilder:
                 field = fields.pop(0)
                 obj = getattr(obj, field)
             path = pathlib.Path(self.run_path / obj)
-            self.artifact_helper.combine(self.conf, path)
+            self.artifact_helper.combine(self.conf, path, required)
             return cls(path)
         except AttributeError:
             obj = self.conf

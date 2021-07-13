@@ -38,6 +38,9 @@ class PyseriniRetriever(Task):
         self.lang = None  # documents language
         self.log_explanations = config.log_explanations
         self.log_explanations_cutoff = config.log_explanations_cutoff
+        self.parse = None
+        if config.parse:
+            self.parse = self.parser = self.java.QueryParser('contents', self.java.WhitespaceAnalyzer())
         LOGGER.info(f"Index location: {self.index_dir}")
 
     @property
@@ -92,7 +95,11 @@ class PyseriniRetriever(Task):
         if self.config.name == 'psq':
             hits = self.searcher.searchPsq(query.query, self.number)
         else:
-            hits = self.searcher.search(query.query, k=self.number)
+            if self.parse:
+                jquery = self.parser.parse(query.query)
+                hits = self.searcher.search(jquery, k=self.number)
+            else:
+                hits = self.searcher.search(query.query, k=self.number)
         LOGGER.debug(f"Retrieved {len(hits)} documents for {query.id}: {query.query}")
         if self.log_explanations:
             self._log_explanation(query.query, hits)

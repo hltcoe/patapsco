@@ -36,7 +36,7 @@ class Query:
     id: str
     lang: str
     query: str  # string that may include query syntax for the retrieval engine
-    text: str  # text that the query is based on
+    text: str  # original text that the query is based on
     report: Optional[str]
 
 
@@ -330,8 +330,8 @@ class QueryGenerator:
         return Query(query.id, query.lang, query_syntax, text, query.report)
 
 
-class LuceneStemmer(luqum.visitor.TreeTransformer):
-    """Stems terms in a Lucene query"""
+class LuceneTransformer(luqum.visitor.TreeTransformer):
+    """Applies text processing to the terms in a Lucene query"""
 
     def __init__(self, processor):
         self.processor = processor
@@ -343,7 +343,11 @@ class LuceneStemmer(luqum.visitor.TreeTransformer):
         if isinstance(node.expr, luqum.tree.Phrase):
             value = value.strip('"')
         # this handles single terms and phrases
-        new_value = ' '.join(self.processor.stem(value.split()))
+        tokens = value.split()
+        stopword_indices = self.processor.identify_stop_words(tokens)
+        tokens = self.processor.stem(tokens)
+        tokens = self.processor.remove_stop_words(tokens, stopword_indices)
+        new_value = self.processor.post_normalize(' '.join(tokens))
         if isinstance(node.expr, luqum.tree.Phrase):
             new_value = f'"{new_value}"'
         new_node.expr = node.expr.clone_item(value=new_value)
@@ -357,7 +361,7 @@ class LuceneQueryGenerator:
         self.processor = processor
         java = Java()
         self.parser = java.QueryParser('contents', java.WhitespaceAnalyzer())
-        self.stemmer = LuceneStemmer(processor)
+        self.transformer = LuceneTransformer(processor)
 
     def generate(self, query, text, tokens):
         """Generate the text of a query
@@ -375,8 +379,8 @@ class LuceneQueryGenerator:
         jquery = self.parser.parse(text)
         tree = luqum.parser.parser.parse(jquery.toString())
 
-        # stem the query terms
-        tree = self.stemmer.visit(tree)
+        # stem, remove stop words, normalize the query terms
+        tree = self.transformer.visit(tree)
 
         return Query(query.id, query.lang, str(tree), text, query.report)
 
@@ -471,6 +475,9 @@ class QueryProcessor(TextProcessor):
         """
         super().__init__(run_path, config.process, lang)
         self.psq_config = config.psq
+        self.parse = config.parse
+        if self.psq_config and self.parse:
+            raise ConfigError("Cannot use both PSQ and Lucene query parsing")
         self.generator = None
 
     def begin(self):
@@ -486,6 +493,8 @@ class QueryProcessor(TextProcessor):
             processor = TextProcessor(self.run_path, text_config, self.psq_config.lang)
             processor.begin()  # load models
             self.generator = PSQGenerator(processor, self.psq_config.path, self.psq_config.threshold)
+        elif self.parse:
+            self.generator = LuceneQueryGenerator(self)
         else:
             self.generator = QueryGenerator(self)
 

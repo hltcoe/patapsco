@@ -1,13 +1,12 @@
-import tempfile
-
 import pathlib
+import tempfile
 
 import pytest
 
 from patapsco.topics import *
 
 from patapsco.util.file import delete_dir
-from patapsco.schema import TextProcessorConfig
+from patapsco.schema import PSQConfig, TextProcessorConfig, QueriesConfig
 from patapsco.text import TextProcessor
 from patapsco.topics import PSQGenerator, Query
 
@@ -200,7 +199,7 @@ class TestPSQ:
         assert query.query == "psq AND (gato^0.8421 felino^0.1579)"
 
 
-def test_lucene_stemmer():
+def test_lucene_query_transformer():
     text_config = TextProcessorConfig(
         tokenize="whitespace",
         stopwords=False,
@@ -208,7 +207,7 @@ def test_lucene_stemmer():
     )
     processor = TextProcessor('', text_config, 'eng')
     processor.begin()
-    stemmer = LuceneStemmer(processor)
+    stemmer = LuceneTransformer(processor)
     tree = luqum.parser.parser.parse("contents:running AND contents:wonderful")
     assert str(stemmer.visit(tree)) == "contents:run AND contents:wonder"
 
@@ -258,3 +257,12 @@ class TestLuceneQueryGenerator:
     def test_grouping(self):
         query = self.process('(running OR walking) AND relaxing')
         assert query.query == '+(contents:run contents:walk) +contents:relax'
+
+
+class TestQueryProcessor:
+    def test_config_conflict(self):
+        config = QueriesConfig(process=TextProcessorConfig(tokenize="whitespace"),
+                               psq=PSQConfig(path='', lang='eng'),
+                               parse=True)
+        with pytest.raises(ConfigError):
+            QueryProcessor('', config, 'eng')

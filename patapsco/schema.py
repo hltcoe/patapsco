@@ -161,6 +161,8 @@ class RetrieveConfig(SectionConfig):
     log_explanations: bool = False
     log_explanations_cutoff: int = 10
 
+    parse: bool = False  # set to true if using Lucene classic query parser (won't support RM3)
+
     # Parameters for retrieval approaches
     # bm25
     k1: float = 0.9
