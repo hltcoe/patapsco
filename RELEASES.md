@@ -1,3 +1,12 @@
+## 0.9.5
+ * Adds PSQ
+ * Increases Java heap size
+ * Better support for using symbolic links as output directories
+ * Adds a character size limit for documents (1 million)
+ * Adds a rule based Farsi stemmer (parsivar)
+ * Collect warnings from qsub log files into base directory of run
+ * Updates to pyserini 0.13.0 which has fixed RM3
+
 ## 0.9.4
  * Adds better logging of queries (query expansion and explanations)
  * Handling recursion error in porter stemmer caused by bad MT decode
@@ -5,6 +14,7 @@
  * Not storing raw documents in Lucene to save space and memory
  * Added flag to turn off text processing checks to support PSQ
  * Added support for slurm
+ * Added code parameter to run.parallel for adding code to bash scripts
  * Upped Java heap size to prevent out of memory errors due to large documents
  * Fixed issue with using symbolic links as output directories
  * Update stanza to 1.2.1 to fix a tokenization bug
