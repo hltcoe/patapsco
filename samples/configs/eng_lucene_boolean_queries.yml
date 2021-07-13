@@ -1,0 +1,37 @@
+run:
+  name: English lucene
+
+text:
+  normalize:
+    lowercase: true
+  tokenize: whitespace
+  stem: porter
+
+documents:
+  input:
+    format: json
+    lang: eng
+    encoding: utf8
+    path: samples/data/eng_mini_docs.jsonl
+  process:
+    inherit: text
+  output: true
+
+index:
+  name: lucene
+
+queries:
+  input:
+    path: samples/data/eng_mini_lucene_queries.jsonl
+  process:
+    inherit: text
+  parse: true
+
+retrieve:
+  name: bm25
+  number: 5
+  parse: true
+
+score:
+  input:
+    path: samples/data/eng_mini_qrels

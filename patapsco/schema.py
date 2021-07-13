@@ -120,6 +120,7 @@ class QueriesConfig(SectionConfig):
     input: Optional[QueriesInputConfig]
     process: TextProcessorConfig
     psq: Optional[PSQConfig]
+    parse: bool = False  # parse with Lucene query parser with support for boolean operators and term weighting
     output: Union[bool, str] = True
 
 
@@ -159,6 +160,8 @@ class RetrieveConfig(SectionConfig):
     output: Union[bool, str] = True
     log_explanations: bool = False
     log_explanations_cutoff: int = 10
+
+    parse: bool = False  # set to true if using Lucene classic query parser (won't support RM3)
 
     # Parameters for retrieval approaches
     # bm25
