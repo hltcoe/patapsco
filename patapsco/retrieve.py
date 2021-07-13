@@ -1,14 +1,12 @@
 import logging
 import pathlib
 
-import jnius_config
-
-from .error import PatapscoError
-from .error import ConfigError
+from .error import ConfigError, PatapscoError
 from .pipeline import Task
 from .results import Result, Results
 from .schema import RetrieveConfig
 from .util import TaskFactory
+from .util.java import Java
 
 LOGGER = logging.getLogger(__name__)
 
@@ -20,39 +18,6 @@ class RetrieverFactory(TaskFactory):
         'psq': 'PyseriniRetriever',
     }
     config_class = RetrieveConfig
-
-
-class Java:
-    """Wraps JVM access
-
-    This class delays loading the JVM until needed.
-    This prevents issues with multiprocessing where a child process inherits a parent's JVM.
-    """
-
-    def __init__(self):
-        self.initialized = False
-
-    def __getattr__(self, attr):
-        if not self.initialized:
-            self.initialize()
-        return self.__dict__[attr]
-
-    def initialize(self):
-        self.initialized = True
-        if not jnius_config.vm_running:
-            jnius_config.add_options('-Xmx1024m')  # restrict Java's heap size as requested by HLTCOE IT staff
-        try:
-            import pyserini.analysis
-            import pyserini.search
-            import jnius
-        except Exception as e:
-            msg = "Problem with Java. Likely no Java or an older JVM. Run with debug flag for more details."
-            raise PatapscoError(msg) from e
-        # TODO can remove analyzer when newest version of pyserini is released
-        self.WhitespaceAnalyzer = jnius.autoclass('org.apache.lucene.analysis.core.WhitespaceAnalyzer')
-        self.SimpleSearcher = pyserini.search.SimpleSearcher
-        self.PSQIndexSearcher = jnius.autoclass('edu.jhu.hlt.psq.search.PSQIndexSearcher')
-        self.BagOfWordsQueryGenerator = jnius.autoclass('io.anserini.search.query.BagOfWordsQueryGenerator')
 
 
 class PyseriniRetriever(Task):

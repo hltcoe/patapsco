@@ -5,6 +5,10 @@ import logging
 import pathlib
 from typing import Optional
 
+import luqum.parser
+import luqum.tree
+import luqum.visitor
+
 from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import TextProcessorConfig, TopicsInputConfig
@@ -12,6 +16,7 @@ from .text import TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
 from .util.formats import parse_xml_topics, parse_sgml_topics, parse_psq_table
+from .util.java import Java
 
 LOGGER = logging.getLogger(__name__)
 
@@ -308,11 +313,74 @@ class QueryGenerator:
         self.processor = processor
 
     def generate(self, query, text, tokens):
+        """Generate the text of a query
+
+        Args:
+            query (Query): query object
+            text (str): normalized text of query
+            tokens (list): list of string tokens
+
+        Returns:
+            Query object
+        """
         stopword_indices = self.processor.identify_stop_words(tokens)
         tokens = self.processor.stem(tokens)
         tokens = self.processor.remove_stop_words(tokens, stopword_indices)
         query_syntax = self.processor.post_normalize(' '.join(tokens))
         return Query(query.id, query.lang, query_syntax, text, query.report)
+
+
+class LuceneStemmer(luqum.visitor.TreeTransformer):
+    """Stems terms in a Lucene query"""
+
+    def __init__(self, processor):
+        self.processor = processor
+        super().__init__()
+
+    def visit_search_field(self, node, context):
+        new_node = node.clone_item()
+        value = node.expr.value
+        if isinstance(node.expr, luqum.tree.Phrase):
+            value = value.strip('"')
+        # this handles single terms and phrases
+        a = value.split()
+        b = self.processor.stem(a)
+        new_value = ' '.join(self.processor.stem(value.split()))
+        if isinstance(node.expr, luqum.tree.Phrase):
+            new_value = f'"{new_value}"'
+        new_node.expr = node.expr.clone_item(value=new_value)
+        yield new_node
+
+
+class LuceneQueryGenerator:
+    """Generate a query using Lucene syntax"""
+
+    def __init__(self, processor):
+        self.processor = processor
+        java = Java()
+        self.parser = java.QueryParser('contents', java.WhitespaceAnalyzer())
+        self.stemmer = LuceneStemmer(processor)
+
+    def generate(self, query, text, tokens):
+        """Generate the text of a query
+
+        Args:
+            query (Query): query object
+            text (str): normalized text of query
+            tokens (list): list of string tokens
+
+        Returns:
+            Query object
+        """
+        # convert tokens into lucene query format:
+        # term1 AND term2 -> +contents:term1 +contents:term2
+        jquery = self.parser.parse(text)
+        tree = luqum.parser.parser.parse(jquery.toString())
+
+        # stem the query terms
+        tree = self.stemmer.visit(tree)
+
+        return Query(query.id, query.lang, str(tree), text, query.report)
 
 
 @dataclasses.dataclass

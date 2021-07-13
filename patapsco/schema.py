@@ -120,6 +120,7 @@ class QueriesConfig(SectionConfig):
     input: Optional[QueriesInputConfig]
     process: TextProcessorConfig
     psq: Optional[PSQConfig]
+    parse: bool = False  # parse with Lucene query parser with support for boolean operators and term weighting
     output: Union[bool, str] = True
 
 
