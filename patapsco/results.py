@@ -154,6 +154,8 @@ class JsonResultsReader:
         return self
 
     def __next__(self):
+        if self.file.closed:
+            raise StopIteration
         line = self.file.readline()
         if not line:
             self.file.close()
