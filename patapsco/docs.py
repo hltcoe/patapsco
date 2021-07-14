@@ -79,11 +79,13 @@ class Hc4JsonDocumentReader(InputIterator):
         return self
 
     def __next__(self):
+        if self.fp.closed:
+            raise StopIteration
         self.count += 1
         line = self.fp.readline()
         if not line:
             self.fp.close()
-            raise StopIteration()
+            raise StopIteration
         try:
             data = json.loads(line.strip())
             return Doc(data['id'], self.lang, ' '.join([data['title'].strip(), data['text'].strip()]), data['date'])
@@ -169,6 +171,8 @@ class DocReader(InputIterator):
         return self
 
     def __next__(self):
+        if self.file.closed:
+            raise StopIteration
         line = self.file.readline()
         if not line:
             self.file.close()
