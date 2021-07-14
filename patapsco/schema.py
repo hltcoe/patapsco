@@ -222,7 +222,7 @@ class StageConfig(BaseConfig):
     """Configuration for one of the stages"""
     mode: str = "streaming"  # streaming or batch
     batch_size: Optional[int]  # for batch, the default is a single batch
-    num_jobs: int = 2  # number of parallel jobs
+    num_jobs: int = 1  # number of parallel jobs
     progress_interval: Optional[int]  # how often should progress be logged
     # start and stop are intended for parallel processing
     start: Optional[int]  # O-based index of start position in input (inclusive)
@@ -244,7 +244,7 @@ class RunConfig(SectionConfig):
     results: str = "results.txt"  # default results filename
     parallel: Optional[ParallelConfig]  # configure for a parallel job
     stage1: Union[bool, StageConfig] = StageConfig()
-    stage2: Union[bool, StageConfig] = StageConfig(num_jobs=1)
+    stage2: Union[bool, StageConfig] = StageConfig()
 
 
 class RunnerConfig(BaseConfig):

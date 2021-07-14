@@ -4,6 +4,8 @@ run:
     name: sbatch
     queue: htc
     resources: --time 1:00:00
+  stage1:
+    num_jobs: 2
 
 text:
   normalize:
