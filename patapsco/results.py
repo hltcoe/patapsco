@@ -9,7 +9,7 @@ from typing import List, Union
 from .pipeline import Task
 from .topics import Query
 from .util import DataclassJSONEncoder
-from .util.file import path_append
+from .util.file import count_lines, path_append
 
 LOGGER = logging.getLogger(__name__)
 
@@ -145,10 +145,10 @@ class JsonResultsReader:
     """Iterator over results from a jsonl file """
 
     def __init__(self, path):
-        path = pathlib.Path(path)
-        if path.is_dir():
-            path = path / 'results.jsonl'
-        self.file = open(path, 'r')
+        self.path = pathlib.Path(path)
+        if self.path.is_dir():
+            self.path = self.path / 'results.jsonl'
+        self.file = open(self.path, 'r')
 
     def __iter__(self):
         return self
@@ -163,6 +163,9 @@ class JsonResultsReader:
         data = json.loads(line)
         results = [Result(**result) for result in data['results']]
         return Results(Query(**data['query']), data['doc_lang'], data['system'], results)
+
+    def __len__(self):
+        return count_lines(str(self.path))
 
     def __str__(self):
         return self.__class__.__name__

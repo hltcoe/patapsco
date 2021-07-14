@@ -13,7 +13,7 @@ from .schema import DocumentsInputConfig
 from .text import TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
-from .util.formats import parse_sgml_documents, parse_hamshahri_documents
+from .util.formats import parse_sgml_documents
 from .util.normalize import compare_strings
 
 LOGGER = logging.getLogger(__name__)
