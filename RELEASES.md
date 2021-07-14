@@ -1,3 +1,8 @@
+## 0.9.6
+ * Adds Lucene query parsing
+ * Fixes bug with batch mode when running partial pipelines
+ * Fixes bug with batch size larger than input iterable
+
 ## 0.9.5
  * Adds PSQ
  * Increases Java heap size
