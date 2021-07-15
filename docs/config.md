@@ -51,6 +51,11 @@ The resources can be set to a comma separate list of resources like so:
   resources: --time 2:00:00, --mem 6G
 ```
 
+For additional qsub resources, separate them by commas with no spaces:
+```yaml
+  resources: h_rt=12:00:00,mem_free=8G
+```
+
 #### example
 ```yaml
 run:
