@@ -32,7 +32,7 @@ def main():
     qld_group.add_argument("--qld", action="store_true", help="If set, retrieval uses QLD")
     qld_group.add_argument("--mu", type=int, default=1000, help="mu parameter")
 
-    rm3_group = parser.add_argument_group('rm3')
+    rm3_group = parser.add_argument_group("rm3 parameters")
     rm3_group.add_argument("--rm3", action="store_true", help="If set, retrieval uses  rm3 query expansion")
     rm3_group.add_argument("--fb_terms", type=int, default=10, help="fb terms parameter")
     rm3_group.add_argument("--fb_docs", type=int, default=10, help="fb docs parameter")
