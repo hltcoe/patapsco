@@ -4,9 +4,15 @@ import pathlib
 import tempfile
 
 from patapsco.retrieve import PyseriniRetriever, RetrieveConfig
+<<<<<<< HEAD
 from patapsco.schema import PathConfig, PSQConfig, QueriesConfig, RetrieveInputConfig, TextProcessorConfig
 from patapsco.text import PorterStemmer, TextProcessor
 from patapsco.topics import Query, LuceneQueryGenerator, PSQGenerator, QueryGenerator, QueryProcessor
+=======
+from patapsco.schema import PathConfig, QueriesConfig, RetrieveInputConfig, TextProcessorConfig
+from patapsco.text import PorterStemmer
+from patapsco.topics import Query
+>>>>>>> 5b5d65bfd4998773605b63cff49fec4e4d184275
 from patapsco.util.file import delete_dir
 
 
