@@ -19,6 +19,10 @@ class TestCompare:
 
 
 class TestNormalizer:
+    def test_pre_normalize_newlines(self):
+        normalizer = NormalizerFactory.create("eng", NormalizationConfig(lowercase=False))
+        assert normalizer.pre_normalize("line1\nline2") == "line1 line2"
+
     def test_post_normalize_lowercase(self):
         normalizer = GenericNormalizer(NormalizationConfig(lowercase=True))
         assert normalizer.post_normalize("Test test") == "test test"

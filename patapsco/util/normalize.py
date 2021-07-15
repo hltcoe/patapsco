@@ -252,10 +252,10 @@ class GenericNormalizer(Normalizer):
     def pre_normalize(self, text):
         """Normalization common to all processing"""
         text = self.fix_encoding(text)
+        text = self.update_spaces(text)
         text = self.remove_control_chars(text)
         text = self.remove_format_chars(text)
-        text = self.standardize_combining_chars(text)
-        return self.update_spaces(text)
+        return self.standardize_combining_chars(text)
 
     def post_normalize(self, text):
         """Normalization for indexing
