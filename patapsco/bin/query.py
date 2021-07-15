@@ -4,7 +4,7 @@ import pathlib
 import tempfile
 
 from patapsco.retrieve import PyseriniRetriever, RetrieveConfig
-from patapsco.schema import PathConfig, RetrieveInputConfig
+from patapsco.schema import PathConfig, QueriesConfig, RetrieveInputConfig, TextProcessorConfig
 from patapsco.text import PorterStemmer
 from patapsco.topics import Query
 from patapsco.util.file import delete_dir
@@ -32,6 +32,13 @@ def main():
     temp_dir = pathlib.Path(tempfile.mkdtemp())
     # may have to modify depending on upcoming bool support
     name = "psq" if args.psq else "qld" if args.qld else "bool" if args.bool else "bm25"
+    
+    # add in PSQ option in QueriesConfig
+    queries = QueriesConfig(process=TextProcessorConfig(tokenize="whitespace", stem=args.stem))
+    print(queries)
+    # QueryProcessor
+    
+    '''
     conf = RetrieveConfig(name=name, input=RetrieveInputConfig(index=PathConfig(path=args.index)), k1=args.k1, b=args.b, mu=args.mu, rm3=args.rm3,
                           fb_terms=args.fb_terms, fb_docs=args.fb_docs, original_query_weight=args.original_query_weight)
     if args.stem:
@@ -44,6 +51,7 @@ def main():
         if i == args.count:
             break
         print(json.dumps({result.doc_id: (result.rank, result.score)}))
+    '''
     delete_dir(temp_dir)
 
 
