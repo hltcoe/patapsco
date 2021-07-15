@@ -15,7 +15,7 @@ def main():
     parser.add_argument("-i", "--index", required=True, help="Path to lucene index")
     parser.add_argument("-q", "--query", required=True, help="Query string")
 
-    parser.add_argument("--stem", default=False, choices=["spacy", "stanza", "porter"], help="If set, stem query using Porter stemmer")
+    parser.add_argument("--stem", default=False, choices=["spacy", "stanza", "porter"], help="If set, stem query")
     parser.add_argument("--stopwords", default=False, choices=["lucene", "baidu"], help="If set, remove stopwords")
     parser.add_argument("-c", "--count", type=int, help="How many results to return")
 
