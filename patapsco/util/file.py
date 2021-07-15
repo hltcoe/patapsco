@@ -59,6 +59,8 @@ def is_complete(path):
 
 def count_lines(path, encoding='utf8'):
     """Count lines in a text file"""
+    if isinstance(path, pathlib.Path):
+        path = str(path)
     if path.endswith('.gz'):
         return gzip_count_lines(path)
     count = 0

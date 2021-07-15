@@ -52,6 +52,7 @@ class TrecResultsWriter(Task):
         self.file = None
 
     def begin(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)  # this is needed for rerank only pipelines
         self.file = open(self.path, 'w')
 
     def process(self, results):
