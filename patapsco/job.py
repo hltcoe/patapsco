@@ -810,6 +810,9 @@ class JobBuilder:
 
         if Tasks.RERANK in plan:
             self.clear_output(self.conf.rerank)
+            if not self.conf.database:
+                # copy in the configuration that created the db
+                self.artifact_helper.combine(self.record_conf, self.conf.rerank.input.database.path)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
             db = DocumentDatabaseFactory.create(run_path, self.conf.rerank.input.database.path, readonly=True)
             tasks.append(RerankFactory.create(run_path, self.conf.rerank, db))
