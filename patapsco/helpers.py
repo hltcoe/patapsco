@@ -143,7 +143,7 @@ class ArtifactHelper:
         self.excludes = {
             Tasks.DOCUMENTS: [Tasks.DATABASE, Tasks.INDEX, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
             Tasks.DATABASE: [Tasks.INDEX, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
-            Tasks.INDEX: [Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
+            Tasks.INDEX: [Tasks.DATABASE, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
             Tasks.TOPICS: [Tasks.DOCUMENTS, Tasks.DATABASE, Tasks.INDEX, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
             Tasks.QUERIES: [Tasks.DOCUMENTS, Tasks.DATABASE, Tasks.INDEX, Tasks.RETRIEVE, Tasks.RERANK],
             Tasks.RETRIEVE: [Tasks.DATABASE, Tasks.RERANK],
@@ -152,7 +152,8 @@ class ArtifactHelper:
 
     def get_config(self, config, task):
         """This excludes the parts of the configuration that were not used to create the artifact."""
-        return config.copy(exclude=set(self.excludes[task]), deep=True)
+        excludes = set(self.excludes[task]) | {'score'}
+        return config.copy(exclude=excludes, deep=True)
 
     def combine(self, config, path, required=True):
         """Loads an artifact configuration and combines it with the base config"""
