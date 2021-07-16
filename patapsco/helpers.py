@@ -29,6 +29,7 @@ class ConfigHelper:
         cls._make_input_paths_absolute(conf)
         cls._set_retrieve_input_path(conf)
         cls._set_rerank_db_path(conf)
+        cls._set_progress_intervals(conf)
         return conf
 
     @staticmethod
@@ -124,6 +125,15 @@ class ConfigHelper:
                         conf.rerank.input.database = PathConfig(path=conf.database.output)
                 else:
                     raise ConfigError("rerank.input.database.path needs to be set")
+
+    @staticmethod
+    def _set_progress_intervals(conf):
+        if conf.run.stage1:
+            if not conf.run.stage1.progress_interval:
+                conf.run.stage1.progress_interval = 10000
+        if conf.run.stage2:
+            if not conf.run.stage2.progress_interval:
+                conf.run.stage2.progress_interval = 10
 
 
 class ArtifactHelper:
