@@ -116,8 +116,12 @@ class Job:
             touch_complete(self.run_path)
 
     def write_config(self):
+        # if this run starts with artifacts, also write out their config in full config file
         path = pathlib.Path(self.run_path) / 'config.yml'
-        ConfigService.write_config_file(str(path), self.record_conf)
+        ConfigService.write_config_file(str(path), self.conf)
+        if self.conf != self.record_conf:
+            path = pathlib.Path(self.run_path) / 'config_full.yml'
+            ConfigService.write_config_file(str(path), self.record_conf)
 
     def write_scores(self):
         results_path = pathlib.Path(self.run_path) / self.conf.run.results
@@ -703,7 +707,6 @@ class JobBuilder:
     def _build_stage1_pipeline(self, iterator, tasks):
         # select pipeline based on stage configuration
         stage_conf = self.conf.run.stage1
-        stage_conf.progress_interval = stage_conf.progress_interval if stage_conf.progress_interval else 10000
         if self.conf.run.parallel:
             LOGGER.info(f'Stage 1 has {stage_conf.num_jobs} parallel jobs.')
         if stage_conf.mode == PipelineMode.STREAMING:
@@ -821,7 +824,6 @@ class JobBuilder:
     def _build_stage2_pipeline(self, iterator, tasks):
         # select pipeline based on stage configuration
         stage_conf = self.conf.run.stage2
-        stage_conf.progress_interval = stage_conf.progress_interval if stage_conf.progress_interval else 10
         if self.conf.run.parallel:
             LOGGER.info(f'Stage 2 has {stage_conf.num_jobs} parallel jobs.')
 
