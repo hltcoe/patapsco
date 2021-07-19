@@ -54,6 +54,7 @@ setuptools.setup(
             "patapsco = patapsco.bin.main:main",
             "patapsco-map = patapsco.bin.map:main",
             "patapsco-norm = patapsco.bin.normalize:main",
+            "patapsco-query = patapsco.bin.query:main",
             "patapsco-reduce = patapsco.bin.reduce:main",
         ]
     }
