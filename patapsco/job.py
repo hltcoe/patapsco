@@ -185,21 +185,27 @@ class MultiprocessingJob(Job):
         report2 = Report()
         if self.stage1_jobs:
             LOGGER.info("Stage 1: Starting processing of documents")
-            self.stage1.begin()
-            report1 = self.map(self.stage1_jobs, self.debug)
-            self.stage1.reduce()
-            self.stage1.end()
-            self._del_reduce_directories()
+            timer1 = Timer()
+            with timer1:
+                self.stage1.begin()
+                report1 = self.map(self.stage1_jobs, self.debug)
+                self.stage1.reduce()
+                self.stage1.end()
+                self._del_reduce_directories()
             LOGGER.info("Stage 1: Ingested %d documents", report1.stage1.count)
+            LOGGER.info("Stage 1 took %.1f secs", timer1.time)
 
         if self.stage2_jobs:
             LOGGER.info("Stage 2: Starting processing of queries")
-            self.stage2.begin()
-            report2 = self.map(self.stage2_jobs, self.debug)
-            self.stage2.reduce()
-            self.stage2.end()
-            self._del_reduce_directories()
+            timer2 = Timer()
+            with timer2:
+                self.stage2.begin()
+                report2 = self.map(self.stage2_jobs, self.debug)
+                self.stage2.reduce()
+                self.stage2.end()
+                self._del_reduce_directories()
             LOGGER.info("Stage 2: Processed %d queries", report2.stage2.count)
+            LOGGER.info("Stage 2 took %.1f secs", timer2.time)
 
         return report1 + report2
 
@@ -487,19 +493,27 @@ class ReduceJob(Job):
     def _run(self):
         if self.stage1:
             LOGGER.info("Stage 1: Running reduce")
-            self.stage1.begin()
-            self.stage1.reduce()
-            self.stage1.end()
-            self._del_reduce_directories()
+            timer1 = Timer()
+            with timer1:
+                self.stage1.begin()
+                self.stage1.reduce()
+                self.stage1.end()
+                self._del_reduce_directories()
+            LOGGER.info("Stage 1 reduce took %.1f secs", timer1.time)
             self._collect_warnings()
+            self._collect_memory_and_time()
 
         if self.stage2:
             LOGGER.info("Stage 2: Running reduce")
-            self.stage2.begin()
-            self.stage2.reduce()
-            self.stage2.end()
-            self._del_reduce_directories()
+            timer2 = Timer()
+            with timer2:
+                self.stage2.begin()
+                self.stage2.reduce()
+                self.stage2.end()
+                self._del_reduce_directories()
+            LOGGER.info("Stage 2 reduce took %.1f secs", timer2.time)
             self._collect_warnings()
+            self._collect_memory_and_time()
 
         return Report()
 
@@ -514,6 +528,15 @@ class ReduceJob(Job):
         try:
             subprocess.run(f"grep -q -e WARNING -e ERROR {logs}", shell=True, check=True)
             subprocess.run(f"grep -h -e WARNING -e ERROR {logs} > {output}", shell=True)
+        except subprocess.CalledProcessError:
+            pass
+
+    def _collect_memory_and_time(self):
+        logs = self.job_dir / "*"
+        output = pathlib.Path(self.run_path) / "memory_and_time.log"
+        try:
+            subprocess.run(f"grep secs {logs} > {output}", shell=True)
+            subprocess.run(f"grep Memory {logs} >> {output}", shell=True)
         except subprocess.CalledProcessError:
             pass
 
