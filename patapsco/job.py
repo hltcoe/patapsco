@@ -535,8 +535,8 @@ class ReduceJob(Job):
         logs = self.job_dir / "*"
         output = pathlib.Path(self.run_path) / "memory_and_time.log"
         try:
-            subprocess.run(f"grep secs {logs} > {output}", shell=True)
-            subprocess.run(f"grep Memory {logs} >> {output}", shell=True)
+            subprocess.run(f"grep -h secs {logs} > {output}", shell=True)
+            subprocess.run(f"grep -h Memory {logs} >> {output}", shell=True)
         except subprocess.CalledProcessError:
             pass
 
