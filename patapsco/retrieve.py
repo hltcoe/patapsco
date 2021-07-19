@@ -26,7 +26,8 @@ class PSQSearcher:
     def __init__(self, index_dir: str):
         import jnius
         self.index_dir = index_dir
-        self.object = jnius.autoclass('edu.jhu.hlt.psq.search.PSQIndexSearcher')(index_dir)
+        self.java = Java()
+        self.object = self.java.PSQIndexSearcher(index_dir)
 
     def set_bm25(self, k1=float(0.9), b=float(0.4)):
         """Configure BM25 as the scoring function.
@@ -56,6 +57,7 @@ class PSQSearcher:
     def close(self):
         return
 
+
 class PyseriniRetriever(Task):
     """Use Lucene to retrieve documents from an index"""
 
@@ -83,7 +85,7 @@ class PyseriniRetriever(Task):
     def searcher(self):
         if not self._searcher:
             if self.config.psq:
-                self._searcher = self.java.PSQSearcher(str(self.index_dir))
+                self._searcher = PSQSearcher(str(self.index_dir))
                 LOGGER.info('Using PSQ')
             else:
                 self._searcher = self.java.SimpleSearcher(str(self.index_dir))
