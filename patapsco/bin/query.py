@@ -60,10 +60,13 @@ def main():
     pr = PyseriniRetriever(run_path="", config=conf)
     pr.begin()
     results = pr.process(proc)
-    for i, result in enumerate(results.results):
-        if i == args.count:
-            break
-        print(f"{result.doc_id}\t{result.score}")
+    if results.results:
+        for i, result in enumerate(results.results):
+            if i == args.count:
+                break
+            print(f"{result.doc_id}\t{result.score}")
+    else:
+        print("No results")
     delete_dir(temp_dir)
 
 
