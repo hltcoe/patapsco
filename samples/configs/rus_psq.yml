@@ -1,0 +1,40 @@
+run:
+  name: Russian PSQ
+
+documents:
+  input:
+    format: json
+    lang: rus
+    encoding: utf8
+    path: samples/data/rus_mini_docs.jsonl
+  process:
+    tokenize: spacy
+
+database:
+  name: sqlite
+
+index:
+  name: lucene
+
+topics:
+  input:
+    format: json
+    lang: eng
+    encoding: utf8
+    path: samples/data/eng_mini_topics.jsonl
+  fields: title
+
+queries:
+  process:
+    inherit: documents.process
+  psq:
+    path: samples/data/rus_psq_table.json
+    lang: rus
+
+retrieve:
+  name: psq
+  number: 5
+
+score:
+  input:
+    path: samples/data/eng_mini_qrels
