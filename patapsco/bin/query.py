@@ -65,7 +65,7 @@ def main():
     for i, result in enumerate(results.results):
         if i == args.count:
             break
-        print(json.dumps({result.doc_id: (result.rank, result.score)}))
+        print(f"{result.doc_id}\t{result.score}")
     delete_dir(temp_dir)
 
 
