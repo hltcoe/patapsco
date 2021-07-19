@@ -1,5 +1,4 @@
 import argparse
-import json
 import pathlib
 import tempfile
 
@@ -23,8 +22,7 @@ def main():
 
     query_syntax = parser.add_mutually_exclusive_group()
     query_syntax.add_argument("--bool", action="store_true", help="If set, expect boolean query string")
-    query_syntax.add_argument("--psq", action="store_true", help="If set, map query string using PSQ dictionary")
-    parser.add_argument("--psq_path", help="Path to PSQ dictionary")
+    query_syntax.add_argument("--psq", help="Path to PSQ json dictionary")
 
     bm25_group = parser.add_argument_group("bm25 parameters")
     bm25_group.add_argument("--b", type=float, default=0.9, help="b parameter")
@@ -50,7 +48,7 @@ def main():
     processor = TextProcessor("", text_config, args.query_lang)
     processor.begin()
 
-    psq = PSQConfig(path="psq.json", lang=args.doc_lang) if args.psq else None
+    psq = PSQConfig(path=args.psq, lang=args.doc_lang) if args.psq else None
     queries = QueriesConfig(process=text_config, psq=psq, parse=parse)
     qp = QueryProcessor("", queries, args.query_lang)
     qp.begin()
