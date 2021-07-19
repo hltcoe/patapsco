@@ -123,8 +123,15 @@ class TimedIterator(collections.abc.Iterator):
         return len(self.iterator)
 
 
-class ChunkedIterator(collections.abc.Iterator):
+class ChunkedIterator(InputIterator):
+    """Iterate over iterable in chunks of size n"""
+
     def __init__(self, iterable, n):
+        """
+        Args:
+            iterable (iterable)
+            n (int): chunk size or None to consume the entire iterable in a single chunk
+        """
         self.iterable = iterable
         self.chunked = more_itertools.chunked(iterable, n)
         self.n = n
@@ -134,7 +141,7 @@ class ChunkedIterator(collections.abc.Iterator):
         return self.iterable.__class__.__name__
 
     def __next__(self):
-        if self.n == 0:
+        if not self.n:  # single chunk
             if not self.done:
                 self.done = True
                 return [x for x in self.iterable]
@@ -142,6 +149,9 @@ class ChunkedIterator(collections.abc.Iterator):
                 raise StopIteration()
         else:
             return next(self.chunked)
+
+    def __len__(self):
+        return len(self.iterable)
 
 
 class SlicedIterator(InputIterator):

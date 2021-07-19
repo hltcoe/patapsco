@@ -13,7 +13,7 @@ from .schema import DocumentsInputConfig
 from .text import TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
-from .util.formats import parse_sgml_documents, parse_hamshahri_documents
+from .util.formats import parse_sgml_documents
 from .util.normalize import compare_strings
 
 LOGGER = logging.getLogger(__name__)
@@ -79,11 +79,13 @@ class Hc4JsonDocumentReader(InputIterator):
         return self
 
     def __next__(self):
+        if self.fp.closed:
+            raise StopIteration
         self.count += 1
         line = self.fp.readline()
         if not line:
             self.fp.close()
-            raise StopIteration()
+            raise StopIteration
         try:
             data = json.loads(line.strip())
             return Doc(data['id'], self.lang, ' '.join([data['title'].strip(), data['text'].strip()]), data['date'])
@@ -169,6 +171,8 @@ class DocReader(InputIterator):
         return self
 
     def __next__(self):
+        if self.file.closed:
+            raise StopIteration
         line = self.file.readline()
         if not line:
             self.file.close()

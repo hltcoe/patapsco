@@ -29,6 +29,7 @@ class ConfigHelper:
         cls._make_input_paths_absolute(conf)
         cls._set_retrieve_input_path(conf)
         cls._set_rerank_db_path(conf)
+        cls._set_progress_intervals(conf)
         return conf
 
     @staticmethod
@@ -125,6 +126,15 @@ class ConfigHelper:
                 else:
                     raise ConfigError("rerank.input.database.path needs to be set")
 
+    @staticmethod
+    def _set_progress_intervals(conf):
+        if conf.run.stage1:
+            if not conf.run.stage1.progress_interval:
+                conf.run.stage1.progress_interval = 10000
+        if conf.run.stage2:
+            if not conf.run.stage2.progress_interval:
+                conf.run.stage2.progress_interval = 10
+
 
 class ArtifactHelper:
     """Utilities for working with artifacts"""
@@ -133,7 +143,7 @@ class ArtifactHelper:
         self.excludes = {
             Tasks.DOCUMENTS: [Tasks.DATABASE, Tasks.INDEX, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
             Tasks.DATABASE: [Tasks.INDEX, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
-            Tasks.INDEX: [Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
+            Tasks.INDEX: [Tasks.DATABASE, Tasks.TOPICS, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
             Tasks.TOPICS: [Tasks.DOCUMENTS, Tasks.DATABASE, Tasks.INDEX, Tasks.QUERIES, Tasks.RETRIEVE, Tasks.RERANK],
             Tasks.QUERIES: [Tasks.DOCUMENTS, Tasks.DATABASE, Tasks.INDEX, Tasks.RETRIEVE, Tasks.RERANK],
             Tasks.RETRIEVE: [Tasks.DATABASE, Tasks.RERANK],
@@ -142,9 +152,10 @@ class ArtifactHelper:
 
     def get_config(self, config, task):
         """This excludes the parts of the configuration that were not used to create the artifact."""
-        return config.copy(exclude=set(self.excludes[task]), deep=True)
+        excludes = set(self.excludes[task]) | {'score'}
+        return config.copy(exclude=excludes, deep=True)
 
-    def combine(self, config, path):
+    def combine(self, config, path, required=True):
         """Loads an artifact configuration and combines it with the base config"""
         path = pathlib.Path(path)
         if path.is_dir():
@@ -154,7 +165,10 @@ class ArtifactHelper:
         try:
             artifact_config_dict = ConfigService().read_config_file(path)
         except FileNotFoundError:
-            raise ConfigError(f"Unable to load artifact config {path}")
+            if required:
+                raise ConfigError(f"Unable to load artifact config {path}")
+            else:
+                return
         artifact_config = RunnerConfig(**artifact_config_dict)
         for task in Tasks:
             if getattr(artifact_config, task):

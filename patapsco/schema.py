@@ -86,7 +86,7 @@ class TopicsInputConfig(BaseConfig):
     encoding: str = "utf8"
     filter_lang: Optional[str]  # language code - filter out topics that do not have this language in lang_supported
     strip_non_digits: bool = False
-    prefix: Union[bool, str] = "EN-"
+    prefix: Union[bool, str] = False  # use "EN-" or similar for CLEF sgml topics
     path: Union[str, list]
 
 
@@ -120,6 +120,7 @@ class QueriesConfig(SectionConfig):
     input: Optional[QueriesInputConfig]
     process: TextProcessorConfig
     psq: Optional[PSQConfig]
+    parse: bool = False  # parse with Lucene query parser with support for boolean operators and term weighting
     output: Union[bool, str] = True
 
 
@@ -159,6 +160,8 @@ class RetrieveConfig(SectionConfig):
     output: Union[bool, str] = True
     log_explanations: bool = False
     log_explanations_cutoff: int = 10
+
+    parse: bool = False  # set to true if using Lucene classic query parser (won't support RM3)
 
     # Parameters for retrieval approaches
     # bm25
@@ -221,7 +224,7 @@ class StageConfig(BaseConfig):
     """Configuration for one of the stages"""
     mode: str = "streaming"  # streaming or batch
     batch_size: Optional[int]  # for batch, the default is a single batch
-    num_jobs: int = 2  # number of parallel jobs
+    num_jobs: int = 1  # number of parallel jobs
     progress_interval: Optional[int]  # how often should progress be logged
     # start and stop are intended for parallel processing
     start: Optional[int]  # O-based index of start position in input (inclusive)
@@ -243,7 +246,7 @@ class RunConfig(SectionConfig):
     results: str = "results.txt"  # default results filename
     parallel: Optional[ParallelConfig]  # configure for a parallel job
     stage1: Union[bool, StageConfig] = StageConfig()
-    stage2: Union[bool, StageConfig] = StageConfig(num_jobs=1)
+    stage2: Union[bool, StageConfig] = StageConfig()
 
 
 class RunnerConfig(BaseConfig):

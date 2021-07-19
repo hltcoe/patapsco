@@ -2,6 +2,8 @@ run:
   name: English qsub
   parallel:
     name: qsub
+  stage1:
+    num_jobs: 2
 
 documents:
   input:

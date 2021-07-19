@@ -24,6 +24,7 @@ dependencies:
   - stanza>=1.2.1
   - pip
   - pip:
+    - luqum
     - parsivar-scale
     - pyserini>=0.13.0
     - pytrec_eval

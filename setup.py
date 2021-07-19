@@ -29,6 +29,7 @@ setuptools.setup(
         "beautifulsoup4",
         "ftfy",
         "jieba",
+        "luqum",
         "more-itertools",
         "nltk>=3.6.0",
         "numpy",

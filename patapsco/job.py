@@ -71,8 +71,16 @@ class Job:
     For a parallel run, the input is divided into chunks and each chunk is a job.
     """
 
-    def __init__(self, conf, stage1, stage2):
+    def __init__(self, conf, record_conf, stage1, stage2):
+        """
+        Args:
+            conf (RunConfig): Config for this job
+            record_conf (RunConfig): Config for the output (includes previous partial runs like a prebuilt index)
+            stage1 (Pipeline): Stage 1 pipeline or false
+            stage2 (Pipeline): Stage 2 pipeline or false
+        """
         self.conf = conf
+        self.record_conf = record_conf
         self.run_path = conf.run.path
         self.stage1 = stage1
         self.stage2 = stage2
@@ -108,8 +116,12 @@ class Job:
             touch_complete(self.run_path)
 
     def write_config(self):
+        # if this run starts with artifacts, also write out their config in full config file
         path = pathlib.Path(self.run_path) / 'config.yml'
         ConfigService.write_config_file(str(path), self.conf)
+        if self.conf != self.record_conf:
+            path = pathlib.Path(self.run_path) / 'config_full.yml'
+            ConfigService.write_config_file(str(path), self.record_conf)
 
     def write_scores(self):
         results_path = pathlib.Path(self.run_path) / self.conf.run.results
@@ -158,8 +170,8 @@ class MultiprocessingJob(Job):
 
     This uses concurrent.futures to implement map/reduce over the input iterators.
     """
-    def __init__(self, conf, stage1, stage2, debug):
-        super().__init__(conf, stage1, stage2)
+    def __init__(self, conf, record_conf, stage1, stage2, debug):
+        super().__init__(conf, record_conf, stage1, stage2)
         multiprocessing.set_start_method('spawn')  # so JVM doesn't get copied to child processes
         self.debug = debug
         self.stage1_jobs = self.stage2_jobs = None
@@ -296,8 +308,8 @@ class MultiprocessingJob(Job):
 
 class ClusterJob(Job):
     """Parallel job that uses qsub or slurm."""
-    def __init__(self, conf, stage1, stage2, debug):
-        super().__init__(conf, stage1, stage2)
+    def __init__(self, conf, record_conf, stage1, stage2, debug):
+        super().__init__(conf, record_conf, stage1, stage2)
         self.debug = debug
         conf.run.path = str(pathlib.Path(self.run_path).absolute())
         self.cluster_config = conf.run.parallel.copy()
@@ -466,8 +478,8 @@ class ClusterJob(Job):
 class ReduceJob(Job):
     """Reduce job run on cluster"""
 
-    def __init__(self, conf, stage1, stage2, debug):
-        super().__init__(conf, stage1, stage2)
+    def __init__(self, conf, record_conf, stage1, stage2, debug):
+        super().__init__(conf, record_conf, stage1, stage2)
         self.debug = debug
         self.scheduler = 'qsub' if conf.run.parallel.name == 'qsub' else 'sbatch'
         self.job_dir = (pathlib.Path(self.run_path) / self.scheduler).absolute()
@@ -528,6 +540,7 @@ class JobBuilder:
             job_type (JobType): Normal, map, reduce
         """
         self.conf = conf
+        self.record_conf = conf.copy(deep=True)
         self.parallel_args = kwargs
         self.run_path = pathlib.Path(conf.run.path)
         self.artifact_helper = ArtifactHelper()
@@ -608,30 +621,30 @@ class JobBuilder:
 
         if not stage1 and stage2 and Tasks.RERANK in stage2_plan:
             self.check_sources_of_documents()
-        if stage2 and Tasks.RETRIEVE in stage2_plan and self.conf.queries.process.strict_check:
+        if stage2 and Tasks.RETRIEVE in stage2_plan and self.record_conf.queries.process.strict_check:
             self.check_text_processing()
 
         if self.job_type == JobType.MAP:
             # Map jobs are always plain serial jobs
-            return SerialJob(self.conf, stage1, stage2)
+            return SerialJob(self.conf, self.record_conf, stage1, stage2)
         elif self.job_type == JobType.REDUCE:
             # Reduce jobs have their own type
             if self.parallel_args['stage'] == 1:
-                return ReduceJob(self.conf, stage1, None, debug)
+                return ReduceJob(self.conf, self.record_conf, stage1, None, debug)
             else:
-                return ReduceJob(self.conf, None, stage2, debug)
+                return ReduceJob(self.conf, self.record_conf, None, stage2, debug)
         elif self.conf.run.parallel:
             # this is the parent job for multiprocessing, qsub, etc.
             parallel_type = self.conf.run.parallel.name.lower()
             if parallel_type == "mp":
-                return MultiprocessingJob(self.conf, stage1, stage2, debug)
+                return MultiprocessingJob(self.conf, self.record_conf, stage1, stage2, debug)
             elif parallel_type == "qsub" or parallel_type == "sbatch":
-                return ClusterJob(self.conf, stage1, stage2, debug)
+                return ClusterJob(self.conf, self.record_conf, stage1, stage2, debug)
             else:
                 raise ConfigError(f"Unknown parallel job type: {self.conf.run.parallel.name}")
         else:
             # plain old single threaded job
-            return SerialJob(self.conf, stage1, stage2)
+            return SerialJob(self.conf, self.record_conf, stage1, stage2)
 
     def _create_stage1_plan(self):
         # Analyze the config and check there are any artifacts from a previous run.
@@ -694,7 +707,6 @@ class JobBuilder:
     def _build_stage1_pipeline(self, iterator, tasks):
         # select pipeline based on stage configuration
         stage_conf = self.conf.run.stage1
-        stage_conf.progress_interval = stage_conf.progress_interval if stage_conf.progress_interval else 10000
         if self.conf.run.parallel:
             LOGGER.info(f'Stage 1 has {stage_conf.num_jobs} parallel jobs.')
         if stage_conf.mode == PipelineMode.STREAMING:
@@ -746,7 +758,8 @@ class JobBuilder:
             iterator = TopicReaderFactory.create(self.conf.topics.input)
         elif Tasks.QUERIES in plan:
             iterator = self._setup_input(QueryReader, 'queries.input.path', 'topics.output',
-                                         'query processor not configured with input')
+                                         'query processor not configured with input',
+                                         False)
             query = iterator.peek()
             self.query_lang = LangStandardizer.standardize(query.lang)
         elif Tasks.RETRIEVE in plan:
@@ -789,7 +802,7 @@ class JobBuilder:
             self.clear_output(self.conf.retrieve)
             if not self.conf.index:
                 # copy in the configuration that created the index (this path is always set in the ConfigPreprocessor)
-                self.artifact_helper.combine(self.conf, self.conf.retrieve.input.index.path)
+                self.artifact_helper.combine(self.record_conf, self.conf.retrieve.input.index.path)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RETRIEVE)
             tasks.append(RetrieverFactory.create(run_path, self.conf.retrieve))
             if self.conf.retrieve.output:
@@ -797,6 +810,9 @@ class JobBuilder:
 
         if Tasks.RERANK in plan:
             self.clear_output(self.conf.rerank)
+            if not self.conf.database:
+                # copy in the configuration that created the db
+                self.artifact_helper.combine(self.record_conf, self.conf.rerank.input.database.path)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.RERANK)
             db = DocumentDatabaseFactory.create(run_path, self.conf.rerank.input.database.path, readonly=True)
             tasks.append(RerankFactory.create(run_path, self.conf.rerank, db))
@@ -811,7 +827,6 @@ class JobBuilder:
     def _build_stage2_pipeline(self, iterator, tasks):
         # select pipeline based on stage configuration
         stage_conf = self.conf.run.stage2
-        stage_conf.progress_interval = stage_conf.progress_interval if stage_conf.progress_interval else 10
         if self.conf.run.parallel:
             LOGGER.info(f'Stage 2 has {stage_conf.num_jobs} parallel jobs.')
 
@@ -828,7 +843,7 @@ class JobBuilder:
         LOGGER.info("Stage 2 pipeline: %s", pipeline)
         return pipeline
 
-    def _setup_input(self, cls, input_path, output_path, error_msg):
+    def _setup_input(self, cls, input_path, output_path, error_msg, required=True):
         """Try two possible places for input path
 
         The input for this task could come from:
@@ -847,7 +862,7 @@ class JobBuilder:
                 field = fields.pop(0)
                 obj = getattr(obj, field)
             path = pathlib.Path(self.run_path / obj)
-            self.artifact_helper.combine(self.conf, path)
+            self.artifact_helper.combine(self.record_conf, path, required)
             return cls(path)
         except AttributeError:
             obj = self.conf
@@ -857,7 +872,7 @@ class JobBuilder:
                     field = fields.pop(0)
                     obj = getattr(obj, field)
                 path = pathlib.Path(self.run_path / obj)
-                self.artifact_helper.combine(self.conf, path)
+                self.artifact_helper.combine(self.record_conf, path)
                 return cls(path)
             except AttributeError:
                 raise ConfigError(error_msg)
@@ -897,15 +912,15 @@ class JobBuilder:
             LOGGER.warning("Unable to load config for the document database")
             return
         artifact_config = RunnerConfig(**artifact_config_dict)
-        if not isinstance(self.conf.documents.input.path, type(artifact_config.documents.input.path)):
+        if not isinstance(self.record_conf.documents.input.path, type(artifact_config.documents.input.path)):
             raise ConfigError("documents in index do not match documents in database")
-        if isinstance(self.conf.documents.input.path, str):
-            name1 = pathlib.Path(self.conf.documents.input.path).name
+        if isinstance(self.record_conf.documents.input.path, str):
+            name1 = pathlib.Path(self.record_conf.documents.input.path).name
             name2 = pathlib.Path(artifact_config.documents.input.path).name
             if name1 != name2:
                 raise ConfigError("documents in index do not match documents in database")
-        elif isinstance(self.conf.documents.input.path, list):
-            for p1, p2 in zip(self.conf.documents.input.path, artifact_config.documents.input.path):
+        elif isinstance(self.record_conf.documents.input.path, list):
+            for p1, p2 in zip(self.record_conf.documents.input.path, artifact_config.documents.input.path):
                 name1 = pathlib.Path(p1).name
                 name2 = pathlib.Path(p2).name
                 if name1 != name2:
@@ -913,8 +928,8 @@ class JobBuilder:
 
     def check_text_processing(self):
         """The docs and queries must have the same text processing"""
-        doc = self.conf.documents.process
-        query = self.conf.queries.process
+        doc = self.record_conf.documents.process
+        query = self.record_conf.queries.process
         try:
             assert doc.normalize.lowercase == query.normalize.lowercase
             assert doc.tokenize == query.tokenize

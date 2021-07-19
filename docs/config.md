@@ -51,6 +51,11 @@ The resources can be set to a comma separate list of resources like so:
   resources: --time 2:00:00, --mem 6G
 ```
 
+For additional qsub resources, separate them by commas with no spaces:
+```yaml
+  resources: h_rt=12:00:00,mem_free=8G
+```
+
 #### example
 ```yaml
 run:
@@ -171,7 +176,9 @@ The jsonl format for queries is defined in `formats.md`.
 If you want to do different text processing on the documents and queries, set `strict_check` under `process` to false.
 This is useful if preprocessing the queries in specific ways outside of Patapsco.
 
-For PSQ queries:
+#### PSQ
+For PSQ queries, you need to configure both the `queries` and `retrieval` sections.
+The `psq` subsection of `queries` includes any text processing to be done such as stemming.
 
 ```yaml
 queries:
@@ -183,8 +190,7 @@ queries:
        stem: porter
 ```
 
-Where path points to a PSQ dictionary like:
-
+The path points to a PSQ dictionary which is a json file:
 ```
 {
   "cat": {"gato":  0.8, "felino":  0.15},
@@ -201,6 +207,12 @@ retrieve:
   name: bm25
   psq: true
 ```
+
+#### lucene classic query parsing
+Lucene supports term weighting and boolean queries.
+To use this rather than the standard queries in pyserini, turn on the `parse`
+flag in both the `queries` and `retrieval` sections.
+
 ### retrieve
 The most basic config for retrieve looks like this:
 

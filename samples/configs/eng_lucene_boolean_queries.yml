@@ -1,11 +1,5 @@
 run:
-  name: English sbatch
-  parallel:
-    name: sbatch
-    queue: htc
-    resources: --time 1:00:00
-  stage1:
-    num_jobs: 2
+  name: English lucene
 
 text:
   normalize:
@@ -21,28 +15,22 @@ documents:
     path: samples/data/eng_mini_docs.jsonl
   process:
     inherit: text
-
-database:
-  name: sqlite
+  output: true
 
 index:
   name: lucene
 
-topics:
-  input:
-    format: json
-    lang: eng
-    encoding: utf8
-    path: samples/data/eng_mini_topics.jsonl
-  fields: title
-
 queries:
+  input:
+    path: samples/data/eng_mini_lucene_queries.jsonl
   process:
     inherit: text
+  parse: true
 
 retrieve:
   name: bm25
   number: 5
+  parse: true
 
 score:
   input:
