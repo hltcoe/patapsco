@@ -1,12 +1,10 @@
 import argparse
 import pathlib
-import tempfile
 
 from patapsco.retrieve import PyseriniRetriever, RetrieveConfig
 from patapsco.schema import PathConfig, PSQConfig, QueriesConfig, RetrieveInputConfig, TextProcessorConfig
 from patapsco.text import TextProcessor
 from patapsco.topics import Query, QueryProcessor
-from patapsco.util.file import delete_dir
 
 
 def main():
@@ -15,7 +13,6 @@ def main():
     parser.add_argument("-q", "--query", required=True, help="Query string")
 
     parser.add_argument("--query_lang", default="eng", choices=["eng", "fas", "rus", "zho"], help="Language to query in")
-    parser.add_argument("--doc_lang", default="eng", choices=["eng", "fas", "rus", "zho"], help="Language that documents are in")
     parser.add_argument("--stem", default=False, choices=["spacy", "stanza", "porter"], help="If set, stem query")
     parser.add_argument("--stopwords", default=False, choices=["lucene", "baidu"], help="If set, remove stopwords")
     parser.add_argument("-c", "--count", type=int, help="How many results to return")
@@ -40,19 +37,20 @@ def main():
 
     args = parser.parse_args()
 
-    temp_dir = pathlib.Path(tempfile.mkdtemp())
     name = "psq" if args.psq else "qld" if args.qld else "bool" if args.bool else "bm25"
     parse = True if args.bool else False
 
     text_config = TextProcessorConfig(tokenize="whitespace", stopwords=args.stopwords, stem=args.stem)
-    processor = TextProcessor("", text_config, args.query_lang)
+    processor = TextProcessor(run_path="", config=text_config, lang=args.query_lang)
     processor.begin()
 
-    psq = PSQConfig(path=args.psq, lang=args.doc_lang) if args.psq else None
+    lang_path = pathlib.Path(args.index) / '.lang'
+    doc_lang = lang_path.read_text().strip()
+    psq = PSQConfig(path=args.psq, lang=doc_lang) if args.psq else None
     queries = QueriesConfig(process=text_config, psq=psq, parse=parse)
-    qp = QueryProcessor("", queries, args.query_lang)
+    qp = QueryProcessor(run_path="", config=queries, lang=args.query_lang)
     qp.begin()
-    query = Query("1", "", "", args.query, "")
+    query = Query("1", lang=args.query_lang, query="", text=args.query, report="")
     proc = qp.process(query)
 
     conf = RetrieveConfig(name=name, input=RetrieveInputConfig(index=PathConfig(path=args.index)), parse=parse, k1=args.k1, b=args.b, mu=args.mu, rm3=args.rm3,
@@ -67,7 +65,6 @@ def main():
             print(f"{result.doc_id}\t{result.score}")
     else:
         print("No results")
-    delete_dir(temp_dir)
 
 
 if __name__ == "__main__":
