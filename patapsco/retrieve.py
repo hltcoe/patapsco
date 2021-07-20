@@ -24,12 +24,11 @@ class RetrieverFactory(TaskFactory):
 class PSQSearcher:
 
     def __init__(self, index_dir: str):
-        import jnius
         self.index_dir = index_dir
         self.java = Java()
         self.object = self.java.PSQIndexSearcher(index_dir)
 
-    def set_bm25(self, k1=float(0.9), b=float(0.4)):
+    def set_bm25(self, k1=0.9, b=0.4):
         """Configure BM25 as the scoring function.
 
         Parameters
@@ -55,7 +54,7 @@ class PSQSearcher:
         return self.object.searchPsq(q, k)
 
     def close(self):
-        return
+        self.object.close()
 
 
 class PyseriniRetriever(Task):
