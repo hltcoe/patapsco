@@ -1,12 +1,10 @@
 import argparse
 import pathlib
-import tempfile
 
 from patapsco.retrieve import PyseriniRetriever, RetrieveConfig
 from patapsco.schema import PathConfig, PSQConfig, QueriesConfig, RetrieveInputConfig, TextProcessorConfig
 from patapsco.text import TextProcessor
 from patapsco.topics import Query, QueryProcessor
-from patapsco.util.file import delete_dir
 
 
 def main():
@@ -39,7 +37,6 @@ def main():
 
     args = parser.parse_args()
 
-    temp_dir = pathlib.Path(tempfile.mkdtemp())
     name = "psq" if args.psq else "qld" if args.qld else "bool" if args.bool else "bm25"
     parse = True if args.bool else False
 
@@ -68,7 +65,6 @@ def main():
             print(f"{result.doc_id}\t{result.score}")
     else:
         print("No results")
-    delete_dir(temp_dir)
 
 
 if __name__ == "__main__":
