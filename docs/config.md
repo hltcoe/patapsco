@@ -180,7 +180,7 @@ This is useful if preprocessing the queries in specific ways outside of Patapsco
 For PSQ queries, you need to configure both the `queries` and `retrieval` sections.
 The `psq` subsection of `queries` includes any text processing to be done such as stemming.
 
-```
+```yaml
 queries:
      process:
        inherit: documents.process
@@ -200,11 +200,12 @@ The path points to a PSQ dictionary which is a json file:
 }
 ```
 
-And in the retrieve part of the config use a name of 'psq':
+And in the retrieve part of the config use psq: true:
 
 ```
 retrieve:
-  name: psq
+  name: bm25
+  psq: true
 ```
 
 #### lucene classic query parsing
@@ -224,7 +225,6 @@ retrieve:
 Supported names:
  * bm25 - Okapi Best Match
  * qld - Query Likelihood with Dirichlet smoothing
- * psq - Probablistic Structured Query
 
 bm25 parameters:
 ```yaml
@@ -245,6 +245,10 @@ Query expansion with relevance model 3 (rm3):
   original_query_weight: 0.5
 ```
 
+Probabilistic structured query:
+```yaml
+  psq: true
+```
 An example that uses bm25 with rm3:
 ```yaml
 retrieve:

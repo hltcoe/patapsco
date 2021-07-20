@@ -6,6 +6,7 @@ from .pipeline import Task
 from .results import Result, Results
 from .schema import RetrieveConfig
 from .util import TaskFactory
+from .topics import Query
 from .util.java import Java
 
 LOGGER = logging.getLogger(__name__)
@@ -18,6 +19,42 @@ class RetrieverFactory(TaskFactory):
         'psq': 'PyseriniRetriever',
     }
     config_class = RetrieveConfig
+
+
+class PSQSearcher:
+
+    def __init__(self, index_dir: str):
+        self.index_dir = index_dir
+        self.java = Java()
+        self.object = self.java.PSQIndexSearcher(index_dir)
+
+    def set_bm25(self, k1=0.9, b=0.4):
+        """Configure BM25 as the scoring function.
+
+        Parameters
+        ----------
+        k1 : float
+            BM25 k1 parameter.
+        b : float
+            BM25 b parameter.
+        """
+        self.object.setBM25(float(k1), float(b))
+
+    def set_qld(self, mu=float(1000)):
+        """Configure query likelihood with Dirichlet smoothing as the scoring function.
+
+        Parameters
+        ----------
+        mu : float
+            Dirichlet smoothing parameter mu.
+        """
+        self.object.setQLD(float(mu))
+
+    def search(self, q: str, k: int = 10):
+        return self.object.searchPsq(q, k)
+
+    def close(self):
+        self.object.close()
 
 
 class PyseriniRetriever(Task):
@@ -46,24 +83,24 @@ class PyseriniRetriever(Task):
     @property
     def searcher(self):
         if not self._searcher:
-            self._searcher = self.java.SimpleSearcher(str(self.index_dir))
-            self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
+            if self.config.psq:
+                self._searcher = PSQSearcher(str(self.index_dir))
+                LOGGER.info('Using PSQ')
+            else:
+                self._searcher = self.java.SimpleSearcher(str(self.index_dir))
+                self._searcher.set_analyzer(self.java.WhitespaceAnalyzer())
             if self.config.name == "qld":
                 mu = self.config.mu
                 self._searcher.set_qld(mu)
                 LOGGER.info(f'Using QLD with parameter mu={mu}')
             else:
-                if self.config.name == "psq":
-                    self._searcher = self.java.PSQIndexSearcher(str(self.index_dir))
-                    LOGGER.info('Using PSQ')
-                else:
-                    k1 = self.config.k1
-                    b = self.config.b
-                    self._searcher.set_bm25(k1, b)
-                    LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
+                k1 = self.config.k1
+                b = self.config.b
+                self._searcher.set_bm25(k1, b)
+                LOGGER.info(f'Using BM25 with parameters k1={k1} and b={b}')
 
             if self.config.rm3:
-                if self.config.name == "psq":
+                if self.config.psq:
                     raise ConfigError("Unsupported operation PSQ + RM3")
 
                 fb_terms = self.config.fb_terms

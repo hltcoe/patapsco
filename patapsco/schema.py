@@ -171,6 +171,8 @@ class RetrieveConfig(SectionConfig):
     mu: int = 1000
     # rm3 query expansion
     rm3: bool = False
+    # probabilistic structured query
+    psq: bool = False
     fb_terms = 10
     fb_docs = 10
     original_query_weight = float(0.5)

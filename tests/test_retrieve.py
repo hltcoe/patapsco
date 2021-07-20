@@ -78,8 +78,9 @@ class TestPyseriniRetriever:
         self.create_small_index()
         lang_path = self.temp_dir / ".lang"
         lang_path.write_text("eng")
-        conf = RetrieveConfig(name="psq", input=RetrieveInputConfig(index=PathConfig(path=str(self.temp_dir / 'index'))))
+        conf = RetrieveConfig(name="bm25", input=RetrieveInputConfig(index=PathConfig(path=str(self.temp_dir / 'index'))))
         conf.rm3 = True
+        conf.psq = True
         pr = PyseriniRetriever(run_path=self.temp_dir, config=conf)
         with pytest.raises(ConfigError):
             pr.begin()
