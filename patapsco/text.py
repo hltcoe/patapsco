@@ -514,7 +514,7 @@ class TextProcessor(Task):
 
     Used on both documents and queries.
     """
-    def __init__(self, run_path, config, lang,):
+    def __init__(self, run_path, config, lang):
         """
         Args:
             run_path (str): Root directory of the run.

@@ -41,14 +41,14 @@ def main():
     parse = True if args.bool else False
 
     text_config = TextProcessorConfig(tokenize="whitespace", stopwords=args.stopwords, stem=args.stem)
-    processor = TextProcessor("", text_config, args.query_lang)
+    processor = TextProcessor(run_path="", config=text_config, lang=args.query_lang)
     processor.begin()
 
     lang_path = pathlib.Path(args.index) / '.lang'
     doc_lang = lang_path.read_text().strip()
     psq = PSQConfig(path=args.psq, lang=doc_lang) if args.psq else None
     queries = QueriesConfig(process=text_config, psq=psq, parse=parse)
-    qp = QueryProcessor("", queries, args.query_lang)
+    qp = QueryProcessor(run_path="", config=queries, lang=args.query_lang)
     qp.begin()
     query = Query("1", lang=args.query_lang, query="", text=args.query, report="")
     proc = qp.process(query)
