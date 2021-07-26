@@ -77,6 +77,11 @@ class Scorer:
         for i in filter:
             d.pop(i, None)
 
+    @staticmethod
+    def _add_dict(d, misses):
+        for i in misses:
+            d[i] = {}
+
     def score(self, results_path, scores_path):
         """Calculate scores at the end of the run.
 
@@ -93,11 +98,10 @@ class Scorer:
         if remove_from_run:
             LOGGER.warning(f'Omitting {len(remove_from_run)} topics in the run that are not in the qrels')
             self._filter_dict(system_output, remove_from_run)
-        remove_from_qrels = set(self.qrels.keys()) - set(system_output.keys())
-        if remove_from_qrels:
-            LOGGER.warning(f'Omitting {len(remove_from_qrels)} topics in the qrels that are not in the run')
-            LOGGER.warning(f"Omitted queries: {', '.join(remove_from_qrels)}")
-            self._filter_dict(system_output, remove_from_qrels)
+        missing_queries = set(self.qrels.keys()) - set(system_output.keys())
+        if missing_queries:
+            LOGGER.warning(f"Missing queries: {', '.join(missing_queries)}")
+            self._add_dict(system_output, missing_queries)
         measures = {s for s in self.metrics}
         ndcg_prime_results = {}
         if "ndcg_prime" in measures:
