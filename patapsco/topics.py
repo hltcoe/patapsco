@@ -436,6 +436,7 @@ class PSQGenerator(QueryGenerator):
                                              ")": r"\)",
                                              "}": r"\}",
                                              "{": r"\{",
+                                             "/": r"\/",
                                              "\"": r"\\\"",
                                              "~": r"\~",
                                              "?": r"\?",
