@@ -51,6 +51,7 @@ class PSQSearcher:
         self.object.setQLD(float(mu))
 
     def search(self, q: str, k: int = 10):
+        LOGGER.debug(f"query: {q}")
         return self.object.searchPsq(q, k)
 
     def close(self):
