@@ -169,10 +169,10 @@ class RetrieveConfig(SectionConfig):
     b: float = 0.4
     # qld - Query likelihood with Dirichlet smoothing
     mu: int = 1000
-    # rm3 query expansion
-    rm3: bool = False
     # probabilistic structured query
     psq: bool = False
+    # rm3 query expansion
+    rm3: bool = False
     fb_terms = 10
     fb_docs = 10
     original_query_weight = float(0.5)
