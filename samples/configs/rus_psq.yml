@@ -32,8 +32,9 @@ queries:
     lang: rus
 
 retrieve:
-  name: psq
+  name: bm25
   number: 5
+  psq: true
 
 score:
   input:
