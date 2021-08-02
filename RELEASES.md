@@ -1,3 +1,14 @@
+## 0.9.7
+ * Change scoring to penalize a query in qrels without any results
+ * Limit scoring to top 1000 results
+ * Add qld support for PSQ
+ * Add patapsco-query command line tool for querying lucene index built with patapsco
+ * Fixed a bug with handling new lines in text normalization
+ * Collect memory and timing stats into log file for qsub
+ * Add additional escaping in PSQ query handling
+ * Don't write out scoring config to artifact configs
+ * Maintain separate full config and run config when using artifacts from previous runs
+
 ## 0.9.6
  * Adds Lucene query parsing
  * Fixes bug with batch mode when running partial pipelines
