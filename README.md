@@ -1,20 +1,14 @@
-# Patapsco - the SCALE 2021 Pipeline
+# Patapsco - a CLIR Pipeline
 
 ## Requirements
 Patapsco requires Python 3.6+ and Java 11+.
 
 Installing Patapsco with Anaconda will add Java into the virtual environment.
-If not using Anaconda, you will need to check your Java version or
-enable the java module on the grid.
+If not using Anaconda, you will need to check your Java version.
 
 To check your Java version:
 ```
 javac --version
-```
-
-On the grid, enable Java with:
-```
-module add java
 ```
 
 ## Install
@@ -24,7 +18,6 @@ module add java
 #### With conda
 Installing with conda is recommended and will install the gpu-enabled version of pytorch.
 As of June 2021, CUDA 11.1.1 will be installed into the environment by default.
-You do not need to load any CUDA modules on the grid to use the GPUs.
 
 Create and activate the conda environment:
 ```
@@ -33,7 +26,7 @@ conda activate patapsco
 ```
 Install Patapsco:
 ```
-pip install --editable .
+pip install .
 ```
 
 #### With Python's venv module
@@ -49,10 +42,8 @@ pip install -U wheel
 ```
 Install Patapsco and its dependencies:
 ```
-pip install --editable .
+pip install .
 ```
-
-Note: python virtual environments do not work properly on the HLTCOE grid!
 
 #### Windows users
 If you do not have a C++ compiler or cannot install pytrec_eval,
@@ -118,12 +109,8 @@ Any variable in the configuration can be overriden on the command line:
 patapsco --set run.name=my_test_run samples/configs/eng_basic.yml
 ```
 
-## Submitting Results
-A run's output file plus the configuration used to generate the run can be submitted at the website: 
-https://scale21.org
-
 ## Bug Reports
-Use issues on Gitlab to report bugs or request new features.
+Create an issue on GitHub to report bugs or request new features.
 For a bug report include 
  * a description of what was expected and what actually happened
  * any stack trace or error message
