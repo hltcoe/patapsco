@@ -83,8 +83,9 @@ class TopicsInputConfig(BaseConfig):
     """Configuration for Topic input"""
     format: str
     lang: str
+    source: str
     encoding: str = "utf8"
-    filter_lang: Optional[str]  # language code - filter out topics that do not have this language in lang_supported
+    filter_lang: Optional[str]  # language code - filter out topics without this language in languages_with_qrels
     strip_non_digits: bool = False
     prefix: Union[bool, str] = False  # use "EN-" or similar for CLEF sgml topics
     path: Union[str, list]

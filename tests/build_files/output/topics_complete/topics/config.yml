@@ -11,6 +11,7 @@ topics:
     encoding: utf8
     format: json
     lang: eng
+    source: original
     path: tests/build_files/input/topics.jsonl
     prefix: EN-
     strip_non_digits: false

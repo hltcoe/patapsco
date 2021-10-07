@@ -27,7 +27,6 @@ class Topic:
     lang: str
     title: str
     desc: Optional[str]
-    narr: Optional[str]
     report: Optional[str]
 
 
@@ -60,8 +59,6 @@ class TopicProcessor(Task):
         'name': 'title',
         'desc': 'desc',
         'description': 'desc',
-        'narr': 'narr',
-        'narrative': 'narr'
     }
 
     def __init__(self, run_path, config):
@@ -111,7 +108,7 @@ class SgmlTopicReader(InputIterator):
     def __next__(self):
         topic = next(self.topics)
         identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
-        return Topic(identifier, self.lang, topic[1], topic[2], topic[3], None)
+        return Topic(identifier, self.lang, topic[1], topic[2], None)
 
     def __len__(self):
         return count_lines_with('<top>', self.path, self.encoding)
@@ -133,7 +130,7 @@ class XmlTopicReader(InputIterator):
     def __next__(self):
         topic = next(self.topics)
         identifier = ''.join(filter(str.isdigit, topic[0])) if self.strip_non_digits else topic[0]
-        return Topic(identifier, topic[1], topic[2], topic[3], topic[4], None)
+        return Topic(identifier, topic[1], topic[2], topic[3], None)
 
     def __len__(self):
         return count_lines_with('<topic', self.path, self.encoding)
@@ -147,19 +144,21 @@ class SkipEntry(Exception):
 class Hc4JsonTopicReader(InputIterator):
     """Iterator over topics from jsonl file """
 
-    def __init__(self, path, encoding, lang, filter_lang=None, **kwargs):
+    def __init__(self, path, encoding, lang, source, filter_lang=None, **kwargs):
         """
         Args:
             path (str): Path to topics file.
             encoding (str): File encoding.
             lang (str): Language of the topics.
-            filter_lang (str): Remove topics that do not have this lang in lang_supported
+            source (str): Source of the topic (translation, enhancement, etc.)
+            filter_lang (str): Remove topics that do not have this lang in languages_with_qrels
             **kwargs (dict): Unused
         """
         self.path = path
         self.encoding = encoding
         self.lang = lang
-        self.filter_lang = filter_lang
+        self.source = source
+        self.filter_lang = filter_lang if filter_lang else self.lang
         self.num_skipped = 0
         self.topics = iter(self._parse(path, encoding))
 
@@ -173,22 +172,18 @@ class Hc4JsonTopicReader(InputIterator):
         return count_lines(self.path, self.encoding)
 
     def _construct(self, data):
-        # if language is not specified, assume it is English
-        primary_lang = data['lang'] if 'lang' in data else 'eng'
         try:
-            if self.filter_lang and self.filter_lang not in data['lang_supported']:
+            if self.filter_lang not in data['languages_with_qrels']:
                 raise SkipEntry()
-            if self.lang == primary_lang:
-                self._validate(data['topic_id'], data)
-                title = data['topic_title'].strip()
-                desc = data['topic_description'].strip()
-            else:
-                if self.lang not in data['lang_supported']:
-                    raise SkipEntry()
-                self._validate(data['topic_id'], data['lang_resources'][self.lang])
-                title = data['lang_resources'][self.lang]['topic_title'].strip()
-                desc = data['lang_resources'][self.lang]['topic_description'].strip()
-            return Topic(data['topic_id'], self.lang, title, desc, None, data['report_text'])
+            for topic in data['topics']:
+                if topic['lang'] == self.lang and topic['source'] == self.source:
+                    self._validate(data['topic_id'], topic)
+                    title = topic['topic_title'].strip()
+                    desc = topic['topic_description'].strip()
+                    report = data['report']['text'] if 'report' in data else None
+                    return Topic(data['topic_id'], self.lang, title, desc, report)
+            # did not find lang-source pair
+            raise SkipEntry()
         except SkipEntry:
             self.num_skipped += 1
             return None
@@ -208,9 +203,9 @@ class Hc4JsonTopicReader(InputIterator):
                 # filter topics that are not supported for this language or have errors
                 topics = [topic for topic in topics if topic is not None]
                 if self.num_skipped:
-                    LOGGER.info(f"Skipping {self.num_skipped} topics not supported for {self.lang}")
+                    LOGGER.info(f"Skipping {self.num_skipped} topics that don't support {self.lang} {self.source}")
                 if not topics:
-                    raise ConfigError(f"No topics available for language {self.lang}")
+                    raise ConfigError(f"No topics available for {self.lang} {self.source}")
                 return topics
             except json.decoder.JSONDecodeError as e:
                 raise ParseError(f"Problem parsing json from {path}: {e}")
@@ -230,7 +225,7 @@ class TsvTopicReader(InputIterator):
 
     def __next__(self):
         topic = next(self.topics)
-        return Topic(topic[0], self.lang, topic[1], None, None, None)
+        return Topic(topic[0], self.lang, topic[1], None, None)
 
     def __len__(self):
         return count_lines(self.path, self.encoding)

@@ -17,7 +17,7 @@ def test_topic_process():
             self.fields = fields
 
     mock = Mock(['title', 'desc'])
-    topic = Topic('1', 'eng', 'title', 'desc', 'narr', 'report')
+    topic = Topic('1', 'eng', 'title', 'desc', 'report')
     query = TopicProcessor.process(mock, topic)
     assert query.text == "title desc"
 
@@ -52,7 +52,7 @@ class TestHc4JsonTopicReader:
     def test_parse_json_topics(self):
         directory = pathlib.Path(__file__).parent / 'json_files'
         path = directory / 'topics.jsonl'
-        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng')
+        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng', 'original')
         topic = next(topic_iter)
         assert topic.id == '001'
         assert topic.title == 'Test 1'
@@ -70,12 +70,12 @@ class TestHc4JsonTopicReader:
         directory = pathlib.Path(__file__).parent / 'json_files'
         path = directory / 'topics.jsonl'
         with pytest.raises(ConfigError):
-            Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'spa')
+            Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'spa', 'translation')
 
-    def test_parse_json_topics_lang_resources(self):
+    def test_parse_json_topics_rus(self):
         directory = pathlib.Path(__file__).parent / 'json_files'
         path = directory / 'topics.jsonl'
-        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'rus')
+        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'rus', 'translation')
         topic = next(topic_iter)
         assert topic.id == '001'
         assert topic.title == 'Тест 1'
@@ -92,7 +92,7 @@ class TestHc4JsonTopicReader:
     def test_parse_json_topics_filter_by_lang(self):
         directory = pathlib.Path(__file__).parent / 'json_files'
         path = directory / 'topics_different_langs.jsonl'
-        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'zho')
+        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'zho', 'translation')
         topic = next(topic_iter)
         assert topic.id == '001'
         assert topic.title == '测试1'
@@ -101,50 +101,28 @@ class TestHc4JsonTopicReader:
         with pytest.raises(StopIteration):
             next(topic_iter)
 
-    def test_parse_json_topics_with_none_primary_lang(self):
+    def test_parse_json_topics_with_none_title(self):
         directory = pathlib.Path(__file__).parent / 'json_files'
         path = directory / 'topics_none.jsonl'
-        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng')
-        topic = next(topic_iter)
-        assert topic.id == '002'
-
-    def test_parse_json_topics_with_none_resources_lang(self):
-        directory = pathlib.Path(__file__).parent / 'json_files'
-        path = directory / 'topics_none.jsonl'
-        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'zho')
+        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng', 'original')
         topic = next(topic_iter)
         assert topic.id == '002'
 
     def test_parse_json_topics_with_filter(self):
         directory = pathlib.Path(__file__).parent / 'json_files'
         path = directory / 'topics_filter.jsonl'
-        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng', 'zho')
+        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng', 'original', 'zho')
         topic = next(topic_iter)
         assert topic.id == '002'
 
     def test_parse_json_topics_with_filter2(self):
         directory = pathlib.Path(__file__).parent / 'json_files'
         path = directory / 'topics_filter.jsonl'
-        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng', 'rus')
+        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng', 'original', 'rus')
         topic = next(topic_iter)
         assert topic.id == '001'
         topic = next(topic_iter)
         assert topic.id == '002'
-
-    def test_parse_json_topics_with_lang(self):
-        directory = pathlib.Path(__file__).parent / 'json_files'
-        path = directory / 'topics_new_lang_field.jsonl'
-        topic_iter = Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'rus')
-        topic = next(topic_iter)
-        assert topic.id == '001'
-        topic = next(topic_iter)
-        assert topic.id == '002'
-
-    def test_parse_json_topics_with_lang_misatch(self):
-        directory = pathlib.Path(__file__).parent / 'json_files'
-        path = directory / 'topics_new_lang_field.jsonl'
-        with pytest.raises(ConfigError):
-            Hc4JsonTopicReader(str(path.absolute()), 'utf8', 'eng')
 
 
 def test_query_reader():

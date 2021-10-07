@@ -1,2 +1,2 @@
-{"topic_title": "Test 1", "topic_description": "First test", "report_url": "https://example.org", "report_text": "report 1", "report_date": "2020-06-12", "topic_id": "001", "lang_resources": {}, "lang_supported": ["rus"]}
-{"topic_title": "Test 2", "topic_description": "Second test", "report_url": "https://example.com", "report_text": "report 2", "report_date": "2020-04-23", "topic_id": "002", "lang_resources": {}, "lang_supported": ["zho", "rus"]}
+{"topic_id": "001", "languages_with_qrels": ["rus"], "topics": [{"lang": "eng", "source": "original", "topic_title": "Test 1", "topic_description": "First test"}]}
+{"topic_id": "002", "languages_with_qrels": ["zho", "rus"], "topics": [{"lang": "eng", "source": "original", "topic_title": "Test 2", "topic_description": "Second test"}]}

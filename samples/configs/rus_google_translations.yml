@@ -1,7 +1,7 @@
 run:
   name: Russian sample run
-  comment: The translations in the topic file are from Google translate as stand in for human translations.
-    The actual hc4 topics have human generated translations in the trans_resources field.
+  comment: The translations in the topic file are from Google translate.
+    Query expansion using rm3.
 
 documents:
   input:
@@ -22,6 +22,7 @@ topics:
   input:
     format: json
     lang: rus
+    source: google translate
     encoding: utf8
     path: samples/data/eng_mini_topics.jsonl
   fields: title

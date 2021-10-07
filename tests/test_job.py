@@ -38,7 +38,7 @@ class TestJobBuilder:
             ),
             index=IndexConfig(name="lucene", output="index"),
             topics=TopicsConfig(
-                input=TopicsInputConfig(format="jsonl", lang="eng", path=str(input_directory / "topics.jsonl")),
+                input=TopicsInputConfig(format="jsonl", lang="eng", source="original", path=str(input_directory / "topics.jsonl")),
                 output="topics"
             ),
             queries=QueriesConfig(

@@ -106,7 +106,7 @@ class TestArtifactHelper:
             ),
             index=IndexConfig(name="mock", output="index"),
             topics=TopicsConfig(
-                input=TopicsInputConfig(format="jsonl", lang="eng", path="test/topics.jsonl"),
+                input=TopicsInputConfig(format="jsonl", lang="eng", source="original", path="test/topics.jsonl"),
                 output="topics"
             ),
             queries=QueriesConfig(
