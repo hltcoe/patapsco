@@ -124,7 +124,7 @@ index:
 Turn topics into queries.
 Includes the input definition and what fields to select.
 
-The possible fields are title, desc, narr.
+The possible fields are title and desc.
 To combine fields, use a plus sign: `title+desc`
 
 ```yaml
@@ -132,10 +132,15 @@ topics:
   input:
     format: json
     lang: eng
+    source: original
     encoding: utf8
     path: /exp/scale21/path/to/topics
   fields: title
 ```
+
+The source field is used to identify what produced the title and descriptions fields.
+The HC4 data sets use "original" for the original English queries.
+Experiments may also involve various translations that are described in the source field.
 
 To filter out topics that do not have qrels for that language, use the parameter `filter_lang`.
 For example, you may want to use English topics, but only those that have judgments for Russian:
@@ -145,11 +150,14 @@ topics:
   input:
     format: json
     lang: eng
+    source: original
     filter_lang: rus
     encoding: utf8
     path: /exp/scale21/path/to/topics
   fields: title
 ```
+
+Not all options are available for all topic readers.
 
 ### queries
 Prepare the queries for retrieval.

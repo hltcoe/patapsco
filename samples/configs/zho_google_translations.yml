@@ -1,17 +1,15 @@
 run:
-  name: Farsi sample run
-  comment: The translations in the topic file are from Google translate as stand in for human translations.
-    The actual hc4 topics have human generated translations in the trans_resources field.
+  name: Chinese sample run
+  comment: The translations in the topic file are from Google translate.
 
 documents:
   input:
     format: json
-    lang: fas
+    lang: zho
     encoding: utf8
-    path: samples/data/fas_mini_docs.jsonl
+    path: samples/data/zho_mini_docs.jsonl
   process:
-    tokenize: moses
-    stem: parsivar
+    tokenize: spacy
 
 database:
   name: sqlite
@@ -22,7 +20,8 @@ index:
 topics:
   input:
     format: json
-    lang: fas
+    lang: zho
+    source: google translate
     encoding: utf8
     path: samples/data/eng_mini_topics.jsonl
   fields: title

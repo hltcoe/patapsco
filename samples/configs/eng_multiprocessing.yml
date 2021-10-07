@@ -26,6 +26,7 @@ topics:
   input:
     format: json
     lang: eng
+    source: original
     encoding: utf8
     path: samples/data/eng_mini_topics.jsonl
   fields: title
