@@ -1,0 +1,47 @@
+run:
+  name: ir_datasets testing using wikir-eng1k
+
+text:
+  normalize:
+    lowercase: true
+  tokenize: whitespace
+  stem: porter
+
+documents:
+  input:
+    format: irds
+    lang: eng
+    path: wikir/en1k/test
+  process:
+    inherit: text
+  output: true
+
+database:
+  name: sqlite
+
+index:
+  name: lucene
+
+topics:
+  input:
+    format: irds
+    lang: eng
+    source: original
+    encoding: utf8
+    path: wikir/en1k/test
+
+queries:
+  process:
+    inherit: text
+
+retrieve:
+  name: bm25
+  number: 5
+
+rerank:
+  name: mock
+
+score:
+  input:
+    format: irds
+    path: wikir/en1k/test

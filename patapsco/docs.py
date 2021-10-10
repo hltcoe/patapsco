@@ -13,7 +13,7 @@ from .schema import DocumentsInputConfig
 from .text import TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
-from .util.formats import parse_sgml_documents
+from .util.formats import parse_sgml_documents, convert_language_code
 from .util.normalize import compare_strings
 
 LOGGER = logging.getLogger(__name__)
@@ -33,6 +33,7 @@ class DocumentReaderFactory(ReaderFactory):
         'json': 'Hc4JsonDocumentReader',
         'jsonl': 'Hc4JsonDocumentReader',
         'msmarco': 'TsvDocumentReader',
+        'irds': 'IRDSDocumentReader',
     }
     config_class = DocumentsInputConfig
     name = "input document type"
@@ -122,6 +123,31 @@ class TsvDocumentReader(InputIterator):
 
     def __len__(self):
         return count_lines(self.path, self.encoding)
+
+
+class IRDSDocumentReader(InputIterator):
+    """Iterator that uses ir_datasets"""
+
+    def __init__(self, path, encoding, lang, **kwargs):
+        self.path = path
+        # self.encoding = encoding
+        self.lang = lang
+        import ir_datasets
+        self.dataset = ir_datasets.load(self.path)
+        ds_lang = convert_language_code(self.dataset.docs.lang)[3]
+        assert ds_lang == self.lang, \
+               f"Document language code from {path} is not {lang} but {ds_lang}."
+        self.reader = iter(self.dataset.docs)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        doc = next(self.reader)
+        return Doc(doc.doc_id, self.lang, doc.text, None)
+
+    def __len__(self):
+        return len(self.dataset)
 
 
 class DocWriter(Task):

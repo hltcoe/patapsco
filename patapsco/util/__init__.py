@@ -60,9 +60,12 @@ class ReaderFactory(ComponentFactory):
             config (DocumentsInputConfig or TopicsInputConfig)
         """
         validate_encoding(config.encoding)
+        reader_cls = cls._get_class(config)
         # support passing additional args to reader constructors
         args = {key: value for key, value in config.dict().items() if key not in ['format', 'path', 'encoding', 'lang']}
-        return GlobIterator(config.path, cls._get_class(config), config.encoding, config.lang, **args)
+        if reader_cls.__name__.startswith('IRDS'):
+            return reader_cls(config.path, config.encoding, config.lang, **args)
+        return GlobIterator(config.path, reader_cls, config.encoding, config.lang, **args)
 
 
 class TaskFactory(ComponentFactory):

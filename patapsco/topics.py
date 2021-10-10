@@ -15,7 +15,7 @@ from .schema import TextProcessorConfig, TopicsInputConfig
 from .text import TextProcessor
 from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
-from .util.formats import parse_xml_topics, parse_sgml_topics, parse_psq_table
+from .util.formats import parse_xml_topics, parse_sgml_topics, parse_psq_table, convert_language_code
 from .util.java import Java
 
 LOGGER = logging.getLogger(__name__)
@@ -45,7 +45,8 @@ class TopicReaderFactory(ReaderFactory):
         'xml': 'XmlTopicReader',
         'json': 'Hc4JsonTopicReader',
         'jsonl': 'Hc4JsonTopicReader',
-        'msmarco': 'TsvTopicReader'
+        'msmarco': 'TsvTopicReader',
+        'irds': 'IRDSTopicReader'
     }
     config_class = TopicsInputConfig
     name = 'topic type'
@@ -236,6 +237,41 @@ class TsvTopicReader(InputIterator):
             reader = csv.reader(fp, delimiter='\t')
             for line in reader:
                 yield line[0], line[1].strip()
+
+
+class IRDSTopicReader(InputIterator):
+    """Iterator over topics from jsonl file """
+
+    def __init__(self, path, encoding, lang, **kwargs):
+        """
+        Args:
+            path (str): Path to topics file.
+            encoding (str): File encoding.
+            lang (str): Language of the topics.
+            source (str): Source of the topic (translation, enhancement, etc.)
+            filter_lang (str): Remove topics that do not have this lang in languages_with_qrels
+            **kwargs (dict): Unused
+        """
+        self.path = path
+        # self.encoding = encoding # ignored
+        self.lang = lang
+
+        import ir_datasets
+        self.dataset = ir_datasets.load(self.path)
+        ds_lang = convert_language_code(self.dataset.queries.lang)[3]
+        assert ds_lang == self.lang, \
+               f"Query language code from {path} is not {lang} but {ds_lang}."
+        self.queries = iter(self.dataset.queries)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        q = next(self.queries)
+        return Topic(q.query_id, self.lang, q.text, getattr(q, 'description', None), None)
+
+    def __len__(self):
+        return len(self.dataset.queries)
 
 
 class QueryWriter(Task):
