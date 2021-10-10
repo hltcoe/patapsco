@@ -1,5 +1,5 @@
 run:
-  name: ir_datasets testing using wikir-eng1k
+  name: ir_datasets testing using vaswani(11k docs)
 
 text:
   normalize:
@@ -11,7 +11,7 @@ documents:
   input:
     format: irds
     lang: eng
-    path: wikir/en1k/test
+    path: vaswani
   process:
     inherit: text
   output: true
@@ -28,7 +28,7 @@ topics:
     lang: eng
     source: original
     encoding: utf8
-    path: wikir/en1k/test
+    path: vaswani
 
 queries:
   process:
@@ -36,7 +36,7 @@ queries:
 
 retrieve:
   name: bm25
-  number: 5
+  number: 200
 
 rerank:
   name: mock
@@ -44,4 +44,4 @@ rerank:
 score:
   input:
     format: irds
-    path: wikir/en1k/test
+    path: vaswani
