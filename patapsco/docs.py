@@ -136,7 +136,7 @@ class IRDSDocumentReader(InputIterator):
         self.dataset = ir_datasets.load(self.path)
         ds_lang = convert_language_code(self.dataset.docs.lang)[3]
         assert ds_lang == self.lang, \
-               f"Document language code from {path} is not {lang} but {ds_lang}."
+            f"Document language code from {path} is not {lang} but {ds_lang}."
         self.reader = iter(self.dataset.docs)
 
     def __iter__(self):

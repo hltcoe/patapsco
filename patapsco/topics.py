@@ -260,7 +260,7 @@ class IRDSTopicReader(InputIterator):
         self.dataset = ir_datasets.load(self.path)
         ds_lang = convert_language_code(self.dataset.queries.lang)[3]
         assert ds_lang == self.lang, \
-               f"Query language code from {path} is not {lang} but {ds_lang}."
+            f"Query language code from {path} is not {lang} but {ds_lang}."
         self.queries = iter(self.dataset.queries)
 
     def __iter__(self):
@@ -424,6 +424,7 @@ class PSQToken:
 
 class PSQGenerator(QueryGenerator):
     """Generate a PSQ"""
+
     def __init__(self, processor, psq_path, threshold):
         super().__init__(processor)
         try:
