@@ -2,7 +2,7 @@ run:
   name: English sbatch
   parallel:
     name: sbatch
-    queue: htc
+    queue: <queue>  # must replace <queue> with desired partition name or set on command line
     resources: --time 1:00:00
   stage1:
     num_jobs: 2
