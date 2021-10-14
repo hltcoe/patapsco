@@ -12,6 +12,7 @@ dependencies:
   - nltk>=3.6.0
   - numpy
   - psutil
+  - pycountry
   - pydantic>=1.7.1,<1.8.0
   - pyjnius
   - pymorphy2
@@ -22,9 +23,9 @@ dependencies:
   - spacy-pkuseg>=0.0.27,<0.1.0
   - sqlitedict
   - stanza>=1.2.1
-  - pycountry
   - pip
   - pip:
+    - ir_datasets
     - luqum
     - parsivar-scale
     - pyserini>=0.13.0
