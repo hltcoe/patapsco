@@ -30,6 +30,7 @@ class ConfigHelper:
         cls._set_retrieve_input_path(conf)
         cls._set_rerank_db_path(conf)
         cls._set_progress_intervals(conf)
+        cls._check_queue_name(conf)
         return conf
 
     @staticmethod
@@ -134,6 +135,12 @@ class ConfigHelper:
         if conf.run.stage2:
             if not conf.run.stage2.progress_interval:
                 conf.run.stage2.progress_interval = 10
+
+    @staticmethod
+    def _check_queue_name(conf):
+        if conf.run.parallel and conf.run.parallel.name in ['qsub', 'sbatch']:
+            if not conf.run.parallel.queue:
+                raise ConfigError(f"run.parallel.queue must be set for {conf.run.parallel.name} run")
 
 
 class ArtifactHelper:

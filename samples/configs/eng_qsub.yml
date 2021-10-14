@@ -2,6 +2,7 @@ run:
   name: English qsub
   parallel:
     name: qsub
+    queue: <queue>  # must replace <queue> with desired queue name or set on command line
   stage1:
     num_jobs: 2
 
