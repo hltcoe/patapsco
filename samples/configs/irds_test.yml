@@ -38,9 +38,6 @@ retrieve:
   name: bm25
   number: 200
 
-rerank:
-  name: mock
-
 score:
   input:
     format: irds
