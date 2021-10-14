@@ -137,14 +137,3 @@ def parse_psq_table(path, threshold=0.97):
     with open(path) as fp:
         trans_table = json.load(fp)
         return {k: norm(v) for k, v in trans_table.items()}
-
-
-def convert_language_code(code):
-    import pycountry
-    if len(code) == 2:
-        lang = pycountry.languages.get(alpha_2=code)
-    else:
-        lang = pycountry.languages.get(alpha_3=code)
-    if lang is None:
-        raise ValueError(f"Unrecognized language code -- {code}")
-    return lang.alpha_2, lang.alpha_3, lang.alpha_2, lang.alpha_3

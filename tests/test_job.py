@@ -174,10 +174,10 @@ class TestJobBuilder:
 
     def test_build_stage1_with_bad_lang(self):
         conf = self.create_config('test')
-        conf.documents.input.lang = "da"
+        conf.documents.input.lang = "ax"
         builder = JobBuilder(conf)
         plan = [Tasks.DOCUMENTS]
-        with pytest.raises(ConfigError, match="Unknown language code: da"):
+        with pytest.raises(ConfigError, match="Unknown language code: ax"):
             builder._get_stage1_tasks(plan)
 
     def test_build_stage1_with_bad_tokenizer(self):
@@ -288,10 +288,10 @@ class TestJobBuilder:
 
     def test_build_stage2_with_bad_lang(self):
         conf = self.create_config('test')
-        conf.topics.input.lang = "da"
+        conf.topics.input.lang = "ax"
         builder = JobBuilder(conf)
         plan = [Tasks.TOPICS]
-        with pytest.raises(ConfigError, match="Unknown language code: da"):
+        with pytest.raises(ConfigError, match="Unknown language code: ax"):
             builder._get_stage2_tasks(plan)
 
     def test_build_stage2_queries_with_no_topics(self):

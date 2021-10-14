@@ -13,9 +13,9 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import TextProcessorConfig, TopicsInputConfig
 from .text import TextProcessor
-from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
+from .util import DataclassJSONEncoder, InputIterator, LangStandardizer, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
-from .util.formats import parse_xml_topics, parse_sgml_topics, parse_psq_table, convert_language_code
+from .util.formats import parse_xml_topics, parse_sgml_topics, parse_psq_table
 from .util.java import Java
 
 LOGGER = logging.getLogger(__name__)
@@ -240,27 +240,25 @@ class TsvTopicReader(InputIterator):
 
 
 class IRDSTopicReader(InputIterator):
-    """Iterator over topics from jsonl file """
+    """Iterator over topics from ir_datasets
+
+    The files are downloaded and saved to ~/.ir_datasets/
+    """
 
     def __init__(self, path, encoding, lang, **kwargs):
         """
         Args:
-            path (str): Path to topics file.
-            encoding (str): File encoding.
+            path (str): ir_datasets name.
+            encoding (str): Ignored.
             lang (str): Language of the topics.
-            source (str): Source of the topic (translation, enhancement, etc.)
-            filter_lang (str): Remove topics that do not have this lang in languages_with_qrels
-            **kwargs (dict): Unused
+            **kwargs (dict): Unused.
         """
-        self.path = path
-        # self.encoding = encoding # ignored
-        self.lang = lang
-
         import ir_datasets
+        self.path = path
+        self.lang = lang
         self.dataset = ir_datasets.load(self.path)
-        ds_lang = convert_language_code(self.dataset.queries.lang)[3]
-        assert ds_lang == self.lang, \
-            f"Query language code from {path} is not {lang} but {ds_lang}."
+        dataset_lang = LangStandardizer.iso_639_3(self.dataset.queries.lang)
+        assert dataset_lang == self.lang, f"Query language code from {path} is not {lang} but {dataset_lang}."
         self.queries = iter(self.dataset.queries)
 
     def __iter__(self):

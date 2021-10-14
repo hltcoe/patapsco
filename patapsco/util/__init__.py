@@ -10,6 +10,7 @@ import sys
 import timeit
 
 import more_itertools
+import pycountry
 
 from ..error import BadDataError, ConfigError
 from .file import validate_encoding
@@ -291,37 +292,40 @@ class LoggingFilter(logging.Filter):
 
 
 class LangStandardizer:
-    """Utility method for language codes"""
-
-    langs = {
-        'ar': 'ara',
-        'ara': 'ara',
-        'arb': 'ara',
-        'en': 'eng',
-        'eng': 'eng',
-        'fa': 'fas',
-        'fas': 'fas',
-        'per': 'fas',
-        'ru': 'rus',
-        'rus': 'rus',
-        'zh': 'zho',
-        'cmn': 'zho',
-        'zho': 'zho',
-    }
+    """Utility class for language codes"""
 
     @classmethod
-    def standardize(cls, lang):
+    def language(cls, code):
+        lang = None
+        if len(code) == 2:
+            lang = pycountry.languages.get(alpha_2=code)
+        elif len(code) == 3:
+            lang = pycountry.languages.get(alpha_3=code)
+        if lang is None:
+            raise ConfigError(f"Unknown language code: {code}")
+        return lang
+
+    @classmethod
+    def iso_639_3(cls, code):
         """
-        Args:
-            lang (str): 2 or 3 letter code
+q        Args:
+            code (str): 2 or 3 letter code
 
         Returns:
-            ISO 639-3 language code
+            str: ISO 639-3 language code
         """
-        try:
-            return cls.langs[lang.lower()]
-        except KeyError:
-            raise ConfigError(f"Unknown language code: {lang}")
+        return cls.language(code).alpha_3
+
+    @classmethod
+    def iso_639_1(cls, code):
+        """
+        Args:
+            code (str): 2 or 3 letter code
+
+        Returns:
+            str: ISO 639-1 language code
+        """
+        return cls.language(code).alpha_2
 
 
 def get_human_readable_size(size):

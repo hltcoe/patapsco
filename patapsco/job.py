@@ -704,7 +704,7 @@ class JobBuilder:
 
         if Tasks.DOCUMENTS in plan:
             # doc reader -> doc processor
-            self.docs_lang = LangStandardizer.standardize(self.conf.documents.input.lang)
+            self.docs_lang = LangStandardizer.iso_639_3(self.conf.documents.input.lang)
             self.conf.documents.input.lang = self.docs_lang
             self.clear_output(self.conf.documents)
             doc_artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.DOCUMENTS)
@@ -784,12 +784,12 @@ class JobBuilder:
                                          'query processor not configured with input',
                                          False)
             query = iterator.peek()
-            self.query_lang = LangStandardizer.standardize(query.lang)
+            self.query_lang = LangStandardizer.iso_639_3(query.lang)
         elif Tasks.RETRIEVE in plan:
             iterator = self._setup_input(QueryReader, 'retrieve.input.queries.path', 'queries.output',
                                          'retrieve not configured with queries')
             query = iterator.peek()
-            self.query_lang = LangStandardizer.standardize(query.lang)
+            self.query_lang = LangStandardizer.iso_639_3(query.lang)
         else:
             iterator = self._setup_input(JsonResultsReader, 'rerank.input.results.path', 'retrieve.output',
                                          'rerank not configured with retrieve results')
@@ -805,7 +805,7 @@ class JobBuilder:
 
         if Tasks.TOPICS in plan:
             # topic reader -> topic processor -> optional query writer
-            self.query_lang = LangStandardizer.standardize(self.conf.topics.input.lang)
+            self.query_lang = LangStandardizer.iso_639_3(self.conf.topics.input.lang)
             self.conf.topics.input.lang = self.query_lang
             self.clear_output(self.conf.topics)
             artifact_conf = self.artifact_helper.get_config(self.conf, Tasks.TOPICS)
