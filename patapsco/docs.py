@@ -11,7 +11,7 @@ from .error import ParseError
 from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import TextProcessor
-from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
+from .util import DataclassJSONEncoder, InputIterator, LangStandardizer, NoGlobSupport, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
 from .util.formats import parse_sgml_documents
 from .util.normalize import compare_strings
@@ -33,6 +33,7 @@ class DocumentReaderFactory(ReaderFactory):
         'json': 'Hc4JsonDocumentReader',
         'jsonl': 'Hc4JsonDocumentReader',
         'msmarco': 'TsvDocumentReader',
+        'irds': 'IRDSDocumentReader',
     }
     config_class = DocumentsInputConfig
     name = "input document type"
@@ -122,6 +123,39 @@ class TsvDocumentReader(InputIterator):
 
     def __len__(self):
         return count_lines(self.path, self.encoding)
+
+
+class IRDSDocumentReader(InputIterator, NoGlobSupport):
+    """Iterator that uses ir_datasets
+
+    The documents are downloaded to ~/.ir_datasets/
+    """
+
+    def __init__(self, path, encoding, lang, **kwargs):
+        """
+        Args:
+            path (str): ir_datasets name.
+            encoding (str): Ignored.
+            lang (str): Language of the documents.
+            **kwargs (dict): Unused.
+        """
+        import ir_datasets
+        self.path = path
+        self.lang = lang
+        self.dataset = ir_datasets.load(self.path)
+        dataset_lang = LangStandardizer.iso_639_3(self.dataset.queries.lang)
+        assert dataset_lang == self.lang, f"Query language code from {path} is not {lang} but {dataset_lang}."
+        self.reader = iter(self.dataset.docs)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        doc = next(self.reader)
+        return Doc(doc.doc_id, self.lang, doc.text, None)
+
+    def __len__(self):
+        return len(self.dataset)
 
 
 class DocWriter(Task):

@@ -13,7 +13,7 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import TextProcessorConfig, TopicsInputConfig
 from .text import TextProcessor
-from .util import DataclassJSONEncoder, InputIterator, ReaderFactory
+from .util import DataclassJSONEncoder, InputIterator, LangStandardizer, NoGlobSupport, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
 from .util.formats import parse_xml_topics, parse_sgml_topics, parse_psq_table
 from .util.java import Java
@@ -45,7 +45,8 @@ class TopicReaderFactory(ReaderFactory):
         'xml': 'XmlTopicReader',
         'json': 'Hc4JsonTopicReader',
         'jsonl': 'Hc4JsonTopicReader',
-        'msmarco': 'TsvTopicReader'
+        'msmarco': 'TsvTopicReader',
+        'irds': 'IRDSTopicReader'
     }
     config_class = TopicsInputConfig
     name = 'topic type'
@@ -238,6 +239,39 @@ class TsvTopicReader(InputIterator):
                 yield line[0], line[1].strip()
 
 
+class IRDSTopicReader(InputIterator, NoGlobSupport):
+    """Iterator over topics from ir_datasets
+
+    The files are downloaded and saved to ~/.ir_datasets/
+    """
+
+    def __init__(self, path, encoding, lang, **kwargs):
+        """
+        Args:
+            path (str): ir_datasets name.
+            encoding (str): Ignored.
+            lang (str): Language of the topics.
+            **kwargs (dict): Unused.
+        """
+        import ir_datasets
+        self.path = path
+        self.lang = lang
+        self.dataset = ir_datasets.load(self.path)
+        dataset_lang = LangStandardizer.iso_639_3(self.dataset.queries.lang)
+        assert dataset_lang == self.lang, f"Query language code from {path} is not {lang} but {dataset_lang}."
+        self.queries = iter(self.dataset.queries)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        q = next(self.queries)
+        return Topic(q.query_id, self.lang, q.text, getattr(q, 'description', None), None)
+
+    def __len__(self):
+        return len(self.dataset.queries)
+
+
 class QueryWriter(Task):
     """Write queries to a jsonl file using internal format"""
 
@@ -388,6 +422,7 @@ class PSQToken:
 
 class PSQGenerator(QueryGenerator):
     """Generate a PSQ"""
+
     def __init__(self, processor, psq_path, threshold):
         super().__init__(processor)
         try:

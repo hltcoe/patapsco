@@ -174,15 +174,18 @@ class TestSlicedIterator:
 
 
 class TestLangStandardizer:
-    def test_uppercase(self):
-        assert LangStandardizer.standardize("EN") == "eng"
+    def test_iso_639_3_with_2_letter_code(self):
+        assert LangStandardizer.iso_639_3("ar") == "ara"
 
-    def test_3_letter(self):
-        assert LangStandardizer.standardize("fas") == "fas"
+    def test_iso_639_3_with_3_letter_code(self):
+        assert LangStandardizer.iso_639_3("ara") == "ara"
 
-    def test_unknown_code(self):
+    def test_iso_639_3_with_uppercase(self):
+        assert LangStandardizer.iso_639_3("EN") == "eng"
+
+    def test_iso_639_3_with_unknown_code(self):
         with pytest.raises(ConfigError):
-            LangStandardizer.standardize("es")
+            assert LangStandardizer.iso_639_3("sp")
 
 
 def test_get_human_readable_size():

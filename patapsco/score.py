@@ -19,6 +19,7 @@ class QrelsReaderFactory(ComponentFactory):
     classes = {
         'trec': 'TrecQrelsReader',
         'msmarco': 'TrecQrelsReader',
+        'irds': 'IRDSQrelsReader'
     }
     config_class = ScoreInputConfig
 
@@ -39,6 +40,22 @@ class TrecQrelsReader:
         for qrels in self.qrels_iter:
             data = {**data, **qrels}
         return data
+
+
+class IRDSQrelsReader:
+    """Read TREC qrels files"""
+
+    def __init__(self, config):
+        self.path = config.path
+        import ir_datasets
+        self.dataset = ir_datasets.load(config.path)
+
+    def read(self):
+        """
+        Returns:
+            dictionary of query_id -> {doc_id: relevance}
+        """
+        return self.dataset.qrels.asdict()
 
 
 class Scorer:
