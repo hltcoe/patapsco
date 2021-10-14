@@ -64,7 +64,7 @@ class ReaderFactory(ComponentFactory):
         reader_cls = cls._get_class(config)
         # support passing additional args to reader constructors
         args = {key: value for key, value in config.dict().items() if key not in ['format', 'path', 'encoding', 'lang']}
-        if reader_cls.__name__.startswith('IRDS'):
+        if issubclass(reader_cls, NoGlobSupport):
             return reader_cls(config.path, config.encoding, config.lang, **args)
         return GlobIterator(config.path, reader_cls, config.encoding, config.lang, **args)
 
@@ -189,6 +189,11 @@ class SlicedIterator(InputIterator):
 
     def __str__(self):
         return str(self.original_iterator)
+
+
+class NoGlobSupport:
+    """Indicate that this iterator does not support the GlobIterator"""
+    pass
 
 
 class GlobIterator(InputIterator):

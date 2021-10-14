@@ -13,7 +13,7 @@ from .error import ConfigError, ParseError
 from .pipeline import Task
 from .schema import TextProcessorConfig, TopicsInputConfig
 from .text import TextProcessor
-from .util import DataclassJSONEncoder, InputIterator, LangStandardizer, ReaderFactory
+from .util import DataclassJSONEncoder, InputIterator, LangStandardizer, NoGlobSupport, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
 from .util.formats import parse_xml_topics, parse_sgml_topics, parse_psq_table
 from .util.java import Java
@@ -239,7 +239,7 @@ class TsvTopicReader(InputIterator):
                 yield line[0], line[1].strip()
 
 
-class IRDSTopicReader(InputIterator):
+class IRDSTopicReader(InputIterator, NoGlobSupport):
     """Iterator over topics from ir_datasets
 
     The files are downloaded and saved to ~/.ir_datasets/

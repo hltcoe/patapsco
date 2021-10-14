@@ -11,7 +11,7 @@ from .error import ParseError
 from .pipeline import Task
 from .schema import DocumentsInputConfig
 from .text import TextProcessor
-from .util import DataclassJSONEncoder, InputIterator, LangStandardizer, ReaderFactory
+from .util import DataclassJSONEncoder, InputIterator, LangStandardizer, NoGlobSupport, ReaderFactory
 from .util.file import count_lines, count_lines_with, path_append
 from .util.formats import parse_sgml_documents
 from .util.normalize import compare_strings
@@ -125,7 +125,7 @@ class TsvDocumentReader(InputIterator):
         return count_lines(self.path, self.encoding)
 
 
-class IRDSDocumentReader(InputIterator):
+class IRDSDocumentReader(InputIterator, NoGlobSupport):
     """Iterator that uses ir_datasets
 
     The documents are downloaded to ~/.ir_datasets/
