@@ -441,7 +441,7 @@ class TokenizerStemmerFactory:
             else:
                 tokenizer = StanzaNLP(lang, config.model_path, stem=also_stemmer)
         elif config.tokenize == 'jieba':
-            raise ConfigError()
+            raise ConfigError("todo")
         elif config.tokenize == 'moses':
             tokenizer = MosesTokenizer(lang, config.model_path)
         elif config.tokenize == 'ngram':
@@ -482,22 +482,6 @@ class TokenizerStemmerFactory:
 
         cls.stemmer_cache[key] = stemmer
         return stemmer
-
-    @staticmethod
-    def _get_model_path(name, path):
-        """returns a Path object"""
-        model_directory_defaults = {
-            'ngram': '/exp/scale21/resources/spacy',
-            'moses': '/exp/scale21/resources/spacy',
-            'spacy': '/exp/scale21/resources/spacy',
-            'stanza': '/exp/scale21/resources/stanza',
-            'whitespace': None,
-        }
-        if path:
-            return create_path(path)
-        else:
-            path = model_directory_defaults[name]
-            return create_path(path) if path else path
 
 
 class TextProcessor(Task):
