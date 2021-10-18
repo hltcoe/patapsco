@@ -16,6 +16,10 @@ from ..error import BadDataError, ConfigError
 from .file import validate_encoding
 
 
+def get_logger(name):
+    return logging.getLogger(f"patapsco.{name}")
+
+
 class ComponentFactory:
     classes = {}
     config_class = None

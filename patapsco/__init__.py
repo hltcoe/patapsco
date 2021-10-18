@@ -6,6 +6,7 @@ from .rerank import RerankFactory, Reranker
 from .results import Results
 from .run import Runner
 from .topics import Query, Topic
+from .util import get_logger
 
 # TODO remove
 from .psq_setup import configure_classpath_psq
