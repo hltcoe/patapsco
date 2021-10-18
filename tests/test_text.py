@@ -73,10 +73,6 @@ class TestTokenizerStemmerFactory:
     def test_validate_stanza_porter_en(self):
         TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="stanza", stem="porter"), "eng")
 
-    def test_validate_stanza_porter_ru(self):
-        with pytest.raises(ConfigError):
-            TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="stanza", stem="porter"), "rus")
-
     def test_validate_parsivar(self):
         TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="moses", stem="parsivar"), "fas")
         TokenizerStemmerFactory.validate(TextProcessorConfig(tokenize="spacy", stem="parsivar"), "fas")
@@ -193,7 +189,7 @@ class TestStanza:
         tokenizer = StanzaNLP(lang='rus', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("Я хотел бы пива.")
         # Does the Russian model not handle punctuation well or did we hit on a bad sentence
-        assert tokens == ['Я', 'хотел', 'бы', 'пива.']
+        assert tokens == ['Я', 'хотел', 'бы', 'пива' , '.']
 
     @pytest.mark.slow
     def test_stemmer_russian(self):
@@ -205,24 +201,21 @@ class TestStanza:
 
 
 class TestSpacy:
-    # if not running on the grid, spacy will use pip to install models
-    model_path = pathlib.Path('/exp/scale21/resources/spacy')
-
     @pytest.mark.slow
     def test_tokenizer_arabic(self):
-        tokenizer = SpacyNLP(lang='ara', model_path=self.model_path, stem=False)
+        tokenizer = SpacyNLP(lang='ara', model_path=None, stem=False)
         tokens = tokenizer.tokenize("في أسرتي ثلاثة أفراد.")
         assert tokens == ['في', 'أسرتي', 'ثلاثة', 'أفراد', '.']
 
     @pytest.mark.slow
     def test_tokenizer_chinese(self):
-        tokenizer = SpacyNLP(lang='zho', model_path=self.model_path, stem=False)
+        tokenizer = SpacyNLP(lang='zho', model_path=None, stem=False)
         tokens = tokenizer.tokenize("不但要看,而且要帮。")
         assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
 
     @pytest.mark.slow
     def test_tokenizer_english(self):
-        tokenizer = SpacyNLP(lang='eng', model_path=self.model_path, stem=False)
+        tokenizer = SpacyNLP(lang='eng', model_path=None, stem=False)
         tokens = tokenizer.tokenize("Mary had a little lamb.")
         assert tokens == ['Mary', 'had', 'a', 'little', 'lamb', '.']
 
@@ -230,19 +223,19 @@ class TestSpacy:
     def test_stemmer_english(self):
         text = 'A witness told police that the victim had attacked the suspect in April.'
         ans = ['a', "witness", 'tell', 'police', 'that', 'the', 'victim', 'have', 'attack', 'the', 'suspect', 'in', 'April', '.']
-        nlp = SpacyNLP(lang='eng', model_path=self.model_path, stem=True)
+        nlp = SpacyNLP(lang='eng', model_path=None, stem=True)
         tokens = nlp.tokenize(text)
         assert ans == nlp.stem(tokens)
 
     @pytest.mark.slow
     def test_tokenizer_farsi(self):
-        tokenizer = SpacyNLP(lang='fas', model_path=self.model_path, stem=False)
+        tokenizer = SpacyNLP(lang='fas', model_path=None, stem=False)
         tokens = tokenizer.tokenize("شما بليز رو به فارسی چی میگین؟")
         assert tokens == ['شما', 'بليز', 'رو', 'به', 'فارسی', 'چی', 'میگین', '؟']
 
     @pytest.mark.slow
     def test_tokenizer_russian(self):
-        tokenizer = SpacyNLP(lang='rus', model_path=self.model_path, stem=False)
+        tokenizer = SpacyNLP(lang='rus', model_path=None, stem=False)
         tokens = tokenizer.tokenize("Я хотел бы пива.")
         assert tokens == ['Я', 'хотел', 'бы', 'пива', '.']
 
@@ -250,15 +243,12 @@ class TestSpacy:
     def test_stemmer_russian(self):
         text = 'Новые расходы финансируются благодаря крупным суммам на банковском счету Клинтон.'
         ans = ['новый', 'расход', 'финансироваться', 'благодаря', 'крупный', 'сумма', 'на', 'банковский', 'счёт', 'клинтон', '.']
-        nlp = SpacyNLP(lang='rus', model_path=self.model_path, stem=True)
+        nlp = SpacyNLP(lang='rus', model_path=None, stem=True)
         tokens = nlp.tokenize(text)
         assert ans == nlp.stem(tokens)
 
 
 class TestMoses:
-    # moses requires the sentence segmentation from spaCy
-    model_path = pathlib.Path('/exp/scale21/resources/spacy')
-
     @pytest.mark.slow
     def test_tokenizer_arabic(self):
         text = "تمول النفقات الجديدة من خلال حساب كلينتون المصرفي الكبير. الحد الأقصى المسموح به للشخص الواحد هو 5000 دولار."
@@ -266,12 +256,12 @@ class TestMoses:
             'تمول', 'النفقات', 'الجديدة', 'من', 'خلال', 'حساب', 'كلينتون', 'المصرفي', 'الكبير', '.',
             'الحد', 'الأقصى', 'المسموح', 'به', 'للشخص', 'الواحد', 'هو', '5000', 'دولار', '.'
         ]
-        tokenizer = MosesTokenizer(lang='ara', model_path=self.model_path)
-        assert ans == tokenizer.tokenize(text)
+        tokenizer = MosesTokenizer(lang='ara', model_path=None)
+        assert tokenizer.tokenize(text) == ans
 
     def test_tokenizer_chinese(self):
         with pytest.raises(ConfigError):
-            MosesTokenizer(lang='zho', model_path=self.model_path)
+            MosesTokenizer(lang='zho', model_path=None)
 
     @pytest.mark.slow
     def test_tokenizer_english(self):
@@ -280,7 +270,7 @@ class TestMoses:
             'Mary', 'had', 'a', 'little', 'lamb', '.',
             'It', "'s", 'fleece', 'was', 'white', 'as', 'snow', '.'
         ]
-        tokenizer = MosesTokenizer(lang='eng', model_path=self.model_path)
+        tokenizer = MosesTokenizer(lang='eng', model_path=None)
         assert ans == tokenizer.tokenize(text)
 
     @pytest.mark.slow
@@ -290,7 +280,7 @@ class TestMoses:
             'بلیت', 'را', 'پیشفروش', 'کنید', '.',
             'این', 'موافقتنامه', 'را', 'امضا', 'نخواهم', 'کرد', 'و', 'تا', 'جایی', 'که', 'بتوانم', 'در', 'مقابل', 'آن', 'پایداری', 'میکنم', '.',
         ]
-        tokenizer = MosesTokenizer(lang='fas', model_path=self.model_path)
+        tokenizer = MosesTokenizer(lang='fas', model_path=None)
         assert ans == tokenizer.tokenize(text)
 
     @pytest.mark.slow
@@ -300,14 +290,11 @@ class TestMoses:
             'Свидетель', 'рассказал', 'в', 'полиции', ',', 'что', 'потерпевший', 'напал', 'на', 'подозреваемого', 'в', 'апреле', '.',
             'Нужно', 'провести', 'параллель', 'между', 'играми', 'и', 'нашей', 'повседневной', 'жизнью', '.',
         ]
-        tokenizer = MosesTokenizer(lang='rus', model_path=self.model_path)
+        tokenizer = MosesTokenizer(lang='rus', model_path=None)
         assert ans == tokenizer.tokenize(text)
 
 
 class TestNgramTokenizer:
-    # ngram tokenization uses sentence segmentation from spaCy
-    model_path = pathlib.Path('/exp/scale21/resources/spacy')
-
     @pytest.mark.slow
     def test_stanza_tokenizer_english(self):
         text = "Roses are red. Violets are blue."
@@ -315,5 +302,5 @@ class TestNgramTokenizer:
             'Roses', 'oses ', 'ses a', 'es ar', 's are', ' are ', 'are r', 're re', 'e red', ' red.',
             'Viole', 'iolet', 'olets', 'lets ', 'ets a', 'ts ar', 's are', ' are ', 'are b', 're bl', 'e blu', ' blue', 'blue.'
         ]
-        tokenizer = NgramTokenizer(lang='eng', model_path=self.model_path)
+        tokenizer = NgramTokenizer(lang='eng', model_path=None)
         assert ans == tokenizer.tokenize(text)
