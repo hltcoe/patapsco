@@ -30,6 +30,21 @@ class ComponentFactory:
         return cls._get_class(config)(config, *args, **kwargs)
 
     @classmethod
+    def register(cls, name, class_obj):
+        """Register a class object with the foctory
+
+        Args:
+            name (str): nickname of the class used in configuration
+            class_obj (class): class object used to construct the component
+
+        Returns:
+            class object
+        """
+        if isinstance(class_obj, str):
+            raise ConfigError(f"The class object for {name} must class and not a string")
+        cls.classes[name] = class_obj
+
+    @classmethod
     def _get_class(cls, config):
         """
         Args:
@@ -47,7 +62,11 @@ class ComponentFactory:
         except KeyError:
             raise ConfigError(f"Unknown {cls.name}: {component_type}")
         try:
-            return namespace[class_name]
+            # if user registered a class instance, we return that. Otherwise, look up the class name in local namespace.
+            if isinstance(class_name, str):
+                return namespace[class_name]
+            else:
+                return class_name
         except KeyError:
             raise RuntimeError(f"Cannot find {class_name} in {cls.__name__}")
 

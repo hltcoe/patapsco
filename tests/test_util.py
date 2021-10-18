@@ -202,3 +202,9 @@ def text_ignore_exception():
     with ignore_exception(ValueError):
         raise ValueError()
     assert True
+
+
+class TestComponentFactory:
+    def test_register_with_string_class_name(self):
+        with pytest.raises(ConfigError):
+            ComponentFactory.register('test', 'ClassName')
