@@ -11,12 +11,23 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Runner:
-    def __init__(self, config_filename, debug=False, overrides=None, job_type=JobType.NORMAL, **kwargs):
+    def __init__(self, config, debug=False, overrides=None, job_type=JobType.NORMAL, **kwargs):
+        """
+        Args:
+            config (str|dict): path to configuration file or a configuration dictionary
+            debug (bool): whether to run in debug mode
+            overrides (list): Optional list of key value pair overrides of config parameters
+            job_type (JobType): internal parameter to select between jobs
+            **kwargs (dict): keyword args
+        """
         self.job_type = job_type
         self.setup_logging(debug, job_type)
         LOGGER.info(f"Patapsco version {__version__}")
-        LOGGER.info(f"Configuration: {pathlib.Path(config_filename).absolute()}")
-        conf = ConfigHelper.load(config_filename, overrides)
+        if isinstance(config, str):
+            LOGGER.info(f"Configuration: {pathlib.Path(config).absolute()}")
+            conf = ConfigHelper.load(config, overrides)
+        else:
+            conf = ConfigHelper.prepare(config, overrides)
         LOGGER.info(f"Writing output to: {pathlib.Path(conf.run.path).absolute()}")
         if job_type == JobType.NORMAL:
             # no need to log to file with grid jobs

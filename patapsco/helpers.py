@@ -9,29 +9,62 @@ class ConfigHelper:
     """Utility methods for working with configuration"""
 
     @classmethod
-    def load(cls, config_filename, overrides):
-        """Load config and perform some basic checks and updates
+    def prepare(cls, config_dict, overrides=None):
+        """Prepare a RunnerConfig object from a dictionary
 
-        1. sets the run directory based on run name if not already set
-        2. sets the output directory names from defaults if not already set
-        3. sets the retriever's index path based on the index task if not already set
-        4. sets the reranker's db path based on the database section if not already set
+        Args:
+            config_dict (dict): configuration as dictionary
+            overrides (list): list of key value pairs
+
+        Returns:
+            RunnerConfig
         """
+        overrides = overrides if overrides else []
+        config_service = ConfigService(overrides)
+        cls._validate(config_dict)
+        cls._set_run_path(config_dict)
+        conf = config_service.create_config_object(RunnerConfig, config_dict)
+        cls._update(conf)
+        return conf
+
+    @classmethod
+    def load(cls, config_filename, overrides=None):
+        """Load config from file and perform some basic checks and updates
+
+        Args:
+            config_filename (str): path to configuration file
+            overrides (list): list of key value pairs
+
+        Returns:
+            RunnerConfig
+        """
+        overrides = overrides if overrides else []
         config_service = ConfigService(overrides)
         try:
-            conf_dict = config_service.read_config_file(config_filename)
+            config_dict = config_service.read_config_file(config_filename)
         except FileNotFoundError as error:
             raise ConfigError(error)
-        cls._validate(conf_dict)
-        cls._set_run_path(conf_dict)
-        conf = config_service.create_config_object(RunnerConfig, conf_dict)
+        cls._validate(config_dict)
+        cls._set_run_path(config_dict)
+        conf = config_service.create_config_object(RunnerConfig, config_dict)
+        cls._update(conf)
+        return conf
+
+    @classmethod
+    def _update(cls, conf):
+        """Updates the config object
+        1. sets the output directory names from defaults if not already set
+        2. sets the retriever's index path based on the index task if not already set
+        3. sets the reranker's db path based on the database section if not already set
+        4. sets default progress update intervals for logging
+        5. checks that the queue name is set if a grid job
+        """
         cls._set_output_paths(conf)
         cls._make_input_paths_absolute(conf)
         cls._set_retrieve_input_path(conf)
         cls._set_rerank_db_path(conf)
         cls._set_progress_intervals(conf)
         cls._check_queue_name(conf)
-        return conf
 
     @staticmethod
     def _validate(conf_dict):
