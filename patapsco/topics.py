@@ -174,8 +174,8 @@ class Hc4JsonTopicReader(InputIterator):
 
     def _construct(self, data):
         try:
-            if self.filter_lang not in data['languages_with_qrels']:
-                raise SkipEntry()
+            #if self.filter_lang not in data['languages_with_qrels']:
+            #    raise SkipEntry()
             for topic in data['topics']:
                 if topic['lang'] == self.lang and topic['source'] == self.source:
                     self._validate(data['topic_id'], topic)
