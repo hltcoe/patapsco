@@ -1,3 +1,4 @@
+import copy
 import logging
 import logging.handlers
 import pathlib
@@ -27,7 +28,8 @@ class Runner:
             LOGGER.info(f"Configuration: {pathlib.Path(config).absolute()}")
             conf = ConfigHelper.load(config, overrides)
         else:
-            conf = ConfigHelper.prepare(config, overrides)
+            # using a config dictionary
+            conf = ConfigHelper.prepare(copy.deepcopy(config), overrides)
         LOGGER.info(f"Writing output to: {pathlib.Path(conf.run.path).absolute()}")
         if job_type == JobType.NORMAL:
             # no need to log to file with grid jobs
@@ -42,19 +44,25 @@ class Runner:
     def setup_logging(debug, job_type):
         log_level = logging.DEBUG if debug else logging.INFO
         logger = logging.getLogger('patapsco')
+        initialized = bool(logger.handlers)
         logger.setLevel(log_level)
         console = logging.StreamHandler()
         console.setLevel(log_level)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         console.setFormatter(formatter)
         console.addFilter(LoggingFilter())
-        logger.addHandler(console)
+        if not initialized:
+            # if using this as a library, we only want to add console logging once
+            logger.addHandler(console)
         if job_type == JobType.NORMAL:
             buffer = logging.handlers.MemoryHandler(1024)
             buffer.setLevel(log_level)
             buffer.setFormatter(formatter)
             buffer.addFilter(LoggingFilter())
-            logger.addHandler(buffer)
+            if initialized:
+                logger.handlers[1] = buffer
+            else:
+                logger.addHandler(buffer)
 
     @staticmethod
     def add_file_logging(path):
