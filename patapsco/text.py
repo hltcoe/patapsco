@@ -187,7 +187,8 @@ class StanzaNLP(Tokenizer, Stemmer):
             else:
                 processors = 'tokenize'
                 package = 'default'
-            self.nlp = stanza.Pipeline(self.lang, processors=processors, package=package, dir=str(self.model_path))
+            #self.nlp = stanza.Pipeline(self.lang, processors=processors, package=package, dir=str(self.model_path))
+            self.nlp = stanza.Pipeline(self.lang, processors=processors, package=package)
             self.cache = None
         LOGGER.debug(buffer.getvalue())
 
@@ -441,7 +442,7 @@ class TokenizerStemmerFactory:
             else:
                 tokenizer = StanzaNLP(lang, config.model_path, stem=also_stemmer)
         elif config.tokenize == 'jieba':
-            raise ConfigError("todo")
+            tokenizer = StanzaNLP(lang, config.model_path, stem=False)
         elif config.tokenize == 'moses':
             tokenizer = MosesTokenizer(lang, config.model_path)
         elif config.tokenize == 'ngram':
