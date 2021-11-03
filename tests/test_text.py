@@ -151,10 +151,10 @@ class TestStanza:
 
     @pytest.mark.slow
     def test_tokenizer_chinese(self):
+        # stanza chinese model not great with punctuation
         tokenizer = StanzaNLP(lang='zho', model_path=self.model_path, stem=False)
         tokens = tokenizer.tokenize("不但要看,而且要帮。")
-        # jieba is splitting 要看
-        assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
+        assert tokens == ['不但', '要', '看,', '而且', '要', '帮',  '。']
 
     @pytest.mark.slow
     def test_tokenizer_english(self):
@@ -246,6 +246,19 @@ class TestSpacy:
         nlp = SpacyNLP(lang='rus', model_path=None, stem=True)
         tokens = nlp.tokenize(text)
         assert ans == nlp.stem(tokens)
+
+
+class TestJieba:
+    @pytest.mark.slow
+    def test_tokenizer_chinese(self):
+        tokenizer = JiebaTokenizer(lang='zho', model_path=None)
+        tokens = tokenizer.tokenize("不但要看,而且要帮。")
+        # jieba is splitting 要看
+        assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
+
+    def test_with_non_chinese(self):
+        with pytest.raises(ConfigError):
+            JiebaTokenizer(lang='spa', model_path=None)
 
 
 class TestMoses:
