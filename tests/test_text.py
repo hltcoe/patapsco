@@ -251,11 +251,14 @@ class TestSpacy:
 
 class TestJieba:
     def test_tokenizer_chinese(self):
-        # this uses jieba rather than a neural model
         tokenizer = JiebaTokenizer(lang='zho', model_path=None)
         tokens = tokenizer.tokenize("不但要看,而且要帮。")
         # jieba is splitting 要看
         assert tokens == ['不但', '要', '看', ',', '而且', '要', '帮',  '。']
+
+    def test_with_non_chinese(self):
+        with pytest.raises(ConfigError):
+            JiebaTokenizer(lang='spa', model_path=None)
 
 
 class TestMoses:
