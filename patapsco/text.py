@@ -125,6 +125,7 @@ class JiebaTokenizer(Tokenizer):
         if self.lang != 'zho':
             raise ConfigError(f"Jieba tokenizer only supports zho")
         import jieba
+        jieba.setLogLevel(60)
         self.tokenizer = jieba
 
     def tokenize(self, text):
@@ -455,7 +456,7 @@ class TokenizerStemmerFactory:
             else:
                 tokenizer = StanzaNLP(lang, config.model_path, stem=also_stemmer)
         elif config.tokenize == 'jieba':
-            tokenizer = StanzaNLP(lang, config.model_path, stem=False)
+            tokenizer = JiebaTokenizer(lang, config.model_path)
         elif config.tokenize == 'moses':
             tokenizer = MosesTokenizer(lang, config.model_path)
         elif config.tokenize == 'ngram':

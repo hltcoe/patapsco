@@ -250,6 +250,7 @@ class TestSpacy:
 
 
 class TestJieba:
+    @pytest.mark.slow
     def test_tokenizer_chinese(self):
         tokenizer = JiebaTokenizer(lang='zho', model_path=None)
         tokens = tokenizer.tokenize("不但要看,而且要帮。")
