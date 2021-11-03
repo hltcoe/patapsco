@@ -193,8 +193,8 @@ class StanzaNLP(Tokenizer, Stemmer):
                     msg = f"Cannot write to {self.model_path}. Maybe model_path needs to be set in process section."
                     raise ConfigError(msg)
             if self.lang == 'zh-hans':
-                processors = {'tokenize': 'jieba'}
-                package = None
+                processors = 'tokenize'
+                package = 'default'
             elif stem:
                 processors = 'tokenize,lemma'
                 package = 'default'
