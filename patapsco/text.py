@@ -4,8 +4,6 @@ import itertools
 import logging
 import pathlib
 
-import sacremoses
-
 from .error import ConfigError
 from .pipeline import Task
 from .util import LangStandardizer
@@ -107,6 +105,7 @@ class MosesTokenizer(Tokenizer):
         super().__init__(lang, model_path)
         if self.lang in self.not_supported:
             raise ConfigError(f"Moses tokenizer does not support {self.lang}")
+        import sacremoses
         self.tokenizer = sacremoses.MosesTokenizer(lang=LangStandardizer.iso_639_1(self.lang))
         # we need to segment sentences with spaCy before running the tokenizer
         self.nlp = SpacyModelLoader.get_loader(model_path).load('xx')
@@ -116,6 +115,20 @@ class MosesTokenizer(Tokenizer):
         doc = self.nlp(text)
         tokens = itertools.chain.from_iterable(self.tokenizer.tokenize(sent, escape=False) for sent in doc.sents)
         return list(tokens)
+
+
+class JiebaTokenizer(Tokenizer):
+    """Tokenizer that uses jieba for Chinese"""
+
+    def __init__(self, lang, model_path):
+        super().__init__(lang, model_path)
+        if self.lang != 'zho':
+            raise ConfigError(f"Jieba tokenizer only supports zho")
+        import jieba
+        self.tokenizer = jieba
+
+    def tokenize(self, text):
+        return list(self.tokenizer.cut(text, cut_all=False))
 
 
 class NgramTokenizer(Tokenizer):
