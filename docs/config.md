@@ -142,7 +142,7 @@ The source field is used to identify what produced the title and descriptions fi
 The HC4 data sets use "original" for the original English queries.
 Experiments may also involve various translations that are described in the source field.
 
-To filter out topics that do not have qrels for that language, use the parameter `filter_lang`.
+To filter out topics that do not have qrels for that language, use the parameter `qrels_lang`.
 For example, you may want to use English topics, but only those that have judgments for Russian:
 
 ```yaml
@@ -151,7 +151,7 @@ topics:
     format: json
     lang: eng
     source: original
-    filter_lang: rus
+    qrels_lang: rus
     encoding: utf8
     path: /exp/scale21/path/to/topics
   fields: title

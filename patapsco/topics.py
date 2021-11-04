@@ -145,21 +145,21 @@ class SkipEntry(Exception):
 class Hc4JsonTopicReader(InputIterator):
     """Iterator over topics from jsonl file """
 
-    def __init__(self, path, encoding, lang, source, filter_lang=None, **kwargs):
+    def __init__(self, path, encoding, lang, source, qrels_lang=None, **kwargs):
         """
         Args:
             path (str): Path to topics file.
             encoding (str): File encoding.
             lang (str): Language of the topics.
             source (str): Source of the topic (translation, enhancement, etc.)
-            filter_lang (str): Remove topics that do not have this lang in languages_with_qrels
+            qrels_lang (str): Remove topics that do not have this lang in languages_with_qrels
             **kwargs (dict): Unused
         """
         self.path = path
         self.encoding = encoding
         self.lang = lang
         self.source = source
-        self.filter_lang = filter_lang if filter_lang else self.lang
+        self.qrels_lang = qrels_lang
         self.num_skipped = 0
         self.topics = iter(self._parse(path, encoding))
 
@@ -174,8 +174,8 @@ class Hc4JsonTopicReader(InputIterator):
 
     def _construct(self, data):
         try:
-            #if self.filter_lang not in data['languages_with_qrels']:
-            #    raise SkipEntry()
+            if self.qrels_lang and self.qrels_lang not in data['languages_with_qrels']:
+                raise SkipEntry()
             for topic in data['topics']:
                 if topic['lang'] == self.lang and topic['source'] == self.source:
                     self._validate(data['topic_id'], topic)
