@@ -40,7 +40,7 @@ setuptools.setup(
         "pydantic>=1.7.1,<1.8.0",
         "pymorphy2",
         "pyserini>=0.13.0",
-        "pytrec_eval",
+        "pytrec-eval-terrier==0.5.2",
         "pyyaml",
         "sacremoses",
         "spacy>=3.0.0",

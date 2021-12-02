@@ -29,4 +29,4 @@ dependencies:
     - luqum
     - parsivar-scale
     - pyserini>=0.13.0
-    - pytrec_eval
+    - pytrec-eval-terrier==0.5.2
