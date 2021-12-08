@@ -432,6 +432,9 @@ class PSQGenerator(QueryGenerator):
 
     def generate(self, query, text, tokens):
         """Post process the tokens (stem, stop words, normalize) and generate PSQ"""
+        # Lucene can only handle 1024 clauses and we use 1 for the PSQ indicator
+        if len(tokens) > 1023:
+            tokens = tokens[:1023]
         psq_tokens = self._project(token.lower() for token in tokens)
 
         terms = [' '.join(self.process_psq(psq_clause)) for psq_clause in psq_tokens]
