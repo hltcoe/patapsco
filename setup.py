@@ -39,7 +39,7 @@ setuptools.setup(
         "pycountry",
         "pydantic>=1.7.1,<1.8.0",
         "pymorphy2",
-        "pyserini>=0.13.0",
+        "pyserini==0.13.0",
         "pytrec-eval-terrier==0.5.2",
         "pyyaml",
         "sacremoses",

@@ -28,5 +28,5 @@ dependencies:
     - ir_datasets
     - luqum
     - parsivar-scale
-    - pyserini>=0.13.0
+    - pyserini==0.13.0
     - pytrec-eval-terrier==0.5.2
