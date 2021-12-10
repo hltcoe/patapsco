@@ -28,7 +28,7 @@ class DocumentDatabase(sqlitedict.SqliteDict):
 
     Uses a dictionary interface.
     Example:
-        store = DocumentDatabase('path/to/docs.db')
+        store = DocumentDatabase('/path/to/run', 'db_dir')
         store['doc_77'] = doc_object
         print(store['doc_77'])
     """

@@ -6,6 +6,7 @@ channels:
 dependencies:
   - python>=3.6.1
   - beautifulsoup4
+  - flask
   - ftfy
   - jieba
   - more-itertools

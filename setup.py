@@ -27,6 +27,7 @@ setuptools.setup(
     include_package_data=True,
     install_requires=[
         "beautifulsoup4",
+        "flask",
         "ftfy",
         "jieba",
         "ir_datasets",
@@ -58,6 +59,7 @@ setuptools.setup(
             "patapsco-norm = patapsco.bin.normalize:main",
             "patapsco-query = patapsco.bin.query:main",
             "patapsco-reduce = patapsco.bin.reduce:main",
+            "patapsco-web = patapsco.bin.web:main",
         ]
     }
 )
