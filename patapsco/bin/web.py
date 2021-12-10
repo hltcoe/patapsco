@@ -18,7 +18,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="Run web services over a lucene index.")
     parser.add_argument("--run", required=True, help="Path to a run directory")
-    parser.add_argument("--port", required=True, help="Port for web services")
+    parser.add_argument("--port", required=True, type=int, help="Port for web services")
     args = parser.parse_args()
 
     run_dir = pathlib.Path(args.run).absolute()
@@ -46,7 +46,7 @@ def main():
         query = query_processor.process(query)
         return flask.jsonify(retriever.process(query))
 
-    app.run('0.0.0.0', 9090)
+    app.run('0.0.0.0', args.port)
 
 
 if __name__ == "__main__":
