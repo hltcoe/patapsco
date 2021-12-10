@@ -6,14 +6,12 @@ import flask
 
 from patapsco import ConfigHelper, DocumentDatabase, Query, QueryProcessor, RetrieverFactory
 
-LOGGER = logging.getLogger(__name__)
-
 
 def main():
     logger = logging.getLogger('patapsco')
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.WARNING)
     console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
+    console.setLevel(logging.WARNING)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     console.setFormatter(formatter)
     logger.addHandler(console)
@@ -25,7 +23,6 @@ def main():
 
     run_dir = pathlib.Path(args.run).absolute()
     config_path = run_dir / "config.yml"
-    LOGGER.info(f"Configuration: {config_path}")
     conf = ConfigHelper.load(str(config_path))
 
     db = DocumentDatabase(str(run_dir), conf.database.output, True)
