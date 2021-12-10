@@ -27,6 +27,7 @@ setuptools.setup(
     include_package_data=True,
     install_requires=[
         "beautifulsoup4",
+        "flask",
         "ftfy",
         "jieba",
         "ir_datasets",
@@ -39,7 +40,7 @@ setuptools.setup(
         "pycountry",
         "pydantic>=1.7.1,<1.8.0",
         "pymorphy2",
-        "pyserini>=0.13.0",
+        "pyserini==0.13.0",
         "pytrec-eval-terrier==0.5.2",
         "pyyaml",
         "sacremoses",
@@ -58,6 +59,7 @@ setuptools.setup(
             "patapsco-norm = patapsco.bin.normalize:main",
             "patapsco-query = patapsco.bin.query:main",
             "patapsco-reduce = patapsco.bin.reduce:main",
+            "patapsco-web = patapsco.bin.web:main",
         ]
     }
 )

@@ -6,6 +6,7 @@ channels:
 dependencies:
   - python>=3.6.1
   - beautifulsoup4
+  - flask
   - ftfy
   - jieba
   - more-itertools
@@ -28,5 +29,5 @@ dependencies:
     - ir_datasets
     - luqum
     - parsivar-scale
-    - pyserini>=0.13.0
+    - pyserini==0.13.0
     - pytrec-eval-terrier==0.5.2
