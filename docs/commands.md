@@ -26,5 +26,6 @@ patapsco-web --run path/to/run --port 9090
 The web services have two endpoints:
  * documents: `/doc/<id>`
  * querying: `/query/<query>`
- 
+
+The endpoints only support GET requests.
 All configuration is read from the config.yml file in the run directory.
