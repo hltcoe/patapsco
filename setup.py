@@ -28,6 +28,7 @@ setuptools.setup(
     install_requires=[
         "beautifulsoup4",
         "flask",
+        "flask-cors",
         "ftfy",
         "jieba",
         "ir_datasets",

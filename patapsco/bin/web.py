@@ -3,6 +3,7 @@ import logging
 import pathlib
 
 import flask
+import flask_cors
 
 from patapsco import ConfigHelper, DocumentDatabase, Query, QueryProcessor, RetrieverFactory
 
@@ -33,14 +34,18 @@ def main():
     retriever.begin()
 
     app = flask.Flask("Patapsco web services")
+    cors = flask_cors.CORS(app)
+    app.config['CORS_HEADERS'] = 'Content-Type'
 
     @app.route('/doc/<id>')
+    @flask_cors.cross_origin()
     def document(id):
         if id not in db:
             flask.abort(404)
         return flask.jsonify(db[id])
 
     @app.route('/query/<query>')
+    @flask_cors.cross_origin()
     def retrieve(query):
         query = Query(id='web', lang=lang, query=query, text=query, report=None)
         query = query_processor.process(query)
