@@ -1,7 +1,6 @@
 # preprocessing step for moses
 
 import argparse
-from os import name
 from pathlib import Path
 import shutil
 
@@ -129,10 +128,3 @@ if __name__ == '__main__':
     parser.add_argument('--nworker', type=int, default=1, help="Number of multiprocessing workers.")
 
     main(parser.parse_args())
-
-"""
-python preprocess.py \
---raw_text ~/workspace/transtable/generaldomain-bitext/zh-en/generaldomain.train.raw.zh \
---lang zh --tokenize ngram --rm_stopwords --output_path ./preprocess_bitext/zh-en/ \
---nworker 2 --resume
-"""

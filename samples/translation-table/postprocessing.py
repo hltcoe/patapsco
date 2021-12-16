@@ -4,7 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 import pandas as pd
 
-from util import _pbar as pbar
+from util import pbar
 
 def work(s, prob_cutoff, cdf_cutoff, max_translation, no_normalize):
     s = s.sort_values('prob')[::-1]
@@ -60,10 +60,3 @@ if __name__ == '__main__':
     parser.add_argument('--overwrite', action='store_true', default=False, help="Overwrite the existing table.")
 
     main( parser.parse_args() )
-
-"""
-python postprocessing.py \
-~/workspace/transtable/trained_models/zh-en/moses-nostem-lower-rmsw.en+spacy-nostem-rmsw.zh/model/lex.e2f \
-./test_table_10max.dict \
---max_translation 10 
-"""

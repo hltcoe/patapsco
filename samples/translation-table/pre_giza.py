@@ -22,10 +22,3 @@ if __name__ == '__main__':
                         help="Directory to output the pair of files with file names `tok.lang_a` and `tok.lang_b`.")
     
     main(parser.parse_args())
-
-"""
-python pre_giza.py \
-~/workspace/transtable/preprocess_bitext/zh-en/generaldomain.train.raw.tok.moses-nostem-lower-rmsw.en \
-~/workspace/transtable/preprocess_bitext/zh-en/generaldomain.train.raw.tok.ngram-nostem-rmsw.zh \
---n_lines 36334422 --output_dir ./temp/
-"""
