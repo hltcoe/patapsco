@@ -1,6 +1,7 @@
 # Creating Translation Tables for PSQ
 
-This readme provides a quick instruction and scripts for creating translation tables for running PSQ. 
+This readme provides a quick instruction and scripts for creating translation tables for running PSQ 
+for translating English queries to match foreign language documents. 
 This process involves runnining [Moses decoder](https://github.com/moses-smt/mosesdecoder). 
 Please refer to their [GiHub repository](https://github.com/moses-smt/mosesdecoder) 
 and [Website](https://www.statmt.org/moses/) for installation and full 
@@ -52,6 +53,9 @@ The arguments of the script are
 `[number process] [memory size] [souce language] [target language] [source bitext file] [target bitext file] [output directory]`. 
 This process could take days depending on the computational resource. 
 
+Note that the direction of the translation specifying here is different from the one we ultimately want. 
+However, GIZA++ trains bidirectionally so we will have translation tables in both direction after training. 
+
 Many thanks to [Kevin Duh](https://www.cs.jhu.edu/~kevinduh/) for contributing this script. 
 
 ```bash
@@ -64,10 +68,10 @@ MOSES={path/to/moses/} EXT_BIN={path/to/ext_binaries/for/mgiza} \
 Finally, we post process the resulting lexical translation file into PSQ translation table. 
 Since GIZA++ provide all possible translations for each token based on cooccurance, trimming alternative translation 
 is perferable. 
-The following command takes in the result lexical file from GIZA++ and creates a translation table. 
+The following command takes in the result lexical file (English to foreign language) from GIZA++ and creates a translation table. 
 The documentation of the arguments can be found in `python postprocessing.py --help`.
 
 ```bash
 python postprocessing.py ./giza_out/model/lex.e2f ./table_max20-cdf0.8.dict \
---max_translation 20 --cdf_cutoff 0.8
+--max_translation 20 --min_prob 0.5 --cdf_cutoff 0.8
 ```

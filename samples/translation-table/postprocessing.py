@@ -29,8 +29,8 @@ def main(args):
     
     for eng in pbar(table, desc='trimming'):
         s = pd.Series(table[eng]).sort_values()[::-1]
-        if args.prob_cutoff > 0.:
-            s = s[s >= args.prob_cutoff]
+        if args.min_prob > 0.:
+            s = s[s >= args.min_prob]
         if args.cdf_cutoff < 1.0:
             s = s[s.cumsum() / s.sum() <= args.cdf_cutoff]
         if args.max_translation > 0:
@@ -50,10 +50,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--max_translation', type=int, default=-1, 
                         help="Maximum number of alternative translations. Default is without limit.")
+    parser.add_argument('--min_prob', type=float, default=0.0, 
+                        help="Minimum probability for alternative translation. Default is 0.")
     parser.add_argument('--cdf_cutoff', type=float, default=1.0, 
                         help="Cutoff of the cumulative density function. Default is no cutoff.")
-    parser.add_argument('--prob_cutoff', type=float, default=0.0, 
-                        help="Minimum probability for alternative translation. Default is 0.")
     parser.add_argument('--no_normalize', action='store_true', default=False, 
                         help="Without marginalizing the translation probabilities.")
 
