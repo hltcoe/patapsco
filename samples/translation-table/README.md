@@ -12,7 +12,7 @@ We support preprocessing the bitext through Patapsco text processing APIs.
 The following commands help you preprocess your pair of bitext in the configurations 
 that will align with the query and document processing when running retrieval. 
 
-The bitext should come in a pair of text files with one file contains only one language of the bitext. 
+The bitext should come in a pair of text files where each file contains only one language of the bitext. 
 The number of lines in each file should be identical. 
 
 The full documentation of the arguments can be found in `python preprocess.py --help`.
