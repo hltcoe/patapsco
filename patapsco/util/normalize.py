@@ -223,14 +223,14 @@ class Normalizer:
 
     @staticmethod
     def update_spaces(text):
-        return re.sub(r'\s+', ' ', text)
+        return re.sub(r'[^\S\n]+', ' ', text)
 
     def remove_format_chars(self, text):
         return text.translate(self.format_trans)
 
     @staticmethod
     def remove_control_chars(text):
-        return ''.join(char for char in text if char.isprintable())
+        return ''.join(char for char in text if char.isprintable() or char == "\n")
 
     @staticmethod
     def fix_encoding(text):

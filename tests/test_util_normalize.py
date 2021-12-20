@@ -21,7 +21,7 @@ class TestCompare:
 class TestNormalizer:
     def test_pre_normalize_newlines(self):
         normalizer = NormalizerFactory.create("eng", NormalizationConfig(lowercase=False))
-        assert normalizer.pre_normalize("line1\nline2") == "line1 line2"
+        assert normalizer.pre_normalize("line1\nline2") == "line1\nline2"
 
     def test_post_normalize_lowercase(self):
         normalizer = GenericNormalizer(NormalizationConfig(lowercase=True))
@@ -39,7 +39,7 @@ class TestNormalizer:
 
     def test_other_spaces(self):
         spaces = [
-            '\u000a', '\u000d', '\u0020', '\u2009', '\u200a', '\u2028', '\u2029', '\u3000',
+            '\u000d', '\u0020', '\u2009', '\u200a', '\u2028', '\u2029', '\u3000',
         ]
         for space in spaces:
             assert Normalizer.update_spaces(f"a{space}b") == "a b"
