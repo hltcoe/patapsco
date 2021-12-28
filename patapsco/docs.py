@@ -143,8 +143,8 @@ class IRDSDocumentReader(InputIterator, NoGlobSupport):
         self.path = path
         self.lang = lang
         self.dataset = ir_datasets.load(self.path)
-        dataset_lang = LangStandardizer.iso_639_3(self.dataset.queries.lang)
-        assert dataset_lang == self.lang, f"Query language code from {path} is not {lang} but {dataset_lang}."
+        dataset_lang = LangStandardizer.iso_639_3(self.dataset.docs.lang)
+        assert dataset_lang == self.lang, f"Document language code from {path} is not {lang} but {dataset_lang}."
         self.reader = iter(self.dataset.docs)
 
     def __iter__(self):
