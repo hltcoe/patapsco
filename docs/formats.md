@@ -26,6 +26,80 @@ Patapsco makes documents available of this form:
 The `text` field will have the basic normalization run on it.
 This includes removing control characters, standardizing spaces and smart quotes, and collapsing combining characters.
 
+## Topic file format
+Patapsco reads topic files with the following jsonl format to produce query files:
+
+```json
+{
+"topic_id": "1", 
+"languages_with_qrels": ["zho", "fas"], 
+"topics": [ {
+             "lang": "eng", 
+             "source": "original", 
+             "topic_title": "Asteroids Endangering Earth", 
+             "topic_description": "Articles related to asteroids that pose danger of impact to Earth."
+            }, 
+            {
+             "lang": "zho", 
+             "source": "human translation", 
+             "topic_title": "小行星危害地球", 
+             "topic_description": "与对地球构成撞击危害的小行星相关的文章。"
+            }, 
+            {
+             "lang": "fas", 
+             "source": "20220114-scale21-sockeye2-tm1", 
+             "topic_title": "سیارات در معرض خطر زمین", 
+             "topic_description": "مقالات مربوط به سیارک ‌ هایی که خطر برخورد با زمین را تهدید می ‌ کنند."
+             }, 
+             ...
+          ], 
+"narratives": {
+                "zho": {
+                         "very_valuable": "Details about asteroids ...", 
+                         "somewhat_valuable": "N/A", 
+                         "not_that_valuable": "Information on discussions about asteroids ...", 
+                         "non_relevant": "Details about asteroids that previously ..."
+                        }, 
+                "fas": "Mention of asteroids...", 
+              }, 
+"report": {
+            "url": "https://en.wikipedia.org/w/index.php?title=(415029)_2011_UL21&oldid=877055001", 
+            "text": "2011 UL21 briefly had ... ", 
+            "date": "2019-01-06"
+          }
+}
+```
+
+| field                | description                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| topic_id             | Topic id                                                                              |
+| languages_with_qrels | list of ISO 639-3 codes                                                               |
+| topics               | list of dictionaries with fields 'lang', 'source', 'topic_title', 'topic_description' |
+| narratives           | dictionary where the fields are ISO 639-3 codes                                       |
+| report               | dictionary where the fields are 'url', 'text', 'date'                                 |
+
+Patapsco processes the `topics` field to determine which information should be used as the text representation of the 
+`text` in the query file. The `topic` field is a list of dictionaries. Each dictionary contain the following fields:
+
+| field             | description                                     |
+| ----------------- | ----------------------------------------------- |
+| lang              | ISO 639-3                                       |
+| source            | A string that describes the source of the topic |
+| topic_title       | Text identified as the title of the topic       |
+| topic_description | Text identified as the description of the topic |
+
+The (`lang`, `source`) must be unique for each topic in the list.
+
+Patapsco will create the query from the `topic_title` when `fields` in the config file is `title`. The query will come from 
+`topic_description` when the `fields` is `description` in the config file, and `title+description` will concatenate the two fields.
+
+Patapsco does not read the `narratives` field; however, many IR datasets have such a field. The narratives for each language 
+may be different. Therefore, the dictionary can capture that using language codes for the fields. The value of each language 
+may be a string or if the narrative is structured, a dictionary. The fields of this inner dictionary are specified by the creator 
+of the topics file.
+
+The `report` field is optional. If it is present, Patapsco will add the `text` field within the report dictionary to the query file to be 
+available for re-ranking processes that utilize the query file. Aside from the `text` field, any other field in the report is ignored by Patapsco.
 
 ## Query file format
 Patapsco saves and reads query files with the following jsonl format:
