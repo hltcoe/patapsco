@@ -27,7 +27,7 @@ dependencies:
   - stanza>=1.2.1
   - pip
   - pip:
-    - ir_datasets
+    - ir_datasets>=0.5.0
     - luqum
     - parsivar-scale
     - pyserini==0.13.0
