@@ -2,8 +2,10 @@ import csv
 import dataclasses
 import json
 import logging
+from multiprocessing.sharedctypes import Value
 import pathlib
 from typing import Optional
+from attr import has
 
 import luqum.parser
 import luqum.tree
@@ -90,7 +92,8 @@ class TopicProcessor(Task):
         try:
             return [cls.FIELD_MAP[f.lower()] for f in fields]
         except KeyError as e:
-            raise ConfigError(f"Unrecognized topic field: {e}")
+            LOGGER.warning(f"Using unrecognized topic fields {e}, may cause unexpected results.")
+            return fields
 
 
 class SgmlTopicReader(InputIterator):
@@ -257,8 +260,6 @@ class IRDSTopicReader(InputIterator, NoGlobSupport):
         self.path = path
         self.lang = lang
         self.dataset = ir_datasets.load(self.path)
-        dataset_lang = LangStandardizer.iso_639_3(self.dataset.queries.lang)
-        assert dataset_lang == self.lang, f"Query language code from {path} is not {lang} but {dataset_lang}."
         self.queries = iter(self.dataset.queries)
 
     def __iter__(self):
@@ -266,7 +267,17 @@ class IRDSTopicReader(InputIterator, NoGlobSupport):
 
     def __next__(self):
         q = next(self.queries)
-        return Topic(q.query_id, self.lang, q.text, getattr(q, 'description', None), None)
+        topic = Topic(q.query_id, self.lang, None, None, None)
+
+        for field in self.dataset.queries_cls()._fields:
+            if field in ['query_id']:
+                continue
+            elif field == 'description':
+                topic.desc = q.description
+            else:
+                setattr(topic, field, getattr(q, field))
+
+        return topic
 
     def __len__(self):
         return len(self.dataset.queries)
