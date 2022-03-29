@@ -2,10 +2,8 @@ import csv
 import dataclasses
 import json
 import logging
-from multiprocessing.sharedctypes import Value
 import pathlib
 from typing import Optional
-from attr import has
 
 import luqum.parser
 import luqum.tree
