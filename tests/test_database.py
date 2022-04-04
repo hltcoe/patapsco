@@ -17,7 +17,7 @@ class TestDocumentDatabase:
 
     def test_adding_doc(self):
         db = DocumentDatabase(self.temp_dir, 'database', readonly=False)
-        db['doc1'] = Doc('doc1', lang='eng', text='hello world', date='2020-12-25')
+        db['doc1'] = Doc('doc1', lang='eng', text='hello world', title='foo bar baz', date='2020-12-25')
         doc = db['doc1']
         assert doc.id == 'doc1'
         assert doc.date == '2020-12-25'

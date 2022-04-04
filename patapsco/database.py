@@ -96,7 +96,7 @@ class DatabaseWriter(Task):
             Doc
         """
         # the original_text was added by document processor for us to pull off
-        db_doc = Doc(doc.id, lang=doc.lang, text=doc.original_text, date=doc.date)
+        db_doc = Doc(doc.id, lang=doc.lang, text=doc.original_text, date=doc.date, title=doc.title)
         self.db[doc.id] = db_doc
         del doc.original_text
         return doc

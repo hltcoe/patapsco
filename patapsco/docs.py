@@ -24,6 +24,7 @@ class Doc:
     id: str
     lang: str
     text: str
+    title: str
     date: Optional[str]
 
 
@@ -53,7 +54,7 @@ class SgmlDocumentReader(InputIterator):
 
     def __next__(self):
         doc = next(self.docs_iter)
-        return Doc(doc[0], self.lang, doc[1], None)
+        return Doc(doc[0], self.lang, doc[1], None, None)
 
     def __len__(self):
         return count_lines_with('<DOC>', self.path, self.encoding)
@@ -89,7 +90,11 @@ class Hc4JsonDocumentReader(InputIterator):
             raise StopIteration
         try:
             data = json.loads(line.strip())
-            return Doc(data['id'], self.lang, ' '.join([data['title'].strip(), data['text'].strip()]), data['date'])
+            return Doc(data['id'],
+                       self.lang,
+                       ' '.join([data['title'].strip(), data['text'].strip()]),
+                       data['title'].strip(),
+                       data['date'])
         except json.decoder.JSONDecodeError as e:
             raise ParseError(f"Problem parsing json from {self.path} on line {self.count}: {e}")
         except KeyError as e:
@@ -116,7 +121,7 @@ class TsvDocumentReader(InputIterator):
     def __next__(self):
         try:
             row = next(self.reader)
-            return Doc(row[0], self.lang, row[1], None)
+            return Doc(row[0], self.lang, row[1], None, None)
         except StopIteration:
             self.fp.close()
             raise
@@ -152,7 +157,7 @@ class IRDSDocumentReader(InputIterator, NoGlobSupport):
 
     def __next__(self):
         doc = next(self.reader)
-        return Doc(doc.doc_id, self.lang, doc.text, None)
+        return Doc(doc.doc_id, self.lang, doc.text, doc.title, None)
 
     def __len__(self):
         return len(self.dataset)
