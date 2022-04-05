@@ -24,8 +24,8 @@ class Doc:
     id: str
     lang: str
     text: str
-    title: str
     date: Optional[str]
+    title: str = None
 
 
 class DocumentReaderFactory(ReaderFactory):
