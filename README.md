@@ -157,7 +157,7 @@ flake8 patapsco
 If you use this framework, please kindly cite our paper with the following bibtex entry. 
 
 ```bibtex
-@inproceedings{hc4,
+@inproceedings{patapasco,
 	author = {Cash Costello  and Eugene Yang and Dawn Lawrie and James Mayfield},
 	title = {Patapasco: A Python Framework for Cross-Language Information Retrieval Experiments},
 	booktitle = {Proceedings of the 44th European Conference on Information Retrieval (ECIR)},
