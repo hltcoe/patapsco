@@ -1,7 +1,8 @@
 # Patapsco - a CLIR Pipeline
 
 Patapsco is a Python framework for CLIR experiments. 
-Please visit our Google Colab Demo to check out a full example [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hltcoe/patapsco/blob/master/samples/notebooks/demo-ecir.ipynb). 
+
+Visit our Google Colab Demo for an interactive demonstration of some of Patapsco's features: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hltcoe/patapsco/blob/master/samples/notebooks/demo-ecir.ipynb). 
 
 
 ## Requirements
