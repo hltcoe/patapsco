@@ -34,7 +34,7 @@ def main():
     retriever.begin()
 
     app = flask.Flask("Patapsco web services")
-    cors = flask_cors.CORS(app)
+    flask_cors.CORS(app)
     app.config['CORS_HEADERS'] = 'Content-Type'
 
     @app.route('/doc/<id>')
