@@ -507,8 +507,10 @@ class QueryProcessor(TextProcessor):
         super().__init__(run_path, config.process, lang)
         self.psq_config = config.psq
         self.parse = config.parse
+        if self.parse:
+            LOGGER.info("Lucene boolean query parsing enabled in query processor")
         if self.psq_config and self.parse:
-            raise ConfigError("Cannot use both PSQ and Lucene query parsing")
+            raise ConfigError("Cannot use both PSQ and Lucene boolean query parsing")
         self.generator = None
 
     def begin(self):

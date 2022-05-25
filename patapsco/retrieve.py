@@ -76,9 +76,10 @@ class PyseriniRetriever(Task):
         self.lang = None  # documents language
         self.log_explanations = config.log_explanations
         self.log_explanations_cutoff = config.log_explanations_cutoff
-        self.parse = None
-        if config.parse:
-            self.parse = self.parser = self.java.QueryParser('contents', self.java.WhitespaceAnalyzer())
+        self.parse = config.parse
+        if self.parse:
+            LOGGER.info("Lucene boolean query parsing enabled in retriever")
+            self.parser = self.java.QueryParser('contents', self.java.WhitespaceAnalyzer())
         LOGGER.info(f"Index location: {self.index_dir}")
 
     @property
