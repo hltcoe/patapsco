@@ -131,12 +131,14 @@ class IRDSDocumentReader(InputIterator, NoGlobSupport):
     The documents are downloaded to ~/.ir_datasets/
     """
 
-    def __init__(self, path, encoding, lang, **kwargs):
+    def __init__(self, path, encoding, lang, fields=None, **kwargs):
         """
         Args:
             path (str): ir_datasets name.
             encoding (str): Ignored.
             lang (str): Language of the documents.
+            fields (str): ir_dataset document field(s) that will be extracted. Use `+` to indicate multiple fields. 
+                          If None, fall back to `default_text()` or `text`.
             **kwargs (dict): Unused.
         """
         import ir_datasets
@@ -146,16 +148,30 @@ class IRDSDocumentReader(InputIterator, NoGlobSupport):
         dataset_lang = LangStandardizer.iso_639_3(self.dataset.docs.lang)
         assert dataset_lang == self.lang, f"Document language code from {path} is not {lang} but {dataset_lang}."
         self.reader = iter(self.dataset.docs)
+        self.fields = fields.strip().split('+') if fields is not None else None
+        
+        irds_doc_fields = self.dataset.docs_cls().__annotations__
+        if self.fields:
+            assert all( f in irds_doc_fields and irds_doc_fields[f] == str for f in self.fields ),\
+                f"Fields {self.fields} are not supported by irds/{self.path}."
 
     def __iter__(self):
         return self
 
     def __next__(self):
         doc = next(self.reader)
-        return Doc(doc.doc_id, self.lang, doc.text, None)
+        return Doc(doc.doc_id, self.lang, self._get_text(doc), 
+                   getattr(doc, 'time', None) or getattr(doc, 'date', None) )
 
     def __len__(self):
-        return len(self.dataset)
+        return len(self.dataset.docs)
+
+    def _get_text(self, doc):
+        if self.fields:
+            return " ".join([getattr(doc, f) for f in self.fields])
+        if hasattr(doc, "default_text"):
+            return doc.default_text()
+        return doc.text
 
 
 class DocWriter(Task):

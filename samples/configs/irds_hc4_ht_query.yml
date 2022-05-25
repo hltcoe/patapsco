@@ -1,0 +1,48 @@
+run:
+  name: ir_datasets testing using hc4_zho_test ht queries
+
+topics:
+  input:
+    format: irds
+    lang: zho
+    source: original
+    encoding: utf8
+    path: hc4/zh/test
+  fields: ht_title
+
+queries:
+  output: true
+  parse: false
+  process:
+    normalize:
+      lowercase: true
+      report: false
+    stem: false
+    stopwords: lucene
+    strict_check: false
+    tokenize: spacy
+
+retrieve:
+  input: 
+    index:
+      path: ./runs/ir_datasets-testing-using-hc4_zho_test/index
+  b: 0.4
+  fb_docs: 10
+  fb_terms: 10
+  k1: 0.9
+  log_explanations: false
+  log_explanations_cutoff: 10
+  mu: 1000
+  name: bm25
+  number: 1000
+  original_query_weight: 0.5
+  output: retrieve
+  parse: false
+  psq: false
+  rm3: false
+  rm3_logging: false
+
+score:
+  input:
+    format: irds
+    path: hc4/zh/test
