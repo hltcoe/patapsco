@@ -177,7 +177,7 @@ class DocWriter(Task):
         # if no database, we remove the extra text object before serializing
         if hasattr(doc, 'original_text'):
             del doc.original_text
-        self.file.write(json.dumps(doc, cls=DataclassJSONEncoder) + "\n")
+        self.file.write(json.dumps(doc, ensure_ascii=False, cls=DataclassJSONEncoder) + "\n")
         return doc
 
     def end(self):
