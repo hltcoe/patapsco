@@ -187,15 +187,15 @@ This is useful if preprocessing the queries in specific ways outside of Patapsco
 #### PSQ
 For PSQ queries, you need to configure both the `queries` and `retrieval` sections.
 The `psq` subsection of `queries` includes any text processing to be done such as stemming.
+the `lang` field should be the language that you are projecting to.
 
 ```yaml
 queries:
      process:
        inherit: documents.process
      psq:
-       path: eng_table.json
-       lang: eng
-       stem: porter
+       path: eng2spa_table.json
+       lang: spa
 ```
 
 The path points to a PSQ dictionary which is a json file:
