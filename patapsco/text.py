@@ -123,7 +123,7 @@ class JiebaTokenizer(Tokenizer):
     def __init__(self, lang, model_path):
         super().__init__(lang, model_path)
         if self.lang != 'zho':
-            raise ConfigError(f"Jieba tokenizer only supports zho")
+            raise ConfigError("Jieba tokenizer only supports zho")
         import jieba
         jieba.setLogLevel(60)
         self.tokenizer = jieba
@@ -201,7 +201,7 @@ class StanzaNLP(Tokenizer, Stemmer):
             else:
                 processors = 'tokenize'
                 package = 'default'
-            #self.nlp = stanza.Pipeline(self.lang, processors=processors, package=package, dir=str(self.model_path))
+            # self.nlp = stanza.Pipeline(self.lang, processors=processors, package=package, dir=str(self.model_path))
             self.nlp = stanza.Pipeline(self.lang, processors=processors, package=package)
             self.cache = None
         LOGGER.debug(buffer.getvalue())
@@ -344,8 +344,8 @@ class SpacyNLP(Tokenizer, Stemmer):
         self.nlp = SpacyModelLoader.get_loader(self.model_path).load(self.lang)
         self.cache = None
         if stem:
-            #if self.lang in ['ar', 'fa', 'zh']:
-            #    raise ConfigError(f"Spacy does not support lemmatization for {self.lang}")
+            # if self.lang in ['ar', 'fa', 'zh']:
+            #     raise ConfigError(f"Spacy does not support lemmatization for {self.lang}")
             # enable pipeline components that the lemmatizer depends on
             names = self.nlp.component_names
             for name in set(names) & {'tok2vec', 'tagger', 'attribute_ruler', 'lemmatizer', 'morphologizer'}:

@@ -21,10 +21,11 @@ class ConfigHelper:
         """
         overrides = overrides if overrides else []
         config_service = ConfigService(overrides)
-        cls._validate(config_dict)
+        cls._validate_dict(config_dict)
         cls._set_run_path(config_dict)
         conf = config_service.create_config_object(RunnerConfig, config_dict)
         cls._update(conf)
+        cls._validate_obj(conf)
         return conf
 
     @classmethod
@@ -44,10 +45,11 @@ class ConfigHelper:
             config_dict = config_service.read_config_file(config_filename)
         except FileNotFoundError as error:
             raise ConfigError(error)
-        cls._validate(config_dict)
+        cls._validate_dict(config_dict)
         cls._set_run_path(config_dict)
         conf = config_service.create_config_object(RunnerConfig, config_dict)
         cls._update(conf)
+        cls._validate_obj(conf)
         return conf
 
     @classmethod
@@ -57,23 +59,34 @@ class ConfigHelper:
         2. sets the retriever's index path based on the index task if not already set
         3. sets the reranker's db path based on the database section if not already set
         4. sets default progress update intervals for logging
-        5. checks that the queue name is set if a grid job
         """
         cls._set_output_paths(conf)
         cls._make_input_paths_absolute(conf)
         cls._set_retrieve_input_path(conf)
         cls._set_rerank_db_path(conf)
         cls._set_progress_intervals(conf)
-        cls._check_queue_name(conf)
 
     @staticmethod
-    def _validate(conf_dict):
+    def _validate_dict(conf_dict):
         # This tests for:
         #  1. The run name is set
         try:
             conf_dict['run']['name']
         except KeyError:
             raise ConfigError("run.name is not set")
+
+    @classmethod
+    def _validate_obj(cls, conf):
+        """ Tests the config object after preparation for:
+        1. the queue name is set if a grid job
+        2. consistency in the boolean query parse flag
+        """
+        cls._check_queue_name(conf)
+
+        # check boolean query parsing consistency
+        if conf.queries and conf.retrieve:
+            if conf.queries.parse != conf.retrieve.parse:
+                raise ConfigError("Config for queries and retrieve do not match for parse parameter")
 
     @classmethod
     def _set_run_path(cls, conf_dict):

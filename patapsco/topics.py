@@ -432,6 +432,9 @@ class PSQGenerator(QueryGenerator):
 
     def generate(self, query, text, tokens):
         """Post process the tokens (stem, stop words, normalize) and generate PSQ"""
+        # Lucene can only handle 1024 clauses and we use 1 for the PSQ indicator
+        if len(tokens) > 1023:
+            tokens = tokens[:1023]
         psq_tokens = self._project(token.lower() for token in tokens)
 
         terms = [' '.join(self.process_psq(psq_clause)) for psq_clause in psq_tokens]
@@ -507,8 +510,10 @@ class QueryProcessor(TextProcessor):
         super().__init__(run_path, config.process, lang)
         self.psq_config = config.psq
         self.parse = config.parse
+        if self.parse:
+            LOGGER.info("Lucene boolean query parsing enabled in query processor")
         if self.psq_config and self.parse:
-            raise ConfigError("Cannot use both PSQ and Lucene query parsing")
+            raise ConfigError("Cannot use both PSQ and Lucene boolean query parsing")
         self.generator = None
 
     def begin(self):

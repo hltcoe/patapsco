@@ -65,12 +65,15 @@ class LuceneIndexer(Task):
         if not self.field_type:
             self._create_field_type()
 
-        lucene_doc = self.java.Document()
-        lucene_doc.add(self.java.StringField("id", doc.id, self.java.StoreEnum.YES))
-        lucene_doc.add(self.java.SortedDocValuesField("id", self.java.BytesRef(doc.id.encode())))
-        text = self.java.cast(self.java.CharSequence, self.java.String(doc.text.encode('utf-8')))  # jnius requires this cast
-        lucene_doc.add(self.java.Field("contents", text, self.field_type))
-        self.writer.addDocument(lucene_doc)
+        try:
+            lucene_doc = self.java.Document()
+            lucene_doc.add(self.java.StringField("id", doc.id, self.java.StoreEnum.YES))
+            lucene_doc.add(self.java.SortedDocValuesField("id", self.java.BytesRef(doc.id.encode())))
+            text = self.java.cast(self.java.CharSequence, self.java.String(doc.text.encode('utf-8')))  # jnius requires this cast
+            lucene_doc.add(self.java.Field("contents", text, self.field_type))
+            self.writer.addDocument(lucene_doc)
+        except self.java.JavaException as e:
+            LOGGER.warning(f"Failed to index doc {doc.id} due to {e}")
         return doc
 
     def end(self):

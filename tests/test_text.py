@@ -28,6 +28,14 @@ def test_stop_words_english_caseless():
     assert new_tokens == ['test']
 
 
+def test_stop_words_indonesian():
+    swr = StopWordsRemover('lucene', 'ind')
+    tokens = ['antar', 'belanja']
+    indices = swr.identify(tokens)
+    new_tokens = swr.remove(tokens, indices)
+    assert new_tokens == ['belanja']
+
+
 def test_porter_stemmer_english():
     tokens = ['It', 'was', 'a', 'bright', 'cold', 'day', 'in', 'April', ',', 'and', 'the', 'clocks', 'were', 'striking', 'thirteen', '.']
     ans = ['It', 'wa', 'a', 'bright', 'cold', 'day', 'in', 'April', ',', 'and', 'the', 'clock', 'were', 'strike', 'thirteen', '.']

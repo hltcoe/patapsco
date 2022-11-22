@@ -185,7 +185,11 @@ class NormalizerFactory:
         'ara': 'ArabicNormalizer',
         'eng': 'EnglishNormalizer',
         'fas': 'FarsiNormalizer',
+        'heb': 'HebrewNormalizer',
+        'ind': 'IndonesianNormalizer',
+        'kor': 'KoreanNormalizer',
         'rus': 'RussianNormalizer',
+        'spa': 'SpanishNormalizer',
         'zho': 'ChineseNormalizer',
     }
 
@@ -282,6 +286,19 @@ class EnglishNormalizer(GenericNormalizer):
 class FarsiNormalizer(GenericNormalizer):
     pass
 
+class HebrewNormalizer(GenericNormalizer):
+    pass
+
+class IndonesianNormalizer(GenericNormalizer):
+    pass
+
+class KoreanNormalizer(GenericNormalizer):
+    pass
 
 class RussianNormalizer(GenericNormalizer):
     pass
+
+class SpanishNormalizer(GenericNormalizer):
+    pass
+
+

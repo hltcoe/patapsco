@@ -5,10 +5,28 @@ from patapsco.schema import *
 
 
 class TestConfigHelper:
-    def test_validate(self):
+    def test_validate_dict_with_no_run_name(self):
         conf = {}
         with pytest.raises(ConfigError, match='run.name is not set'):
-            ConfigHelper._validate(conf)
+            ConfigHelper._validate_dict(conf)
+
+    def test_validate_obj_with_mismatch_boolean_query_parsing(self):
+        conf = RunnerConfig(
+                run=RunConfig(name='run name', path='test'),
+                queries=QueriesConfig(
+                    process=TextProcessorConfig(tokenize="whitespace", stem=False),
+                    output=False,
+                    parse=True
+                ),
+                retrieve=RetrieveConfig(
+                    input=RetrieveInputConfig(index=PathConfig(path="index")),
+                    name="test",
+                    output="retrieve",
+                    parse=False
+                ),
+            )
+        with pytest.raises(ConfigError, match='Config for queries and retrieve do not match for parse parameter'):
+            ConfigHelper._validate_obj(conf)
 
     def test_set_run_path(self):
         test_cases = {

@@ -136,4 +136,8 @@ def parse_psq_table(path, threshold=0.97):
     norm = functools.partial(normalize_psq_entry, cum_thresh=threshold)
     with open(path) as fp:
         trans_table = json.load(fp)
+        # lucene limits clauses to 1024 terms
+        for k, v in trans_table.items():
+            while len(v) > 1024:
+                v.pop(list(v.keys())[-1])  # remove last item in dictionary
         return {k: norm(v) for k, v in trans_table.items()}

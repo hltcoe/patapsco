@@ -105,10 +105,9 @@ def test_parse_qrels_tsv():
         next(qrels_iter)
 
 
-def test_parse_psq_table():
+def test_parse_psq_table_normal():
     directory = pathlib.Path(__file__).parent / 'psq_files'
     path = directory / 'psq.json'
-    # table = parse_psq_table(path, threshold=0.97)
     table = parse_psq_table(path, threshold=0.97)
     assert len(table) == 4
     assert list(table.keys()) == ['cat', 'dog', 'bird', 'hello']
@@ -121,3 +120,15 @@ def test_parse_psq_table():
     assert table['bird']['ave'] == pytest.approx(0.38775510)
     table = parse_psq_table(path, threshold=0.999999)
     assert len(table['hello']) == 1
+
+
+def test_parse_psq_table_too_large_entry():
+    # lucene only allows up to 1024 terms in a clause
+    directory = pathlib.Path(__file__).parent / 'psq_files'
+    path = directory / 'psq_too_large.json'
+    table = parse_psq_table(path, threshold=1.0)
+    assert len(table) == 5
+    assert len(table['test']) == 1024
+    assert '1025' not in table['test']  # should throw out this particular entry to preserve ordering in file
+    print(table['test'])
+    assert table['test']['1'] == pytest.approx(0.1331704)
