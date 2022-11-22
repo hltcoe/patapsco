@@ -195,7 +195,7 @@ class NormalizerFactory:
             namespace = vars(sys.modules[cls.__module__])
             return namespace[cls.classes[lang]](config)
         else:
-            raise ValueError(f"Unknown language: {lang}")
+            return GenericNormalizer(config)
 
 
 class Normalizer:
