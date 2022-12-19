@@ -58,21 +58,21 @@ class TestPyseriniRetriever:
         bm25 = PyseriniRetriever(run_path=self.temp_dir, config=conf)
         results = bm25.process(query)
         assert 'CACM-3134' == results.results[0].doc_id
-        assert pytest.approx(4.76550, results.results[0].score, 1e-5)
+        assert 4.76550 == pytest.approx(results.results[0].score, 1e-5)
 
         conf.name = "bm25"
         conf.rm3 = True
         rm3 = PyseriniRetriever(run_path=self.temp_dir, config=conf)
         results = rm3.process(query)
         assert 'CACM-3134' == results.results[0].doc_id
-        assert pytest.approx(2.18010, results.results[0].score, 1e-5)
+        assert 2.18010 == pytest.approx(results.results[0].score, 1e-5)
 
         conf.name = "qld"
         conf.rm3 = False
         qld = PyseriniRetriever(run_path=self.temp_dir, config=conf)
         results = qld.process(query)
         assert 'CACM-3134' == results.results[0].doc_id
-        assert pytest.approx(3.68030, results.results[0].score, 1e-5)
+        assert 3.68030 == pytest.approx(results.results[0].score, 1e-5)
 
     def test_psq_rm3(self):
         self.create_small_index()
