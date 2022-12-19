@@ -1,4 +1,5 @@
 import contextlib
+import functools
 import io
 import itertools
 import logging
@@ -329,8 +330,20 @@ class SpacyModelLoader:
         return nlp
 
 
+def handle_unnamed(function):
+    # if unnamed unicode character is passed, return False rather throw exception
+    @functools.wraps(function)
+    def _handle(*args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except ValueError:
+            return False
+    return _handle
+
+
 class SpacyNLP(Tokenizer, Stemmer):
     """Tokenizer and optional stemmer that uses the spaCy package"""
+    _pymorphy_updated = False
 
     def __init__(self, lang, model_path, stem):
         """
@@ -344,12 +357,18 @@ class SpacyNLP(Tokenizer, Stemmer):
         self.nlp = SpacyModelLoader.get_loader(self.model_path).load(self.lang)
         self.cache = None
         if stem:
+            # to do - figure out why this is commented out
             # if self.lang in ['ar', 'fa', 'zh']:
             #     raise ConfigError(f"Spacy does not support lemmatization for {self.lang}")
+
             # enable pipeline components that the lemmatizer depends on
             names = self.nlp.component_names
             for name in set(names) & {'tok2vec', 'tagger', 'attribute_ruler', 'lemmatizer', 'morphologizer'}:
                 self.nlp.enable_pipe(name)
+
+        # need to catch using pymorphy because it crashes on unnamed unicode chars
+        if self.lang == 'rus' and stem and not self._pymorphy_updated:
+            self._fix_pymorphy2()
 
     def tokenize(self, text):
         tokens = self.nlp(text)
@@ -359,6 +378,12 @@ class SpacyNLP(Tokenizer, Stemmer):
     def stem(self, tokens):
         tokens = self.cache
         return [token.lemma_ if token.lemma_ else token.text for token in tokens]
+
+    def _fix_pymorphy2(self):
+        import pymorphy2.shapes
+        func = pymorphy2.shapes.is_latin_char
+        pymorphy2.shapes.is_latin_char = handle_unnamed(func)
+        self._pymorphy_updated = True
 
 
 class StopWordsRemover:

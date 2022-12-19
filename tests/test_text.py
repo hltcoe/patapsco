@@ -248,6 +248,13 @@ class TestSpacy:
         assert tokens == ['Я', 'хотел', 'бы', 'пива', '.']
 
     @pytest.mark.slow
+    def test_tokenizer_russian_with_unnamed_chars_pymorphy2(self):
+        # https://github.com/kmike/pymorphy2/issues/137
+        tokenizer = SpacyNLP(lang='rus', model_path=None, stem=True)
+        tokens = tokenizer.tokenize("Я хотел бы пива \U00017014")
+        assert tokens == ['Я', 'хотел', 'бы', 'пива', '\U00017014']
+
+    @pytest.mark.slow
     def test_stemmer_russian(self):
         text = 'Новые расходы финансируются благодаря крупным суммам на банковском счету Клинтон.'
         ans = ['новый', 'расход', 'финансироваться', 'благодаря', 'крупный', 'сумма', 'на', 'банковский', 'счёт', 'клинтон', '.']
