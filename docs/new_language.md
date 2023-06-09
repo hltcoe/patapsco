@@ -1,6 +1,6 @@
 # Directions to add a new language
 
- - Place a stoplist for the language in resources
+ - Place a stoplist for the language in resources (patapsco/resources/stopwords)
      - look https://github.com/apache/lucene/tree/main/lucene/analysis/common/src/resources/org/apache/lucene/analysis for lucene stoplist. 
       - If it exists, add to the resources/lucene directory. 
       - Otherwise create a directory in resources that indicates the source of the stoplist and put the list of words in a file called {lang code}.txt 
