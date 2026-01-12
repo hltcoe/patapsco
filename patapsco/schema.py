@@ -236,7 +236,7 @@ class ParallelConfig(BaseConfig):
     name: str  # mp, qsub, or sbatch
     queue: Optional[str]  # required for qsub and sbatch
     email: Optional[str]  # email address for job completion notifications
-    resources: str = "h_rt=12:00:00"  # default to 12 hours as an upper limit (this is qsub format)
+    resources: str = "--time 12:00:00"  # default to 12 hours as an upper limit (this is slurm format)
     code: Optional[str]  # extra lines to add to bash scripts
 
 
