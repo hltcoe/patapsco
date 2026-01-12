@@ -38,6 +38,13 @@ def test_parse_json_documents_with_missing_field():
     with pytest.raises(ParseError):
         next(doc_iter)
 
+def test_parse_json_documents_with_no_date():
+    directory = pathlib.Path(__file__).parent / 'json_files'
+    path = directory / 'no_date.jsonl'
+    doc_iter = Hc4JsonDocumentReader(str(path.absolute()), 'utf8', 'eng')
+    doc = next(doc_iter)
+    assert doc.id == 'abcdef'
+    assert doc.date == None
 
 def test_parse_msmarco_documents():
     directory = pathlib.Path(__file__).parent / 'msmarco_files'

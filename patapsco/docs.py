@@ -89,7 +89,8 @@ class Hc4JsonDocumentReader(InputIterator):
             raise StopIteration
         try:
             data = json.loads(line.strip())
-            return Doc(data['id'], self.lang, ' '.join([data['title'].strip(), data['text'].strip()]), data['date'])
+            date = data['date'] if 'date' in data else None
+            return Doc(data['id'], self.lang, ' '.join([data['title'].strip(), data['text'].strip()]), date)
         except json.decoder.JSONDecodeError as e:
             raise ParseError(f"Problem parsing json from {self.path} on line {self.count}: {e}")
         except KeyError as e:
