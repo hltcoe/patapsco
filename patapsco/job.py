@@ -363,6 +363,7 @@ class ClusterJob(Job):
             return self._extract_job_id(ps.stdout.decode())
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
+            print("output:\n", e.stdout)
             sys.exit(-1)
 
     def _create_arguments(self, hold_id=None):
