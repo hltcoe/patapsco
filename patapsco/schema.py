@@ -55,6 +55,7 @@ class DocumentsInputConfig(BaseConfig):
     lang: str
     encoding: str = "utf8"
     path: Union[str, list]
+    fields: Optional[str]
 
 
 class DocumentsConfig(SectionConfig):
